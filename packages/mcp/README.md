@@ -22,7 +22,3 @@ Self-hosted web search & scraping MCP for AI agents. One binary, $5/mo.
 ```
 
 Legacy `CINDER_API_URL` still works.
-
-## Provenance
-
-Published with npm Provenance (OIDC). Verify at https://www.npmjs.com/package/tomoshi
