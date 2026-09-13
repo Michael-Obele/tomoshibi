@@ -77,15 +77,15 @@ Restart your editor — `tomoshi` appears as 3 tools.
 
 | Tool | `action` | What it does |
 |---|---|---|
-| `cinder_extract` | `scrape` · `scrape_multi` (≤10) · `links` · `batch` · `batch_status` | Single/multi-page → markdown, link extraction, async batch (Redis) |
-| `cinder_discover` | `search` · `map` · `crawl` · `crawl_status` | SearXNG search (Brave fallback), sitemap, async BFS crawl |
-| `cinder_monitor` | `create` · `status` · `delete` | Hash markdown, webhook on change |
+| `tomoshi_extract` | `scrape` · `scrape_multi` (≤10) · `links` · `batch` · `batch_status` | Single/multi-page → markdown, link extraction, async batch (Redis) |
+| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status` | SearXNG search (Brave fallback), sitemap, async BFS crawl |
+| `tomoshi_monitor` | `create` · `status` · `delete` | Hash markdown, webhook on change |
 
 Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status` until done.
 
 **Example — scrape + search in one turn:**
 
-> `cinder_discover` `search` "svelte 5 runes" → `cinder_extract` `scrape_multi` on top 3 URLs → LLM-ready markdown
+> `tomoshi_discover` `search` "svelte 5 runes" → `tomoshi_extract` `scrape_multi` on top 3 URLs → LLM-ready markdown
 
 ---
 

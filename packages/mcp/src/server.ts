@@ -73,7 +73,7 @@ export function createServer(): McpServer {
   // Consolidates former cinder_search + cinder_map + cinder_crawl (3→1, crawl already merged start/status)
   server.tool(
     {
-      name: "cinder_discover",
+      name: "tomoshi_discover",
       description:
         "Discovery resource (4 actions): `search` (SearXNG/Brave, domain filters/pagination), `map` (sitemap/traversal), `crawl` (enqueue BFS async, Redis), `crawl_status` (poll crawl). Replaces cinder_search/cinder_map/cinder_crawl.",
       schema: DiscoverSchema,
@@ -90,7 +90,7 @@ export function createServer(): McpServer {
   // Resource: change-tracking — already action-multiplexed (create|status|delete)
   server.tool(
     {
-      name: "cinder_monitor",
+      name: "tomoshi_monitor",
       description:
         "Change-tracking resource (3 actions): `create` (hashes markdown, fires signed webhook on change), `status` (config/last hash/next check), `delete` (stop & remove). Requires Redis.",
       schema: MonitorSchema,

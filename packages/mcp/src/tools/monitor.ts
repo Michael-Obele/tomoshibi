@@ -2,7 +2,7 @@ import * as v from "valibot";
 import type { CinderClient } from "../client.js";
 
 /**
- * Schema for the cinder_monitor tool.
+ * Schema for the tomoshi_monitor tool.
  * A single tool that creates, checks, or deletes a change-tracking monitor,
  * selected by the `action` discriminator (mirrors handlers.MonitorRequest).
  */

@@ -9,7 +9,7 @@ import type {
 /**
  * Resource-oriented multiplexed discovery tool.
  * Consolidates `cinder_search` + `cinder_map` + `cinder_crawl`
- * into a single `cinder_discover` resource (3→1).
+ * into a single `tomoshi_discover` resource (3→1).
  *
  * Principle: 1 tool per domain resource with `action` enum
  * (arch.md "Why 7 Tools Instead of 17" — FlarelyLegal 17→7).

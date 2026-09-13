@@ -8,7 +8,7 @@ import type {
 /**
  * Resource-oriented multiplexed extraction tool.
  * Consolidates `cinder_scrape` + `cinder_links` + `cinder_batch_scrape`
- * into a single `cinder_extract` resource (5→1 with scrape_multi).
+ * into a single `tomoshi_extract` resource (5→1 with scrape_multi).
  *
  * Principle: 1 tool per domain resource with `action` enum
  * (arch.md "Why 7 Tools Instead of 17" — FlarelyLegal 17→7).
