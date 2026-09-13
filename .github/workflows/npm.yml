@@ -2,6 +2,10 @@ name: npm-tomoshi
 
 on:
   push:
+    branches: [main]
+    paths:
+      - "packages/mcp/**"
+      - ".github/workflows/npm.yml"
     tags: ["v*", "tomoshi-v*", "mcp-v*"]
   workflow_dispatch:
     inputs:
@@ -11,11 +15,55 @@ on:
         default: "latest"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
+  version:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      bumped: ${{ steps.bump.outputs.bumped }}
+      version: ${{ steps.bump.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Auto-bump patch if version unchanged
+        id: bump
+        run: |
+          PKG=packages/mcp/package.json
+          LOCAL=$(node -p "require('./$PKG').version")
+          PUBLISHED=$(npm view tomoshi version 2>/dev/null || echo "0.0.0")
+          echo "local=$LOCAL published=$PUBLISHED"
+          if [ "$LOCAL" = "$PUBLISHED" ]; then
+            NEW=$(node -e "const [M,m,p]=process.argv[1].split('.').map(Number);console.log(\`\${M}.\${m}.\${p+1}\`)" "$LOCAL")
+            echo "Bumping $LOCAL -> $NEW"
+            node -e "
+              const fs=require('fs');
+              const p='$PKG';
+              const j=JSON.parse(fs.readFileSync(p,'utf8'));
+              j.version=process.argv[1];
+              fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+            " "$NEW"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add "$PKG"
+            git commit -m "chore(mcp): auto-bump to $NEW [skip ci]"
+            git push origin HEAD:main
+            echo "bumped=true" >> $GITHUB_OUTPUT
+            echo "version=$NEW" >> $GITHUB_OUTPUT
+          else
+            echo "bumped=false" >> $GITHUB_OUTPUT
+            echo "version=$LOCAL" >> $GITHUB_OUTPUT
+          fi
+
   publish:
+    needs: [version]
+    if: always() && (github.event_name != 'push' || github.ref != 'refs/heads/main' || needs.version.outputs.bumped == 'true' || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -23,6 +71,8 @@ jobs:
         working-directory: packages/mcp
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.bumped == 'true' && 'main' || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -38,14 +88,31 @@ jobs:
           npm install -g npm@^11.5.1
           npm --version
 
+      - name: Skip if already published
+        id: check
+        run: |
+          LOCAL=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view tomoshi version 2>/dev/null || echo "0.0.0")
+          echo "local=$LOCAL published=$PUBLISHED"
+          if [ "$LOCAL" = "$PUBLISHED" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Version $LOCAL already on npm — skipping"
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
       - run: bun install
+        if: steps.check.outputs.skip != 'true'
 
       - run: bun run --cwd packages/mcp typecheck
         working-directory: .
+        if: steps.check.outputs.skip != 'true'
 
       - run: npm run build
+        if: steps.check.outputs.skip != 'true'
 
       - name: Publish to npm with Provenance (OIDC, no token)
+        if: steps.check.outputs.skip != 'true'
         run: |
           if [ -n "${{ inputs.tag }}" ] && [ "${{ inputs.tag }}" != "latest" ]; then
             npm publish --provenance --access public --tag ${{ inputs.tag }}
