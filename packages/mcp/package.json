@@ -25,6 +25,15 @@
     "patch:tmcp": "echo \"no patch needed\"",
     "postinstall": "echo \"no patch needed\""
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Michael-Obele/tomoshibi.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/Michael-Obele/tomoshibi#readme",
+  "bugs": {
+    "url": "https://github.com/Michael-Obele/tomoshibi/issues"
+  },
   "keywords": [
     "tmcp",
     "mcp",

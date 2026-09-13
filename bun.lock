@@ -6,11 +6,12 @@
       "name": "tomoshibi",
     },
     "packages/mcp": {
-      "name": "tomoshibi",
+      "name": "tomoshi",
       "version": "1.0.0",
       "bin": {
-        "tomoshibi": "dist/stdio.js",
         "tomoshi": "dist/stdio.js",
+        "tomoshibi": "dist/stdio.js",
+        "tomoshibi-mcp": "dist/stdio.js",
       },
       "dependencies": {
         "@tmcp/adapter-valibot": "^0.1.6",
@@ -462,7 +463,7 @@
 
     "tmcp": ["tmcp@1.20.0", "", { "dependencies": { "@standard-schema/spec": "^1.0.0", "json-rpc-2.0": "^1.7.1", "sqids": "^0.3.0", "uri-template-matcher": "^1.1.1", "valibot": "^1.1.0" } }, "sha512-dcDximKQBGqLP/aEAVA26HcWRHhKipstg1w0fbDDJ0HcFZ6lolLU1YYmStYEn/73f534i7WrDNcjRfRYdV9CoA=="],
 
-    "tomoshibi": ["tomoshibi@workspace:packages/mcp"],
+    "tomoshi": ["tomoshi@workspace:packages/mcp"],
 
     "tomoshibi-web": ["tomoshibi-web@workspace:packages/web"],
 

@@ -33,7 +33,7 @@ jobs:
         with:
           bun-version: latest
 
-      - run: bun install --frozen-lockfile
+      - run: bun install
         working-directory: .
 
       - run: bun run --cwd packages/mcp typecheck
