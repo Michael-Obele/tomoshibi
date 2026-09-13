@@ -112,11 +112,11 @@ No `mode` needed — `smart` is default. `static` skips JS; `dynamic` always ren
 
 ## Packages
 
-| Package | Path                           | Description                                                        | Install                                                |
-| ------- | ------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------ |
-| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + SearXNG                 | `docker compose up` or `go run ./packages/api/cmd/api` |
-| **mcp** | [`packages/mcp`](packages/mcp) | MCP server — 3 tools, `tomoshi`/`tomoshibi` bin ([npm](https://www.npmjs.com/package/tomoshi)) | `npx -y tomoshi`                            |
-| **web** | [`packages/web`](packages/web) | Svelte 5 playground — scrape/crawl/search UI                       | `bun --cwd packages/web dev`                           |
+| Package | Path                           | Description                                                                                    | Install                                                |
+| ------- | ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + SearXNG                                             | `docker compose up` or `go run ./packages/api/cmd/api` |
+| **mcp** | [`packages/mcp`](packages/mcp) | MCP server — 3 tools, `tomoshi`/`tomoshibi` bin ([npm](https://www.npmjs.com/package/tomoshi)) | `npx -y tomoshi`                                       |
+| **web** | [`packages/web`](packages/web) | Svelte 5 playground — scrape/crawl/search UI                                                   | `bun --cwd packages/web dev`                           |
 
 ```bash
 # All packages
