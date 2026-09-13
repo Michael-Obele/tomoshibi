@@ -41,7 +41,7 @@ jobs:
       - run: npm run build
         working-directory: packages/mcp
 
-      - name: Publish to npm with Provenance
+      - name: Publish to npm with Provenance (OIDC, no token)
         run: |
           if [ -n "${{ inputs.tag }}" ] && [ "${{ inputs.tag }}" != "latest" ]; then
             npm publish --provenance --access public --tag ${{ inputs.tag }}
@@ -49,5 +49,3 @@ jobs:
             npm publish --provenance --access public
           fi
         working-directory: packages/mcp
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
