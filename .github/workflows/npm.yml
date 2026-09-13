@@ -26,12 +26,17 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: https://registry.npmjs.org
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+
+      - name: Ensure npm supports OIDC trusted publishing
+        run: |
+          npm install -g npm@^11.5.1
+          npm --version
 
       - run: bun install
 
