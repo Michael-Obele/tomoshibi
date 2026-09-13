@@ -36,11 +36,23 @@ serve({
     // throws "Controller is already closed" → process crash → Docker restart loop.
     // Mirrors effing-use/src/http.ts fix (idleTimeout: 0 + server.timeout(req,0)).
     try {
-      const runtime = (request as unknown as { runtime?: { bun?: { server?: { timeout: (req: Request, secs: number) => void } } } }).runtime;
+      const runtime = (
+        request as unknown as {
+          runtime?: {
+            bun?: {
+              server?: { timeout: (req: Request, secs: number) => void };
+            };
+          };
+        }
+      ).runtime;
       const bunServer = runtime?.bun?.server;
       if (bunServer) {
         const { pathname } = new URL(request.url);
-        if (pathname === "/mcp" || pathname === "/sse" || pathname === "/message") {
+        if (
+          pathname === "/mcp" ||
+          pathname === "/sse" ||
+          pathname === "/message"
+        ) {
           bunServer.timeout(request, 0);
         }
       }
@@ -61,7 +73,12 @@ serve({
             const cloned = request.clone();
             const body: any = await cloned.json();
             const patch = (obj: any) => {
-              if (obj && obj.method === "initialize" && obj.params && !obj.params.protocolVersion) {
+              if (
+                obj &&
+                obj.method === "initialize" &&
+                obj.params &&
+                !obj.params.protocolVersion
+              ) {
                 obj.params.protocolVersion = "2024-11-05";
                 return true;
               }
@@ -123,6 +140,7 @@ serve({
     return new Response(null, { status: 404 });
   },
   port: Number(config.PORT),
+  hostname: "0.0.0.0",
   // Bun's default idleTimeout (10s) kills *any* idle connection, including
   // long-lived MCP SSE streams (GET /mcp, GET /sse) and slow SearXNG searches.
   // 60s was not enough — SSE sits idle for minutes between notifications.
@@ -146,11 +164,14 @@ console.log(`   MCP:    http://localhost:${config.PORT}/mcp`);
 console.log(`   SSE:    http://localhost:${config.PORT}/sse`);
 
 // ---------------------------------------------------------------------------
-// STDIO Transport (only when not in Fly.io / production)
+// STDIO Transport (only when not in Fly.io / production and when stdin is a TTY)
+// In Docker the HTTP server is the only transport; stdio would compete for
+// stdin and cause the process to exit when stdin closes (Docker's default).
 // ---------------------------------------------------------------------------
 
 const is_fly_io = process.env.FLY_APP_NAME !== undefined;
-if (!is_fly_io) {
+const has_tty = process.stdin.isTTY;
+if (!is_fly_io && has_tty) {
   const stdio_transport = new StdioTransport(server);
   stdio_transport.listen();
 }

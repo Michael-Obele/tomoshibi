@@ -7,6 +7,8 @@ import * as v from "valibot";
 const ConfigSchema = v.object({
   /** Cinder API base URL — must point to your own Cinder instance */
   CINDER_API_URL: v.optional(v.pipe(v.string(), v.url()), ""),
+  /** Tomoshibi API URL (new name, preferred) */
+  TOMOSHIBI_API_URL: v.optional(v.pipe(v.string(), v.url()), ""),
 
   /** Optional API key if Cinder requires authentication */
   CINDER_API_KEY: v.optional(v.string(), ""),
@@ -64,12 +66,17 @@ export function getConfig(): Config {
 
   config = parsed.output;
 
-  if (!config.CINDER_API_URL) {
+  // TOMOSHIBI_API_URL is the new name, CINDER_API_URL is legacy compat
+  const apiUrl = (config as any).TOMOSHIBI_API_URL || config.CINDER_API_URL;
+  if (!apiUrl) {
     console.error(
-      "❌ CINDER_API_URL is required. Set it in your .env or via `fly secrets set CINDER_API_URL=https://your-cinder.fly.dev`",
+      "❌ TOMOSHIBI_API_URL (or CINDER_API_URL) is required. Set it in your .env or via `fly secrets set TOMOSHIBI_API_URL=https://your-tomoshibi.fly.dev`",
     );
     process.exit(1);
   }
+  // Normalize so downstream code can use either
+  (config as any).CINDER_API_URL = apiUrl;
+  (config as any).TOMOSHIBI_API_URL = apiUrl;
 
   return config;
 }

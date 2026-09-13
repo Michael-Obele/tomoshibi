@@ -385,7 +385,8 @@ export class CinderClient {
 
   constructor() {
     const config = getConfig();
-    this.baseUrl = config.CINDER_API_URL.replace(/\/+$/, "");
+    const rawUrl = (config as any).TOMOSHIBI_API_URL || config.CINDER_API_URL;
+    this.baseUrl = rawUrl.replace(/\/+$/, "");
     this.apiKey = config.CINDER_API_KEY;
   }
 
