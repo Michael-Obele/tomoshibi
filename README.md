@@ -7,6 +7,9 @@
   <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.25+"/></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.2%2B-f9f1e1?logo=bun" alt="Bun"/></a>
   <a href="https://svelte.dev"><img src="https://img.shields.io/badge/Svelte-5-ff3e00?logo=svelte&logoColor=white" alt="Svelte 5"/></a>
+  <a href="https://www.npmjs.com/package/tomoshi"><img src="https://img.shields.io/npm/v/tomoshi?label=tomoshi&color=cb0000" alt="npm version"/></a>
+  <a href="https://www.npmjs.com/package/tomoshi"><img src="https://img.shields.io/npm/dm/tomoshi" alt="npm downloads"/></a>
+  <a href="https://github.com/Michael-Obele/tomoshibi/actions/workflows/npm.yml"><img src="https://github.com/Michael-Obele/tomoshibi/actions/workflows/npm.yml/badge.svg" alt="npm provenance"/></a>
   <a href="https://github.com/Michael-Obele/tomoshibi"><img src="https://img.shields.io/github/stars/Michael-Obele/tomoshibi?style=social" alt="GitHub stars"/></a>
 </p>
 
@@ -109,11 +112,11 @@ No `mode` needed — `smart` is default. `static` skips JS; `dynamic` always ren
 
 ## Packages
 
-| Package | Path                           | Description                                                           | Install                                                |
-| ------- | ------------------------------ | --------------------------------------------------------------------- | ------------------------------------------------------ |
-| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + SearXNG                    | `docker compose up` or `go run ./packages/api/cmd/api` |
-| **mcp** | [`packages/mcp`](packages/mcp) | MCP server for Claude/Cursor/Zed — 3 tools, `tomoshibi`/`tomoshi` bin | `npx tomoshibi` or `bunx tomoshibi`                    |
-| **web** | [`packages/web`](packages/web) | Svelte 5 playground — scrape/crawl/search UI                          | `bun --cwd packages/web dev`                           |
+| Package | Path                           | Description                                                        | Install                                                |
+| ------- | ------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------ |
+| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + SearXNG                 | `docker compose up` or `go run ./packages/api/cmd/api` |
+| **mcp** | [`packages/mcp`](packages/mcp) | MCP server — 3 tools, `tomoshi`/`tomoshibi` bin ([npm](https://www.npmjs.com/package/tomoshi)) | `npx -y tomoshi`                            |
+| **web** | [`packages/web`](packages/web) | Svelte 5 playground — scrape/crawl/search UI                       | `bun --cwd packages/web dev`                           |
 
 ```bash
 # All packages
@@ -153,26 +156,26 @@ Client → Gin Router → Scraper (Colly / Chromedp + Readability)
 
 3 tools, not 8 — resource-oriented (`action` enum, ≤7 philosophy).
 
-| Tool                 | `action`                                                       | Endpoint                             |
-| -------------------- | -------------------------------------------------------------- | ------------------------------------ |
-| `tomoshibi_extract`  | `scrape` · `scrape_multi` · `links` · `batch` · `batch_status` | `/v1/scrape`, `/v1/batch`            |
-| `tomoshibi_discover` | `search` · `map` · `crawl` · `crawl_status`                    | `/v1/search`, `/v1/map`, `/v1/crawl` |
-| `tomoshibi_monitor`  | `create` · `status` · `delete`                                 | `/v1/monitor`                        |
+| Tool               | `action`                                                       | Endpoint                             |
+| ------------------ | -------------------------------------------------------------- | ------------------------------------ |
+| `tomoshi_extract`  | `scrape` · `scrape_multi` · `links` · `batch` · `batch_status` | `/v1/scrape`, `/v1/batch`            |
+| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                    | `/v1/search`, `/v1/map`, `/v1/crawl` |
+| `tomoshi_monitor`  | `create` · `status` · `delete`                                 | `/v1/monitor`                        |
 
 ```jsonc
 // .vscode/mcp.json or Claude config
 {
   "mcpServers": {
-    "tomoshibi": {
+    "tomoshi": {
       "command": "npx",
-      "args": ["-y", "tomoshibi"],
+      "args": ["-y", "tomoshi"],
       "env": { "TOMOSHIBI_API_URL": "http://localhost:7431" },
     },
   },
 }
 ```
 
-Also: `npx tomoshi` (short alias, same package).
+Also: `npx tomoshibi` (alias, same package).
 
 ---
 
