@@ -1,12 +1,9 @@
-version: "3.8"
-
-# Tomoshibi — all-in-one stack (api + mcp + web + redis + searxng)
-# Ports 7431-7435 — uncommon block to avoid clashing with 3000/8000/8080.
-#   7431 api  ·  7432 web  ·  7433 mcp  ·  7434 redis  ·  7435 searxng
+# Tomoshibi — API stack (api + redis + searxng)
+# Ports 7431/7434/7435 — uncommon block to avoid clashing with 3000/8000/8080.
+#   7431 api  ·  7434 redis  ·  7435 searxng
+# (mcp/web run via npm/npx or per-package compose, not here)
 # Run everything:  docker compose up -d
 # API only:        docker compose up -d api redis searxng
-# Web only:        docker compose up -d web
-# MCP only:        docker compose up -d mcp
 
 # Tomoshibi runs as a MONOLITH: the `api` service embeds the Asynq worker
 # (DISABLE_WORKER defaults to false), so there is deliberately NO separate
@@ -53,42 +50,9 @@ services:
       retries: 5
       start_period: 20s
 
-  mcp:
-    build: ./packages/mcp
-    ports:
-      - "7433:7433"
-    environment:
-      - PORT=7433
-      - TOMOSHIBI_API_URL=http://api:7431
-      - CINDER_API_URL=http://api:7431 # legacy compat
-    depends_on:
-      api:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7433/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-
-  web:
-    build: ./packages/web
-    ports:
-      - "7432:7432"
-    environment:
-      - PORT=7432
-      - TOMOSHIBI_API_URL=http://api:7431
-    depends_on:
-      api:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7432/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+  # mcp/web run via npm (npx -y tomoshi) or per-package compose:
+  #   docker compose -f packages/mcp/docker-compose.yml up -d
+  #   docker compose -f packages/web/docker-compose.yml up -d
 
   # Self-hosted meta-search backend for /v1/search. Aggregates many engines
   # (Google, Bing, DuckDuckGo, Brave, Mojeek, Wikipedia, ...), so Tomoshibi's
