@@ -1,18 +1,27 @@
 {
-  "name": "tomoshibi",
+  "name": "tomoshi",
   "version": "1.0.0",
   "description": "Tomoshibi (灯火 — lamp light) — self-hosted web search & scraping for AI agents. One binary, $5/mo.",
   "bin": {
+    "tomoshi": "dist/stdio.js",
     "tomoshibi": "dist/stdio.js",
-    "tomoshi": "dist/stdio.js"
+    "tomoshibi-mcp": "dist/stdio.js"
   },
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun run --watch src/index.ts",
     "typecheck": "tsc --noEmit",
     "check": "bun run typecheck",
+    "build": "tsc -p tsconfig.build.json && chmod +x dist/stdio.js && chmod +x dist/index.js",
+    "prepublishOnly": "npm run build",
     "patch:tmcp": "echo \"no patch needed\"",
     "postinstall": "echo \"no patch needed\""
   },

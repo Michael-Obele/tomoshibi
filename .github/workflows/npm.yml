@@ -1,0 +1,53 @@
+name: npm-tomoshi
+
+on:
+  push:
+    tags: ["v*", "tomoshi-v*", "mcp-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "npm dist-tag (latest, next, beta)"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+        working-directory: .
+
+      - run: bun run --cwd packages/mcp typecheck
+
+      - run: npm run build
+        working-directory: packages/mcp
+
+      - name: Publish to npm with Provenance
+        run: |
+          if [ -n "${{ inputs.tag }}" ] && [ "${{ inputs.tag }}" != "latest" ]; then
+            npm publish --provenance --access public --tag ${{ inputs.tag }}
+          else
+            npm publish --provenance --access public
+          fi
+        working-directory: packages/mcp
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
