@@ -1,0 +1,53 @@
+# Tomoshibi API — standalone
+# Run just the API + its dependencies (redis + searxng) on 7431/7434/7435
+# Usage: docker compose -f packages/api/docker-compose.yml up -d
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "7434:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "7431:7431"
+    environment:
+      - SERVER_PORT=7431
+      - REDIS_URL=redis://redis:6379
+      - SERVER_MODE=release
+      - SEARXNG_ENDPOINT=http://searxng:8080
+      - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY}
+      - STEALTH_ENABLED=true
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: ["/app/tomoshibi-api"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7431/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "7435:8080"
+    volumes:
+      - ./deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./deploy/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+      - searxng_data:/var/cache/searxng
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  searxng_data:

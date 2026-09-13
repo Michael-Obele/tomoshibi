@@ -62,7 +62,7 @@ type RedisConfig struct {
 	// Upstash REST API credentials.
 	// When set (and REDIS_URL is empty), the standard Redis URL is
 	// derived automatically as:
-	//   rediss://default:<RestToken>@<host-from-RestURL>:6379
+		//   rediss://default:<RestToken>@<host-from-RestURL>:7434
 	RestURL   string `mapstructure:"rest_url"`
 	RestToken string `mapstructure:"rest_token"`
 }
@@ -79,7 +79,7 @@ func Load() (*Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	// Defaults
-	v.SetDefault("server.port", "8080")
+	v.SetDefault("server.port", "7431")
 	v.SetDefault("server.mode", "debug")
 	v.SetDefault("app.loglevel", "info")
 	v.SetDefault("app.chrome_recycle_after", 100)
@@ -126,7 +126,7 @@ func Load() (*Config, error) {
 	if cfg.Redis.URL == "" && cfg.Redis.Host != "" {
 		port := cfg.Redis.Port
 		if port == "" {
-			port = "6379"
+			port = "7434"
 		}
 
 		addr := net.JoinHostPort(cfg.Redis.Host, port)
@@ -145,8 +145,8 @@ func Load() (*Config, error) {
 		host = strings.TrimPrefix(host, "http://")
 		// Strip trailing slash if present
 		host = strings.TrimRight(host, "/")
-		// Upstash Redis uses the same hostname and token, port 6379 with TLS
-		cfg.Redis.URL = fmt.Sprintf("rediss://default:%s@%s:6379", cfg.Redis.RestToken, host)
+		// Upstash Redis uses the same hostname and token, port 7434 with TLS
+		cfg.Redis.URL = fmt.Sprintf("rediss://default:%s@%s:7434", cfg.Redis.RestToken, host)
 	}
 
 	return &cfg, nil

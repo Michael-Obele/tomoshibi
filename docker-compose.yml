@@ -1,5 +1,13 @@
 version: "3.8"
 
+# Tomoshibi — all-in-one stack (api + mcp + web + redis + searxng)
+# Ports 7431-7435 — uncommon block to avoid clashing with 3000/8000/8080.
+#   7431 api  ·  7432 web  ·  7433 mcp  ·  7434 redis  ·  7435 searxng
+# Run everything:  docker compose up -d
+# API only:        docker compose up -d api redis searxng
+# Web only:        docker compose up -d web
+# MCP only:        docker compose up -d mcp
+
 # Tomoshibi runs as a MONOLITH: the `api` service embeds the Asynq worker
 # (DISABLE_WORKER defaults to false), so there is deliberately NO separate
 # worker service here. Running a standalone worker alongside the monolith
@@ -10,7 +18,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "7434:6379"
     volumes:
       - redis_data:/data
     restart: unless-stopped
@@ -23,9 +31,9 @@ services:
   api:
     build: ./packages/api
     ports:
-      - "8080:8080"
+      - "7431:7431"
     environment:
-      - SERVER_PORT=8080
+      - SERVER_PORT=7431
       - REDIS_URL=redis://redis:6379
       - SERVER_MODE=release
       - SEARXNG_ENDPOINT=http://searxng:8080
@@ -39,7 +47,44 @@ services:
     healthcheck:
       # /health is served unauthenticated and returns 200 only once the
       # router is up — a real readiness signal, unlike a bare TCP probe.
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7431/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  mcp:
+    build: ./packages/mcp
+    ports:
+      - "7433:7433"
+    environment:
+      - PORT=7433
+      - TOMOSHIBI_API_URL=http://api:7431
+      - CINDER_API_URL=http://api:7431 # legacy compat
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7433/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    build: ./packages/web
+    ports:
+      - "7432:7432"
+    environment:
+      - PORT=7432
+      - TOMOSHIBI_API_URL=http://api:7431
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7432/"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -51,10 +96,10 @@ services:
   searxng:
     image: searxng/searxng:latest
     ports:
-      - "8889:8080"
+      - "7435:8080"
     volumes:
-      - ./deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - ./deploy/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
+      - ./packages/api/deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./packages/api/deploy/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
       - searxng_data:/var/cache/searxng
     restart: unless-stopped
 

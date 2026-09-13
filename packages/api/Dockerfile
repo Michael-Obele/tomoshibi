@@ -48,7 +48,7 @@ COPY --from=builder /app/internal/api/docs ./internal/api/docs
 # Create a symlink for chromedp compatibility
 RUN ln -sf /usr/bin/chromium-browser /usr/bin/google-chrome-stable
 
-EXPOSE 8080
+EXPOSE 7431
 
 # tini reaps zombie processes that Chrome spawns
 ENTRYPOINT ["/sbin/tini", "--"]

@@ -1,0 +1,20 @@
+# Tomoshibi MCP — standalone
+# Run just the MCP server on 7433 (needs a running API on 7431)
+# Usage: docker compose -f packages/mcp/docker-compose.yml up -d
+# Or with local API: TOMOSHIBI_API_URL=http://host.docker.internal:7431 docker compose -f packages/mcp/docker-compose.yml up -d
+services:
+  mcp:
+    build: .
+    ports:
+      - "7433:7433"
+    environment:
+      - PORT=7433
+      - TOMOSHIBI_API_URL=${TOMOSHIBI_API_URL:-http://host.docker.internal:7431}
+      - CINDER_API_URL=${TOMOSHIBI_API_URL:-http://host.docker.internal:7431}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7433/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s

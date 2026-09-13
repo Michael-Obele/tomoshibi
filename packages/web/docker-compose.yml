@@ -1,0 +1,19 @@
+# Tomoshibi Web — standalone
+# Run just the SvelteKit playground on 7432 (needs a running API on 7431)
+# Usage: docker compose -f packages/web/docker-compose.yml up -d
+# Or with local API: TOMOSHIBI_API_URL=http://host.docker.internal:7431 docker compose -f packages/web/docker-compose.yml up -d
+services:
+  web:
+    build: .
+    ports:
+      - "7432:7432"
+    environment:
+      - PORT=7432
+      - TOMOSHIBI_API_URL=${TOMOSHIBI_API_URL:-http://host.docker.internal:7431}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7432/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
