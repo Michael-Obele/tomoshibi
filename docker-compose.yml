@@ -1,6 +1,6 @@
 version: "3.8"
 
-# Cinder runs as a MONOLITH: the `api` service embeds the Asynq worker
+# Tomoshibi runs as a MONOLITH: the `api` service embeds the Asynq worker
 # (DISABLE_WORKER defaults to false), so there is deliberately NO separate
 # worker service here. Running a standalone worker alongside the monolith
 # would double queue consumption, spawn a second Chrome instance, and let a
@@ -21,7 +21,7 @@ services:
       retries: 5
 
   api:
-    build: .
+    build: ./packages/api
     ports:
       - "8080:8080"
     environment:
@@ -34,7 +34,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-    command: ["/app/cinder-api"]
+    command: ["/app/tomoshibi-api"]
     restart: unless-stopped
     healthcheck:
       # /health is served unauthenticated and returns 200 only once the
@@ -46,7 +46,7 @@ services:
       start_period: 20s
 
   # Self-hosted meta-search backend for /v1/search. Aggregates many engines
-  # (Google, Bing, DuckDuckGo, Brave, Mojeek, Wikipedia, ...), so Cinder's
+  # (Google, Bing, DuckDuckGo, Brave, Mojeek, Wikipedia, ...), so Tomoshibi's
   # search no longer depends on scraping one engine. Free and containerized.
   searxng:
     image: searxng/searxng:latest

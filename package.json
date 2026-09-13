@@ -1,0 +1,14 @@
+{
+  "name": "tomoshibi",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tomoshibi (灯火 — lamp light) — self-hosted search & scraping for AI agents",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "dev:api": "go run ./packages/api/cmd/api",
+    "dev:mcp": "bun --cwd packages/mcp dev",
+    "dev:web": "bun --cwd packages/web dev",
+    "check": "bun --cwd packages/mcp check && bun --cwd packages/web check"
+  },
+  "keywords": ["search", "scraping", "mcp", "svelte", "go", "self-hosted"]
+}

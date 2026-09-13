@@ -1,0 +1,44 @@
+{
+	"name": "tomoshibi",
+	"version": "1.0.0",
+	"description": "Tomoshibi (灯火 — lamp light) — self-hosted web search & scraping for AI agents. One binary, $5/mo.",
+	"bin": {
+		"tomoshibi": "dist/stdio.js",
+		"tomoshi": "dist/stdio.js"
+	},
+	"type": "module",
+	"main": "src/index.ts",
+	"scripts": {
+		"start": "bun run src/index.ts",
+		"dev": "bun run --watch src/index.ts",
+		"typecheck": "tsc --noEmit",
+		"check": "bun run typecheck",
+		"patch:tmcp": "node scripts/patch-tmcp-transports.mjs",
+		"postinstall": "node scripts/patch-tmcp-transports.mjs"
+	},
+	"keywords": [
+		"tmcp",
+		"mcp",
+		"server",
+		"tomoshibi",
+		"tomoshi",
+		"web-scraping",
+		"crawling",
+		"search"
+	],
+	"dependencies": {
+		"tmcp": "^1.19.4",
+		"@tmcp/adapter-valibot": "^0.1.6",
+		"valibot": "^1.4.2",
+		"@tmcp/transport-stdio": "^0.4.3",
+		"@tmcp/transport-http": "^0.8.6",
+		"@tmcp/transport-sse": "^0.5.5",
+		"@tmcp/auth": "^0.4.1",
+		"srvx": "^0.11.22"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.2.0",
+		"@types/node": "^24.0.15",
+		"typescript": "^5.7.0"
+	}
+}
