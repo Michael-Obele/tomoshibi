@@ -4,11 +4,18 @@ import * as v from "valibot";
  * Environment configuration schema validated with Valibot.
  * Provides typed access to all configuration values with sensible defaults.
  */
+// Accepts a URL or empty string (VS Code sends "" when env is unset).
+// v.optional only skips validation for undefined — "" would fail v.url().
+const OptionalUrl = v.optional(
+  v.union([v.literal(""), v.pipe(v.string(), v.url())]),
+  "",
+);
+
 const ConfigSchema = v.object({
   /** Cinder API base URL — must point to your own Cinder instance */
-  CINDER_API_URL: v.optional(v.pipe(v.string(), v.url()), ""),
+  CINDER_API_URL: OptionalUrl,
   /** Tomoshibi API URL (new name, preferred) */
-  TOMOSHIBI_API_URL: v.optional(v.pipe(v.string(), v.url()), ""),
+  TOMOSHIBI_API_URL: OptionalUrl,
 
   /** Optional API key if Cinder requires authentication */
   CINDER_API_KEY: v.optional(v.string(), ""),
