@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const baseURL = "http://localhost:8080/v1"
+const baseURL = "http://localhost:7431/v1"
 
 type SearchRequest struct {
 	Query string `json:"query"`

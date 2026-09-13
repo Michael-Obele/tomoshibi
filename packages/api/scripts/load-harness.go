@@ -130,7 +130,7 @@ func classifyErr(err error) string {
 }
 
 func main() {
-	flag.StringVar(&baseURL, "base", "http://localhost:8080", "Cinder base URL")
+	flag.StringVar(&baseURL, "base", "http://localhost:7431", "Cinder base URL")
 	flag.IntVar(&concurrency, "concurrency", 20, "concurrent workers for load phases")
 	flag.DurationVar(&duration, "duration", 60*time.Second, "sustained mixed-load duration")
 	flag.Parse()

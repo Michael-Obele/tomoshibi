@@ -28,7 +28,7 @@ type SearXNGService struct {
 }
 
 // NewSearXNGService creates a service pointing at a SearXNG base URL such as
-// "http://localhost:8889". The JSON API must be enabled on the instance
+// "http://localhost:7435". The JSON API must be enabled on the instance
 // (search.formats includes json).
 func NewSearXNGService(endpoint string) *SearXNGService {
 	return &SearXNGService{

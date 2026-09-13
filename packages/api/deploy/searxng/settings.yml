@@ -16,7 +16,7 @@ server:
   secret_key: "cinder-local-searxng-secret-4f3a9c1e7b2d"
   limiter: false
   public_instance: false
-  base_url: http://localhost:8889/
+  base_url: http://localhost:7435/
   # SearXNG behind proxy needs real IP; base_url fixes X-Forwarded-For handling
 
 search:

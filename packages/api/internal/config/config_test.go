@@ -33,8 +33,8 @@ func TestLoad_Defaults(t *testing.T) {
 		t.Fatalf("Load() failed: %v", err)
 	}
 
-	if cfg.Server.Port != "8080" {
-		t.Errorf("Default port should be 8080, got %q", cfg.Server.Port)
+	if cfg.Server.Port != "7431" {
+		t.Errorf("Default port should be 7431, got %q", cfg.Server.Port)
 	}
 
 	if cfg.Server.Mode != "debug" {
@@ -55,11 +55,11 @@ func TestLoad_RedisURLConstruction(t *testing.T) {
 		expectedURL string
 	}{
 		{
-			name:        "Host without port defaults to 6379",
+			name:        "Host without port defaults to 7434",
 			host:        "redis.example.com",
 			port:        "",
 			password:    "",
-			expectedURL: "redis://redis.example.com:6379",
+			expectedURL: "redis://redis.example.com:7434",
 		},
 		{
 			name:        "Host with custom port",
@@ -92,7 +92,7 @@ func TestLoad_RedisURLConstruction(t *testing.T) {
 			if cfg.Redis.URL == "" && cfg.Redis.Host != "" {
 				port := cfg.Redis.Port
 				if port == "" {
-					port = "6379"
+					port = "7434"
 				}
 				addr := cfg.Redis.Host + ":" + port
 				if cfg.Redis.Password != "" {

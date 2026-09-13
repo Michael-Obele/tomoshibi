@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	baseURL = "http://localhost:8080"
+	baseURL = "http://localhost:7431"
 )
 
 type ScrapeRequest struct {
