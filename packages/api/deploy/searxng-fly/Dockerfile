@@ -1,5 +1,5 @@
 # Tiny SearXNG image with the JSON API enabled — for running SearXNG as a
-# SECOND machine inside the SAME Fly app as Cinder (sidecar pattern).
+# SECOND machine inside the SAME Fly app as Tomoshibi (sidecar pattern).
 #
 # The stock searxng/searxng image ships with JSON disabled; this bakes the
 # repo's settings.yml (search.formats: [html, json]) into /etc/searxng.

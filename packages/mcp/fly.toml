@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for cinder-tmcp on 2026-07-19T19:37:02Z
+# fly.toml app configuration file for tomoshibi-mcp (formerly cinder-tmcp)
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'cinder-tmcp'
+app = 'tomoshibi-mcp'
 primary_region = 'lhr'
 kill_signal = 'SIGTERM'
 kill_timeout = '10s'

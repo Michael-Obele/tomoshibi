@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Search load benchmark for Cinder vs Firecrawl.
+"""Search load benchmark for Tomoshibi vs Firecrawl.
 
 Fires concurrent /v1/search requests with varied queries and reports success
 rate plus latency percentiles, so a comparison between engines is backed by
@@ -7,7 +7,7 @@ numbers rather than vibes.
 
 Usage:
     python3 scripts/search-bench.py --url http://localhost:7431/v1/search \
-        --concurrency 10 --duration 30 --label cinder
+        --concurrency 10 --duration 30 --label tomoshibi
 """
 import argparse
 import json

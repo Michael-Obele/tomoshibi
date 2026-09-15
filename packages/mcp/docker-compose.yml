@@ -10,7 +10,6 @@ services:
     environment:
       - PORT=7433
       - TOMOSHIBI_API_URL=${TOMOSHIBI_API_URL:-http://host.docker.internal:7431}
-      - CINDER_API_URL=${TOMOSHIBI_API_URL:-http://host.docker.internal:7431}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7433/health"]

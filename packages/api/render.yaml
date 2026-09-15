@@ -1,4 +1,4 @@
-# Render Blueprint — Cinder on Free Tier
+# Render Blueprint — Tomoshibi on Free Tier (formerly Cinder)
 # Deploy via Dashboard → New → Blueprint → connect repo, or `render blueprint apply`
 # Docs: https://docs.render.com/blueprint-spec
 # Free tier notes: https://docs.render.com/free
@@ -8,9 +8,9 @@
 # Validated against SchemaStore: https://www.schemastore.org/schemas/json/render.json
 
 services:
-  # ── Cinder API (Go + Chromium, monolith with embedded Asynq worker) ──────────
+  # ── Tomoshibi API (Go + Chromium, monolith with embedded Asynq worker) ──────────
   - type: web
-    name: cinder
+    name: tomoshibi
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -20,7 +20,7 @@ services:
     autoDeploy: false # push → manual deploy; set true for auto
     envVars:
       - key: SERVER_PORT
-        value: 10000 # Render injects PORT=10000; Cinder reads SERVER_PORT, so we pin it
+        value: 10000 # Render injects PORT=10000; Tomoshibi reads SERVER_PORT, so we pin it
       - key: PORT
         value: 10000 # keep both in sync for any PORT-aware tooling
       - key: SERVER_MODE
@@ -60,6 +60,7 @@ services:
     region: frankfurt # MUST match web service region for private networking
     maxmemoryPolicy: allkeys-lru # good for cache + queue mix
     ipAllowList: [] # private only; no public access
+
 
   # ── Optional SearXNG (uncomment if you want self-hosted search on Render) ──
   # SearXNG is ~150 MB idle. On free tier you get only one free web service,

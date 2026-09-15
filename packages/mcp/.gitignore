@@ -25,7 +25,7 @@ Thumbs.db
 *.log
 logs/
 
-cinder-mcp
+tomoshi-mcp
 docs
 
 # Coverage

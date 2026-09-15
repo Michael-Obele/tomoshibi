@@ -1,6 +1,6 @@
-# Minimal SearXNG settings for Cinder's self-hosted search backend.
+# Minimal SearXNG settings for Tomoshibi's self-hosted search backend.
 # `use_default_settings: true` keeps the sane defaults; we only enable the
-# JSON API (Cinder queries it) and pin a local secret key.
+# JSON API (Tomoshibi queries it) and pin a local secret key.
 # `engines.remove` drops engines that CAPTCHA/timeout constantly from
 # datacenter IPs (logs 2026-09-05) or are dead/suspended. Brave kept — user manages it.
 use_default_settings:
@@ -13,7 +13,7 @@ use_default_settings:
       - wikipedia
 
 server:
-  secret_key: "cinder-local-searxng-secret-4f3a9c1e7b2d"
+  secret_key: "tomoshibi-local-searxng-secret-4f3a9c1e7b2d"
   limiter: false
   public_instance: false
   base_url: http://localhost:7435/

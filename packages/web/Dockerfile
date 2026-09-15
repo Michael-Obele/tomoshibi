@@ -8,11 +8,11 @@ COPY static ./static
 COPY svelte.config.js vite.config.ts tsconfig.json components.json ./
 RUN bun install
 
-# PRIVATE_CINDER_* required at build time for $env/static/private
-ARG PRIVATE_CINDER_BACKEND_URL=http://api:7431
-ARG PRIVATE_CINDER_API_KEY=dummy
-ENV PRIVATE_CINDER_BACKEND_URL=$PRIVATE_CINDER_BACKEND_URL
-ENV PRIVATE_CINDER_API_KEY=$PRIVATE_CINDER_API_KEY
+# PRIVATE_TOMOSHI_* required at build time for $env/static/private
+ARG PRIVATE_TOMOSHI_BACKEND_URL=http://api:7431
+ARG PRIVATE_TOMOSHI_API_KEY=dummy
+ENV PRIVATE_TOMOSHI_BACKEND_URL=$PRIVATE_TOMOSHI_BACKEND_URL
+ENV PRIVATE_TOMOSHI_API_KEY=$PRIVATE_TOMOSHI_API_KEY
 RUN DOCKER_BUILD=1 bun run build
 
 # ─── Stage 2: Runtime (Bun) ────────────────────────────────────────────

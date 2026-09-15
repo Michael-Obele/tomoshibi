@@ -19,14 +19,14 @@ dist/
 vendor/
 
 # Compiled repository binary
-cinder
+tomoshibi
 
 # Compiled binaries built at the repo root. These were tracked historically;
 # they are build outputs and must not be committed.
 /api
 /app
-/cinder-api
-/cinder-worker
+/tomoshibi-api
+/tomoshibi-worker
 /worker
 
 # IDEs and editors

@@ -68,9 +68,9 @@ jobs:
           cache: true
       - name: Build binaries
         run: |
-          go build -o /tmp/cinder-api ./cmd/api
-          go build -o /tmp/cinder-worker ./cmd/worker
+          go build -o /tmp/tomoshibi-api ./cmd/api
+          go build -o /tmp/tomoshibi-worker ./cmd/worker
 
       # Catches Dockerfile drift without pushing anything.
       - name: Docker build
-        run: docker build -t cinder:ci .
+        run: docker build -t tomoshibi:ci .

@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # fly-searxng.sh — manage the SearXNG sidecar machine inside the SAME Fly app
-# as Cinder (Option A). Both machines auto-stop when idle (no public traffic)
+# as Tomoshibi (Option A). Both machines auto-stop when idle (no public traffic)
 # and auto-start on first request. This script also supports manual start/stop
 # of BOTH machines together.
 #
 # Usage:
 #   ./scripts/fly-searxng.sh deploy    # build → push → create/update machine → secret
 #   ./scripts/fly-searxng.sh status    # show both machines + secret
-#   ./scripts/fly-searxng.sh start     # start BOTH Cinder + SearXNG machines
+#   ./scripts/fly-searxng.sh start     # start BOTH Tomoshibi + SearXNG machines
 #   ./scripts/fly-searxng.sh stop      # stop BOTH machines (winds everything down)
 #   ./scripts/fly-searxng.sh destroy   # remove the searxng machine (keeps secret)
 #
 # Auto-stop behavior:
 #   Both machines have services with auto_stop='stop' and auto_start=true.
 #   When no public traffic hits either machine, the Fly proxy stops them.
-#   When someone hits the public URL, Cinder auto-starts.
+#   When someone hits the public URL, Tomoshibi auto-starts.
 #   First search after idle falls back to Brave (SEARXNG_ENDPOINT secret is
 #   set but the sidecar is stopped). Hit the SearXNG public URL or run
 #   `start` to wake it.
@@ -114,7 +114,7 @@ EOF
     "https://api.machines.dev/v1/apps/$APP/machines/$mid" >/dev/null
   echo "==> Process group 'searxng' set (detached from fly deploy)."
 
-  echo "==> Pointing Cinder at the sidecar ($ENDPOINT)..."
+  echo "==> Pointing Tomoshibi at the sidecar ($ENDPOINT)..."
   fly secrets set --app "$APP" "SEARXNG_ENDPOINT=$ENDPOINT" 2>&1 | grep -v WARN | grep -v 'not valid' | tail -2
   echo "==> Done. Both machines auto-stop when idle, auto-start on first request."
 }

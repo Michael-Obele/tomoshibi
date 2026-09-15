@@ -1,68 +1,81 @@
 # ── Dependencies & build caches ─────────────────────────────────────
+
 vendor/
 node_modules/
 .cache/
 .pytest_cache/
 
 # ── IDE / editor ────────────────────────────────────────────────────
+
 .vscode/
 .idea/
-*.iml
-*.swp
+_.iml
+_.swp
 
 # ── OS files ────────────────────────────────────────────────────────
+
 .DS_Store
 Thumbs.db
 
 # ── Secrets & env ───────────────────────────────────────────────────
+
 .env
-.env.*
+.env.\*
 !.env.example
 
 # ── Artifacts ───────────────────────────────────────────────────────
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.test
-*.out
+
+_.exe
+_.exe~
+_.dll
+_.so
+_.dylib
+_.test
+_.out
 bin/
-_build/
+\_build/
 dist/
 coverage.out
 logs/
-*.log
-*.tmp
+_.log
+\*.tmp
 
 # Stale compiled binaries checked in at the repo root (~189MB combined).
+
 # Without these the whole lot is uploaded to the Docker daemon as build
+
 # context on every build. The image builds its own binaries in the builder
+
 # stage, so nothing here is needed.
+
 /api
 /app
-/cinder-api
-/cinder-worker
+/tomoshibi-api
+/tomoshibi-worker
 /worker
-/cinder
+/tomoshibi
 
 # ── Docs / generated ────────────────────────────────────────────────
+
 docs/
 test_reports/
 mastra_plan/
 
 # ── JS sub-projects (not needed for Go build) ───────────────────────
+
 cinder-js/
 cinder-js-gpt/
 
 # ── Git / config ────────────────────────────────────────────────────
+
 .git/
 .github/
 .gitignore
-*.md
+\*.md
 LICENSE
 
 # ── Agent configs (not needed at runtime) ───────────────────────────
+
 .agent/
 .agents/
 .gemini/

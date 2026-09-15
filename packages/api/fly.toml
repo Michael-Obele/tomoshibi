@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for cinder9630 on 2026-07-18T16:04:52Z
+# fly.toml app configuration for tomoshibi-api (formerly cinder9630)
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'cinder9630'
+app = 'tomoshibi-api'
 primary_region = 'lhr'
 
 # Fly sends SIGTERM then SIGKILLs after this. It must exceed SHUTDOWN_TIMEOUT
@@ -18,7 +18,7 @@ dockerfile = 'Dockerfile'
 GIN_MODE = 'release'
 LOG_LEVEL = 'info'
 SERVER_PORT = '8080'
-# GIN_MODE only configures Gin. Cinder reads its own SERVER_MODE, which
+# GIN_MODE only configures Gin. Tomoshibi reads its own SERVER_MODE, which
 # defaults to debug — and debug shells out to `go run swag@latest init` on
 # every startup and serves Swagger UI publicly. Neither belongs in a deploy.
 SERVER_MODE = 'release'
@@ -51,5 +51,5 @@ path = '/health'
 [[vm]]
 cpu_kind = 'shared'
 cpus = 1
-  memory_mb = 512
-  swap_size_mb = 512
+memory_mb = 512
+swap_size_mb = 512
