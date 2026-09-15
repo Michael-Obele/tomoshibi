@@ -36,7 +36,7 @@ func run() (int, error) {
 
 	// 2. Initialize Logger
 	logger.Init(cfg.App.LogLevel)
-	logger.Log.Info("Starting Cinder Worker")
+	logger.Log.Info("Starting Tomoshibi Worker")
 
 	// Check if Redis is configured
 	if cfg.Redis.URL == "" {

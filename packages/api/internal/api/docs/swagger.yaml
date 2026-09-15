@@ -50,13 +50,14 @@ definitions:
         type: string
       images:
         items:
-          $ref: '#/definitions/domain.ImageData'
+          $ref: "#/definitions/domain.ImageData"
         type: array
       links:
-        description: Links holds extracted hyperlinks (after readability, deduped,
+        description:
+          Links holds extracted hyperlinks (after readability, deduped,
           absolute).
         items:
-          $ref: '#/definitions/domain.LinkData'
+          $ref: "#/definitions/domain.LinkData"
         type: array
       markdown:
         type: string
@@ -66,7 +67,7 @@ definitions:
         type: object
       screenshot:
         allOf:
-        - $ref: '#/definitions/domain.ScreenshotData'
+          - $ref: "#/definitions/domain.ScreenshotData"
         description: Image fields (omitted when not requested)
       summary:
         description: Summary holds the extractive summary when requested.
@@ -111,7 +112,7 @@ definitions:
         minItems: 1
         type: array
     required:
-    - urls
+      - urls
     type: object
   handlers.BatchResponse:
     properties:
@@ -119,7 +120,7 @@ definitions:
         type: string
       tasks:
         items:
-          $ref: '#/definitions/handlers.BatchTask'
+          $ref: "#/definitions/handlers.BatchTask"
         type: array
     type: object
   handlers.BatchStatusResponse:
@@ -132,7 +133,7 @@ definitions:
         type: integer
       tasks:
         items:
-          $ref: '#/definitions/handlers.BatchTask'
+          $ref: "#/definitions/handlers.BatchTask"
         type: array
       total:
         type: integer
@@ -173,7 +174,7 @@ definitions:
       webhook_url:
         type: string
     required:
-    - url
+      - url
     type: object
   handlers.CrawlResponse:
     properties:
@@ -215,7 +216,7 @@ definitions:
       url:
         type: string
     required:
-    - url
+      - url
     type: object
   handlers.MapResponse:
     properties:
@@ -223,7 +224,7 @@ definitions:
         type: integer
       links:
         items:
-          $ref: '#/definitions/sitemap.DiscoveredURL'
+          $ref: "#/definitions/sitemap.DiscoveredURL"
         type: array
       url:
         type: string
@@ -239,7 +240,7 @@ definitions:
       webhook_url:
         type: string
     required:
-    - url
+      - url
     type: object
   handlers.MonitorResponse:
     properties:
@@ -263,11 +264,11 @@ definitions:
         type: string
       images:
         items:
-          $ref: '#/definitions/domain.ImageData'
+          $ref: "#/definitions/domain.ImageData"
         type: array
       links:
         items:
-          $ref: '#/definitions/domain.LinkData'
+          $ref: "#/definitions/domain.LinkData"
         type: array
       markdown:
         type: string
@@ -276,7 +277,7 @@ definitions:
           type: string
         type: object
       screenshot:
-        $ref: '#/definitions/domain.ScreenshotData'
+        $ref: "#/definitions/domain.ScreenshotData"
       summary:
         type: string
       title:
@@ -290,26 +291,26 @@ definitions:
     properties:
       results:
         items:
-          $ref: '#/definitions/handlers.MultiScrapeItem'
+          $ref: "#/definitions/handlers.MultiScrapeItem"
         type: array
     type: object
   handlers.ScrapeRequest:
     properties:
       actions:
         items:
-          $ref: '#/definitions/handlers.ActionReq'
+          $ref: "#/definitions/handlers.ActionReq"
         type: array
       block_ads:
         type: boolean
       extract_schema:
         additionalProperties:
-          $ref: '#/definitions/domain.ExtractField'
+          $ref: "#/definitions/domain.ExtractField"
         type: object
       image_format:
         description: '"url" or "blob"'
         type: string
       image_process:
-        $ref: '#/definitions/handlers.ImageProcessReq'
+        $ref: "#/definitions/handlers.ImageProcessReq"
       images:
         type: boolean
       include_links:
@@ -326,12 +327,12 @@ definitions:
       remove_base64_images:
         type: boolean
       render:
-        description: 'Deprecated: usage ignores Mode if true'
+        description: "Deprecated: usage ignores Mode if true"
         type: boolean
       screenshot:
         type: boolean
       screenshot_opts:
-        $ref: '#/definitions/handlers.ScreenshotOpts'
+        $ref: "#/definitions/handlers.ScreenshotOpts"
       summary:
         type: boolean
       summary_sentences:
@@ -387,7 +388,7 @@ definitions:
       rerank:
         type: boolean
     required:
-    - query
+      - query
     type: object
   handlers.SearchResponse:
     properties:
@@ -401,7 +402,7 @@ definitions:
         type: string
       results:
         items:
-          $ref: '#/definitions/search.Result'
+          $ref: "#/definitions/search.Result"
         type: array
     type: object
   search.Result:
@@ -434,25 +435,25 @@ definitions:
 info:
   contact: {}
   description: Web scraping, crawling, and AI data extraction API.
-  title: Cinder API
+  title: Tomoshibi API
   version: "1.0"
 paths:
   /batch/{id}:
     get:
       description: Aggregates the Asynq state of every task in the batch.
       parameters:
-      - description: The batch ID
-        in: path
-        name: id
-        required: true
-        type: string
+        - description: The batch ID
+          in: path
+          name: id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.BatchStatusResponse'
+            $ref: "#/definitions/handlers.BatchStatusResponse"
         "404":
           description: Not Found
           schema:
@@ -460,27 +461,28 @@ paths:
             type: object
       summary: Get the status of a batch scrape
       tags:
-      - batch
+        - batch
   /batch/scrape:
     post:
       consumes:
-      - application/json
-      description: Enqueues one scrape task per URL and returns a batch ID for status
+        - application/json
+      description:
+        Enqueues one scrape task per URL and returns a batch ID for status
         polling.
       parameters:
-      - description: JSON request body
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.BatchRequest'
+        - description: JSON request body
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.BatchRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Accepted
           schema:
-            $ref: '#/definitions/handlers.BatchResponse'
+            $ref: "#/definitions/handlers.BatchResponse"
         "400":
           description: Bad Request
           schema:
@@ -493,28 +495,29 @@ paths:
             type: object
       summary: Scrape multiple URLs asynchronously
       tags:
-      - batch
+        - batch
   /crawl:
     post:
       consumes:
-      - application/json
-      description: Submits a URL to be crawled asynchronously. The crawler performs
+        - application/json
+      description:
+        Submits a URL to be crawled asynchronously. The crawler performs
         BFS link-following up to maxDepth, scraping up to limit pages on the same
         domain. Requires Redis.
       parameters:
-      - description: JSON request body
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.CrawlRequest'
+        - description: JSON request body
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.CrawlRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "202":
           description: Accepted
           schema:
-            $ref: '#/definitions/handlers.CrawlResponse'
+            $ref: "#/definitions/handlers.CrawlResponse"
         "400":
           description: Bad Request
           schema:
@@ -527,19 +530,20 @@ paths:
             type: object
       summary: Enqueue a URL for asynchronous crawling
       tags:
-      - crawl
+        - crawl
   /crawl/{id}:
     get:
-      description: Retrieves the current status and result of a previously enqueued
+      description:
+        Retrieves the current status and result of a previously enqueued
         crawl task by its ID.
       parameters:
-      - description: The crawl task ID
-        in: path
-        name: id
-        required: true
-        type: string
+        - description: The crawl task ID
+          in: path
+          name: id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: The task status and result payload
@@ -553,27 +557,28 @@ paths:
             type: object
       summary: Get the status of an asynchronous crawl
       tags:
-      - crawl
+        - crawl
   /map:
     post:
       consumes:
-      - application/json
-      description: Discovers URLs for a site via robots.txt/sitemap.xml, falling back
+        - application/json
+      description:
+        Discovers URLs for a site via robots.txt/sitemap.xml, falling back
         to link discovery. Returns up to limit URLs, optionally filtered by search.
       parameters:
-      - description: JSON request body
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.MapRequest'
+        - description: JSON request body
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.MapRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.MapResponse'
+            $ref: "#/definitions/handlers.MapResponse"
         "400":
           description: Bad Request
           schema:
@@ -586,27 +591,28 @@ paths:
             type: object
       summary: Map a website's URLs
       tags:
-      - map
+        - map
   /monitor:
     post:
       consumes:
-      - application/json
-      description: Scrapes the URL on an interval, hashes the markdown, and fires
+        - application/json
+      description:
+        Scrapes the URL on an interval, hashes the markdown, and fires
         a webhook when content changes. First check records the baseline.
       parameters:
-      - description: JSON request body
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/handlers.MonitorRequest'
+        - description: JSON request body
+          in: body
+          name: body
+          required: true
+          schema:
+            $ref: "#/definitions/handlers.MonitorRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.MonitorResponse'
+            $ref: "#/definitions/handlers.MonitorResponse"
         "400":
           description: Bad Request
           schema:
@@ -619,16 +625,16 @@ paths:
             type: object
       summary: Create a change-tracking monitor
       tags:
-      - monitor
+        - monitor
   /monitor/{id}:
     delete:
       description: Stops monitoring and removes the monitor record.
       parameters:
-      - description: The monitor ID
-        in: path
-        name: id
-        required: true
-        type: string
+        - description: The monitor ID
+          in: path
+          name: id
+          required: true
+          type: string
       responses:
         "204":
           description: No Content
@@ -639,18 +645,19 @@ paths:
             type: object
       summary: Delete a monitor
       tags:
-      - monitor
+        - monitor
     get:
-      description: Returns the monitor configuration, last content hash, and next
+      description:
+        Returns the monitor configuration, last content hash, and next
         check time.
       parameters:
-      - description: The monitor ID
-        in: path
-        name: id
-        required: true
-        type: string
+        - description: The monitor ID
+          in: path
+          name: id
+          required: true
+          type: string
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
@@ -664,12 +671,13 @@ paths:
             type: object
       summary: Get monitor status
       tags:
-      - monitor
+        - monitor
   /scrape:
     get:
       consumes:
-      - application/json
-      description: 'Scrapes a given URL and returns its markdown content, metadata,
+        - application/json
+      description:
+        'Scrapes a given URL and returns its markdown content, metadata,
         links, and optionally captures a screenshot or extracts images if enabled.
         Links are extracted from readability DOM, resolved to absolute URLs, deduped,
         and flagged isInternal via same-host check — matching Firecrawl `formats:
@@ -683,60 +691,62 @@ paths:
         http://localhost:3002/v1/scrape against those docs showed `links` as string
         array; Cinder returns objects with text/isInternal.'
       parameters:
-      - description: The URL to scrape (single mode)
-        in: query
-        name: url
-        type: string
-      - description: 'JSON array alternative: use POST body {\'
-        in: query
-        name: urls
-        type: string
-      - description: 'Scraping mode: smart, static, dynamic'
-        in: query
-        name: mode
-        type: string
-      - description: 'Deprecated: use mode=dynamic instead'
-        in: query
-        name: render
-        type: boolean
-      - description: Capture full-page screenshot (requires mode=dynamic or smart)
-        in: query
-        name: screenshot
-        type: boolean
-      - description: Extract images from the page
-        in: query
-        name: images
-        type: boolean
-      - description: 'Image transport: ''url'' (default, metadata only) or ''blob''
-          (base64 data URIs)'
-        in: query
-        name: image_format
-        type: string
-      - description: 'Maximum images to extract (default: 10)'
-        in: query
-        name: max_images
-        type: integer
-      - description: 'Max individual image size in KB (default: 5120)'
-        in: query
-        name: max_image_size_kb
-        type: integer
-      - description: Include extracted links (default true)
-        in: query
-        name: include_links
-        type: boolean
-      - description: JSON request body (alternative to query params). Provide either
-          `url` or `urls` (max 10, exclusive).
-        in: body
-        name: body
-        schema:
-          $ref: '#/definitions/handlers.ScrapeRequest'
+        - description: The URL to scrape (single mode)
+          in: query
+          name: url
+          type: string
+        - description: 'JSON array alternative: use POST body {\'
+          in: query
+          name: urls
+          type: string
+        - description: "Scraping mode: smart, static, dynamic"
+          in: query
+          name: mode
+          type: string
+        - description: "Deprecated: use mode=dynamic instead"
+          in: query
+          name: render
+          type: boolean
+        - description: Capture full-page screenshot (requires mode=dynamic or smart)
+          in: query
+          name: screenshot
+          type: boolean
+        - description: Extract images from the page
+          in: query
+          name: images
+          type: boolean
+        - description:
+            "Image transport: 'url' (default, metadata only) or 'blob'
+            (base64 data URIs)"
+          in: query
+          name: image_format
+          type: string
+        - description: "Maximum images to extract (default: 10)"
+          in: query
+          name: max_images
+          type: integer
+        - description: "Max individual image size in KB (default: 5120)"
+          in: query
+          name: max_image_size_kb
+          type: integer
+        - description: Include extracted links (default true)
+          in: query
+          name: include_links
+          type: boolean
+        - description:
+            JSON request body (alternative to query params). Provide either
+            `url` or `urls` (max 10, exclusive).
+          in: body
+          name: body
+          schema:
+            $ref: "#/definitions/handlers.ScrapeRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: multi URL (when urls is provided)
           schema:
-            $ref: '#/definitions/handlers.MultiScrapeResponse'
+            $ref: "#/definitions/handlers.MultiScrapeResponse"
         "400":
           description: Bad Request
           schema:
@@ -749,11 +759,12 @@ paths:
             type: object
       summary: Scrape a webpage
       tags:
-      - scrape
+        - scrape
     post:
       consumes:
-      - application/json
-      description: 'Scrapes a given URL and returns its markdown content, metadata,
+        - application/json
+      description:
+        'Scrapes a given URL and returns its markdown content, metadata,
         links, and optionally captures a screenshot or extracts images if enabled.
         Links are extracted from readability DOM, resolved to absolute URLs, deduped,
         and flagged isInternal via same-host check — matching Firecrawl `formats:
@@ -767,60 +778,62 @@ paths:
         http://localhost:3002/v1/scrape against those docs showed `links` as string
         array; Cinder returns objects with text/isInternal.'
       parameters:
-      - description: The URL to scrape (single mode)
-        in: query
-        name: url
-        type: string
-      - description: 'JSON array alternative: use POST body {\'
-        in: query
-        name: urls
-        type: string
-      - description: 'Scraping mode: smart, static, dynamic'
-        in: query
-        name: mode
-        type: string
-      - description: 'Deprecated: use mode=dynamic instead'
-        in: query
-        name: render
-        type: boolean
-      - description: Capture full-page screenshot (requires mode=dynamic or smart)
-        in: query
-        name: screenshot
-        type: boolean
-      - description: Extract images from the page
-        in: query
-        name: images
-        type: boolean
-      - description: 'Image transport: ''url'' (default, metadata only) or ''blob''
-          (base64 data URIs)'
-        in: query
-        name: image_format
-        type: string
-      - description: 'Maximum images to extract (default: 10)'
-        in: query
-        name: max_images
-        type: integer
-      - description: 'Max individual image size in KB (default: 5120)'
-        in: query
-        name: max_image_size_kb
-        type: integer
-      - description: Include extracted links (default true)
-        in: query
-        name: include_links
-        type: boolean
-      - description: JSON request body (alternative to query params). Provide either
-          `url` or `urls` (max 10, exclusive).
-        in: body
-        name: body
-        schema:
-          $ref: '#/definitions/handlers.ScrapeRequest'
+        - description: The URL to scrape (single mode)
+          in: query
+          name: url
+          type: string
+        - description: 'JSON array alternative: use POST body {\'
+          in: query
+          name: urls
+          type: string
+        - description: "Scraping mode: smart, static, dynamic"
+          in: query
+          name: mode
+          type: string
+        - description: "Deprecated: use mode=dynamic instead"
+          in: query
+          name: render
+          type: boolean
+        - description: Capture full-page screenshot (requires mode=dynamic or smart)
+          in: query
+          name: screenshot
+          type: boolean
+        - description: Extract images from the page
+          in: query
+          name: images
+          type: boolean
+        - description:
+            "Image transport: 'url' (default, metadata only) or 'blob'
+            (base64 data URIs)"
+          in: query
+          name: image_format
+          type: string
+        - description: "Maximum images to extract (default: 10)"
+          in: query
+          name: max_images
+          type: integer
+        - description: "Max individual image size in KB (default: 5120)"
+          in: query
+          name: max_image_size_kb
+          type: integer
+        - description: Include extracted links (default true)
+          in: query
+          name: include_links
+          type: boolean
+        - description:
+            JSON request body (alternative to query params). Provide either
+            `url` or `urls` (max 10, exclusive).
+          in: body
+          name: body
+          schema:
+            $ref: "#/definitions/handlers.ScrapeRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: multi URL (when urls is provided)
           schema:
-            $ref: '#/definitions/handlers.MultiScrapeResponse'
+            $ref: "#/definitions/handlers.MultiScrapeResponse"
         "400":
           description: Bad Request
           schema:
@@ -833,54 +846,55 @@ paths:
             type: object
       summary: Scrape a webpage
       tags:
-      - scrape
+        - scrape
   /search:
     get:
       consumes:
-      - application/json
-      description: Searches the web using DuckDuckGo HTML (free, no key) with Brave
+        - application/json
+      description:
+        Searches the web using DuckDuckGo HTML (free, no key) with Brave
         Search as fallback when BRAVE_SEARCH_API_KEY is set.
       parameters:
-      - description: The search query
-        in: query
-        name: query
-        type: string
-      - description: Alias for query
-        in: query
-        name: q
-        type: string
-      - description: Pagination offset
-        in: query
-        name: offset
-        type: integer
-      - description: Pagination limit (max 100)
-        in: query
-        name: limit
-        type: integer
-      - description: 'Category filter: general, news, code'
-        enum:
-        - general
-        - news
-        - code
-        in: query
-        name: category
-        type: string
-      - description: Lightweight TF-IDF re-rank (pure Go, no ONNX)
-        in: query
-        name: rerank
-        type: boolean
-      - description: JSON request body
-        in: body
-        name: body
-        schema:
-          $ref: '#/definitions/handlers.SearchRequest'
+        - description: The search query
+          in: query
+          name: query
+          type: string
+        - description: Alias for query
+          in: query
+          name: q
+          type: string
+        - description: Pagination offset
+          in: query
+          name: offset
+          type: integer
+        - description: Pagination limit (max 100)
+          in: query
+          name: limit
+          type: integer
+        - description: "Category filter: general, news, code"
+          enum:
+            - general
+            - news
+            - code
+          in: query
+          name: category
+          type: string
+        - description: Lightweight TF-IDF re-rank (pure Go, no ONNX)
+          in: query
+          name: rerank
+          type: boolean
+        - description: JSON request body
+          in: body
+          name: body
+          schema:
+            $ref: "#/definitions/handlers.SearchRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SearchResponse'
+            $ref: "#/definitions/handlers.SearchResponse"
         "400":
           description: Bad Request
           schema:
@@ -893,53 +907,54 @@ paths:
             type: object
       summary: Search the web
       tags:
-      - search
+        - search
     post:
       consumes:
-      - application/json
-      description: Searches the web using DuckDuckGo HTML (free, no key) with Brave
+        - application/json
+      description:
+        Searches the web using DuckDuckGo HTML (free, no key) with Brave
         Search as fallback when BRAVE_SEARCH_API_KEY is set.
       parameters:
-      - description: The search query
-        in: query
-        name: query
-        type: string
-      - description: Alias for query
-        in: query
-        name: q
-        type: string
-      - description: Pagination offset
-        in: query
-        name: offset
-        type: integer
-      - description: Pagination limit (max 100)
-        in: query
-        name: limit
-        type: integer
-      - description: 'Category filter: general, news, code'
-        enum:
-        - general
-        - news
-        - code
-        in: query
-        name: category
-        type: string
-      - description: Lightweight TF-IDF re-rank (pure Go, no ONNX)
-        in: query
-        name: rerank
-        type: boolean
-      - description: JSON request body
-        in: body
-        name: body
-        schema:
-          $ref: '#/definitions/handlers.SearchRequest'
+        - description: The search query
+          in: query
+          name: query
+          type: string
+        - description: Alias for query
+          in: query
+          name: q
+          type: string
+        - description: Pagination offset
+          in: query
+          name: offset
+          type: integer
+        - description: Pagination limit (max 100)
+          in: query
+          name: limit
+          type: integer
+        - description: "Category filter: general, news, code"
+          enum:
+            - general
+            - news
+            - code
+          in: query
+          name: category
+          type: string
+        - description: Lightweight TF-IDF re-rank (pure Go, no ONNX)
+          in: query
+          name: rerank
+          type: boolean
+        - description: JSON request body
+          in: body
+          name: body
+          schema:
+            $ref: "#/definitions/handlers.SearchRequest"
       produces:
-      - application/json
+        - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.SearchResponse'
+            $ref: "#/definitions/handlers.SearchResponse"
         "400":
           description: Bad Request
           schema:
@@ -952,5 +967,5 @@ paths:
             type: object
       summary: Search the web
       tags:
-      - search
+        - search
 swagger: "2.0"

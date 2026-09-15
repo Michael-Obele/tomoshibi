@@ -1394,7 +1394,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/v1",
 	Schemes:          []string{},
-	Title:            "Cinder API",
+	Title:            "Tomoshibi API",
 	Description:      "Web scraping, crawling, and AI data extraction API.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

@@ -96,7 +96,7 @@ func TestSearchMapsUpstreamResults(t *testing.T) {
 	}
 }
 
-// TestSearchSendsAuthAndQuery asserts the request Cinder actually builds: the
+// TestSearchSendsAuthAndQuery asserts the request Tomoshibi actually builds: the
 // subscription header carries the key, and the query is passed through.
 func TestSearchSendsAuthAndQuery(t *testing.T) {
 	var gotToken, gotAccept, gotQuery string
@@ -257,7 +257,7 @@ func TestSearchTotalCountEstimate(t *testing.T) {
 }
 
 // TestSearchUpstreamFailures covers every way the request can fail after it
-// leaves Cinder. None of these should panic or return partial results.
+// leaves Tomoshibi. None of these should panic or return partial results.
 func TestSearchUpstreamFailures(t *testing.T) {
 	tests := []struct {
 		name    string

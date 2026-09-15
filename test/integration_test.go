@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/standard-user/cinder/internal/api/handlers"
-	"github.com/standard-user/cinder/internal/search"
+	"github.com/Michael-Obele/tomoshibi/internal/api/handlers"
+	"github.com/Michael-Obele/tomoshibi/internal/search"
 )
 
 // MockSearchService for testing

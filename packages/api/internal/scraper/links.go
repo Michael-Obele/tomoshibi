@@ -4,9 +4,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
+	"github.com/PuerkitoBio/goquery"
 )
 
 // ExtractLinks parses the readability ContentHTML (or any HTML fragment) and
@@ -17,7 +17,7 @@ import (
 //	POST /v1/scrape {"url":"https://example.com","formats":["markdown","links"]}
 //	→ {"data":{"links":["https://iana.org/domains/example"]}}  (array of strings)
 //
-// Cinder enriches each entry to {url, text, isInternal} as required by
+// Tomoshibi enriches each entry to {url, text, isInternal} as required by
 // ticket 06-scrape-links-parity. Extraction runs after readability so nav/ads
 // are stripped before link collection. Results are cached via ScrapeOptions.
 func ExtractLinks(readabilityHTML, pageURL string) []domain.LinkData {

@@ -102,7 +102,7 @@ func Load() (*Config, error) {
 	v.BindEnv("redis.rest_url", "UPSTASH_REDIS_REST_URL")
 	v.BindEnv("redis.rest_token", "UPSTASH_REDIS_REST_TOKEN")
 
-	// Render injects PORT; Cinder reads SERVER_PORT — accept either.
+	// Render injects PORT; Tomoshibi reads SERVER_PORT — accept either.
 	v.BindEnv("server.port", "SERVER_PORT", "PORT")
 
 	// No need for ReadInConfig since we use env vars

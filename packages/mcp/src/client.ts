@@ -351,17 +351,17 @@ function validateUrl(url: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Cinder API Client
+// Tomoshibi API Client (formerly Cinder)
 // ---------------------------------------------------------------------------
 
 /**
  * Timeout configuration per endpoint type (milliseconds).
  *
- * These are deliberately generous: the Cinder backend runs on Fly.io with
+ * These are deliberately generous: the Tomoshibi backend runs on Fly.io with
  * scale-to-zero, so a request may first trigger a ~10-15s cold start before
  * the actual work begins. Tight timeouts turn cold starts into hard failures.
  */
-export const CINDER_TIMEOUT = {
+export const TOMOSHI_TIMEOUT = {
   scrape: 60_000,
   crawl: 30_000,
   crawlStatus: 15_000,
@@ -376,18 +376,18 @@ export const CINDER_TIMEOUT = {
 } as const;
 
 /**
- * HTTP client for the Cinder API.
- * Wraps all Cinder endpoints with type-safe methods, error handling, and SSRF prevention.
+ * HTTP client for the Tomoshibi API (formerly Cinder).
+ * Wraps all Tomoshibi endpoints with type-safe methods, error handling, and SSRF prevention.
  */
-export class CinderClient {
+export class TomoshiClient {
   private baseUrl: string;
   private apiKey: string;
 
   constructor() {
     const config = getConfig();
-    const rawUrl = (config as any).TOMOSHIBI_API_URL || config.CINDER_API_URL;
+    const rawUrl = (config as any).TOMOSHI_API_URL || config.CINDER_API_URL;
     this.baseUrl = rawUrl.replace(/\/+$/, "");
-    this.apiKey = config.CINDER_API_KEY;
+    this.apiKey = config.TOMOSHI_API_KEY || config.CINDER_API_KEY;
   }
 
   private get headers(): Record<string, string> {
@@ -395,7 +395,7 @@ export class CinderClient {
       "Content-Type": "application/json",
     };
     if (this.apiKey) {
-      // Cinder expects the API key as `X-API-Key` (see API docs §8).
+      // Tomoshibi expects the API key as `X-API-Key` (see API docs §8).
       h["X-API-Key"] = this.apiKey;
     }
     return h;
@@ -428,8 +428,8 @@ export class CinderClient {
 
       if (!response.ok) {
         const errorBody = await response.text().catch(() => "");
-        throw new CinderError(
-          `Cinder API error: ${response.status} ${response.statusText}`,
+        throw new TomoshiError(
+          `Tomoshibi API error: ${response.status} ${response.statusText}`,
           response.status,
           errorBody,
         );
@@ -437,11 +437,11 @@ export class CinderClient {
 
       return (await response.json()) as T;
     } catch (err) {
-      if (err instanceof CinderError) throw err;
+      if (err instanceof TomoshiError) throw err;
       if (err instanceof DOMException && err.name === "AbortError") {
-        throw new CinderError(`Request timed out after ${timeout}ms`, 408, "");
+        throw new TomoshiError(`Request timed out after ${timeout}ms`, 408, "");
       }
-      throw new CinderError(
+      throw new TomoshiError(
         err instanceof Error ? err.message : "Unknown error",
         0,
         "",
@@ -457,7 +457,7 @@ export class CinderClient {
    */
   async scrape(params: ScrapeParams): Promise<ScrapeResult> {
     if (!validateUrl(params.url)) {
-      throw new CinderError(
+      throw new TomoshiError(
         "Invalid or blocked URL. Only HTTP(S) URLs to public hosts are allowed.",
         400,
         "",
@@ -467,7 +467,7 @@ export class CinderClient {
       "POST",
       "/v1/scrape",
       params,
-      CINDER_TIMEOUT.scrape,
+      TOMOSHI_TIMEOUT.scrape,
     );
   }
 
@@ -479,7 +479,7 @@ export class CinderClient {
   async scrapeMulti(params: MultiScrapeParams): Promise<MultiScrapeResponse> {
     for (const u of params.urls) {
       if (!validateUrl(u)) {
-        throw new CinderError(
+        throw new TomoshiError(
           `Invalid or blocked URL in multi-scrape: ${u}. Only HTTP(S) URLs to public hosts are allowed.`,
           400,
           "",
@@ -490,7 +490,7 @@ export class CinderClient {
       "POST",
       "/v1/scrape",
       params,
-      CINDER_TIMEOUT.scrape,
+      TOMOSHI_TIMEOUT.scrape,
     );
   }
 
@@ -500,7 +500,7 @@ export class CinderClient {
    */
   async crawl(params: CrawlParams): Promise<CrawlResponse> {
     if (!validateUrl(params.url)) {
-      throw new CinderError(
+      throw new TomoshiError(
         "Invalid or blocked URL. Only HTTP(S) URLs to public hosts are allowed.",
         400,
         "",
@@ -510,7 +510,7 @@ export class CinderClient {
       "POST",
       "/v1/crawl",
       params,
-      CINDER_TIMEOUT.crawl,
+      TOMOSHI_TIMEOUT.crawl,
     );
   }
 
@@ -523,7 +523,7 @@ export class CinderClient {
       "GET",
       `/v1/crawl/${encodeURIComponent(id)}`,
       undefined,
-      CINDER_TIMEOUT.crawlStatus,
+      TOMOSHI_TIMEOUT.crawlStatus,
     );
   }
 
@@ -536,7 +536,7 @@ export class CinderClient {
       "POST",
       "/v1/search",
       params,
-      CINDER_TIMEOUT.search,
+      TOMOSHI_TIMEOUT.search,
     );
   }
 
@@ -546,7 +546,7 @@ export class CinderClient {
    */
   async map(params: MapParams): Promise<MapResponse> {
     if (!validateUrl(params.url)) {
-      throw new CinderError(
+      throw new TomoshiError(
         "Invalid or blocked URL. Only HTTP(S) URLs to public hosts are allowed.",
         400,
         "",
@@ -556,7 +556,7 @@ export class CinderClient {
       "POST",
       "/v1/map",
       params,
-      CINDER_TIMEOUT.map,
+      TOMOSHI_TIMEOUT.map,
     );
   }
 
@@ -567,7 +567,7 @@ export class CinderClient {
   async batchScrape(params: BatchParams): Promise<BatchResponse> {
     for (const u of params.urls) {
       if (!validateUrl(u)) {
-        throw new CinderError(
+        throw new TomoshiError(
           `Invalid or blocked URL in batch: ${u}. Only HTTP(S) URLs to public hosts are allowed.`,
           400,
           "",
@@ -578,7 +578,7 @@ export class CinderClient {
       "POST",
       "/v1/batch/scrape",
       params,
-      CINDER_TIMEOUT.batch,
+      TOMOSHI_TIMEOUT.batch,
     );
   }
 
@@ -591,7 +591,7 @@ export class CinderClient {
       "GET",
       `/v1/batch/${encodeURIComponent(batchId)}`,
       undefined,
-      CINDER_TIMEOUT.batchStatus,
+      TOMOSHI_TIMEOUT.batchStatus,
     );
   }
 
@@ -601,7 +601,7 @@ export class CinderClient {
    */
   async links(url: string): Promise<ScrapeResult> {
     if (!validateUrl(url)) {
-      throw new CinderError(
+      throw new TomoshiError(
         "Invalid or blocked URL. Only HTTP(S) URLs to public hosts are allowed.",
         400,
         "",
@@ -611,7 +611,7 @@ export class CinderClient {
       "POST",
       "/v1/scrape",
       { url, include_links: true },
-      CINDER_TIMEOUT.links,
+      TOMOSHI_TIMEOUT.links,
     );
   }
 
@@ -621,7 +621,7 @@ export class CinderClient {
    */
   async createMonitor(params: MonitorParams): Promise<MonitorResponse> {
     if (!validateUrl(params.url)) {
-      throw new CinderError(
+      throw new TomoshiError(
         "Invalid or blocked URL. Only HTTP(S) URLs to public hosts are allowed.",
         400,
         "",
@@ -631,7 +631,7 @@ export class CinderClient {
       "POST",
       "/v1/monitor",
       params,
-      CINDER_TIMEOUT.monitor,
+      TOMOSHI_TIMEOUT.monitor,
     );
   }
 
@@ -644,7 +644,7 @@ export class CinderClient {
       "GET",
       `/v1/monitor/${encodeURIComponent(id)}`,
       undefined,
-      CINDER_TIMEOUT.monitorStatus,
+      TOMOSHI_TIMEOUT.monitorStatus,
     );
   }
 
@@ -657,7 +657,7 @@ export class CinderClient {
       "DELETE",
       `/v1/monitor/${encodeURIComponent(id)}`,
       undefined,
-      CINDER_TIMEOUT.monitorDelete,
+      TOMOSHI_TIMEOUT.monitorDelete,
     );
   }
 }
@@ -666,13 +666,13 @@ export class CinderClient {
 // Custom Error
 // ---------------------------------------------------------------------------
 
-export class CinderError extends Error {
+export class TomoshiError extends Error {
   constructor(
     message: string,
     public readonly statusCode: number,
     public readonly body: string,
   ) {
     super(message);
-    this.name = "CinderError";
+    this.name = "TomoshiError";
   }
 }

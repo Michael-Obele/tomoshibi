@@ -17,7 +17,7 @@ import (
 )
 
 // SignatureHeader is the header carrying the HMAC-SHA256 webhook signature.
-const SignatureHeader = "X-Cinder-Signature"
+const SignatureHeader = "X-Tomoshibi-Signature"
 
 // webhookAttempts is the number of delivery attempts before giving up.
 const webhookAttempts = 3

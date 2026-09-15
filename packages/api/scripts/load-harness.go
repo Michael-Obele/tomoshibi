@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-// Heavy-browsing load harness for Cinder.
+// Heavy-browsing load harness for Tomoshibi.
 //
 // Unlike a smoke test, this hits real-world URLs (no example.com) with real
 // concurrency to surface 404s, timeouts, DNS failures, and Chrome contention
@@ -130,14 +130,14 @@ func classifyErr(err error) string {
 }
 
 func main() {
-	flag.StringVar(&baseURL, "base", "http://localhost:7431", "Cinder base URL")
+	flag.StringVar(&baseURL, "base", "http://localhost:7431", "Tomoshibi base URL")
 	flag.IntVar(&concurrency, "concurrency", 20, "concurrent workers for load phases")
 	flag.DurationVar(&duration, "duration", 60*time.Second, "sustained mixed-load duration")
 	flag.Parse()
 
 	client := &http.Client{Timeout: 45 * time.Second}
 
-	fmt.Println("=== Cinder Heavy-Browsing Load Harness ===")
+	fmt.Println("=== Tomoshibi Heavy-Browsing Load Harness ===")
 	fmt.Printf("Base: %s | concurrency: %d | sustained: %s\n", baseURL, concurrency, duration)
 	fmt.Printf("Targets: %d real URLs, not example.com\n", len(heavyURLs))
 	fmt.Println()
@@ -520,7 +520,7 @@ func audit404s(client *http.Client) {
 		{"GET", "/v1/batch/nonexistent-id-12345", 404},
 		{"GET", "/v1/monitor/nonexistent-id-12345", 404},
 		{"POST", "/v1/scrape", 400},         // no body
-		{"GET", "/v1/models", 404},          // not a cinder route — should be 404
+		{"GET", "/v1/models", 404},          // not a tomoshibi route — should be 404
 		{"GET", "/swagger/index.html", 404}, // release mode
 	}
 	for _, c := range cases {

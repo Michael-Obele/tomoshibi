@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import type {
-  CinderClient,
+  TomoshiClient,
   SearchParams,
   MapParams,
   CrawlParams,
@@ -9,7 +9,7 @@ import type {
 /**
  * Resource-oriented multiplexed discovery tool.
  * Consolidates `cinder_search` + `cinder_map` + `cinder_crawl`
- * into a single `tomoshi_discover` resource (3→1).
+ * into a single `tomoshi_discover` resource (3→1). Formerly Cinder.
  *
  * Principle: 1 tool per domain resource with `action` enum
  * (arch.md "Why 7 Tools Instead of 17" — FlarelyLegal 17→7).
@@ -212,7 +212,7 @@ const DiscoverCrawlShape = v.object({
   webhook_secret: v.optional(
     v.pipe(
       v.string(),
-      v.description("HMAC-SHA256 key for the X-Cinder-Signature header"),
+      v.description("HMAC-SHA256 key for the X-Tomoshibi-Signature header"),
     ),
   ),
 });
@@ -225,7 +225,7 @@ const DiscoverCrawlStatusShape = v.object({
   ),
   id: v.pipe(
     v.string(),
-    v.description("The task ID returned by cinder_discover action=crawl"),
+    v.description("The task ID returned by tomoshi_discover action=crawl"),
     v.minLength(1, "Task ID is required"),
   ),
 });
@@ -251,7 +251,7 @@ function pageTitle(page: { title?: string; url: string }): string {
   }
 }
 
-export function createDiscoverHandler(client: CinderClient) {
+export function createDiscoverHandler(client: TomoshiClient) {
   return async (input: Record<string, unknown>) => {
     const { action } = input as { action: string };
     try {
@@ -281,7 +281,7 @@ export function createDiscoverHandler(client: CinderClient) {
         if (result.hasMore)
           lines.push(
             "",
-            `Use \`cinder_discover\` with \`action: "search"\` and \`offset: ${result.nextOffset}\` to get the next page.`,
+            `Use \`tomoshi_discover\` with \`action: "search"\` and \`offset: ${result.nextOffset}\` to get the next page.`,
           );
         return { content: [{ type: "text" as const, text: lines.join("\n") }] };
       }
@@ -330,9 +330,9 @@ export function createDiscoverHandler(client: CinderClient) {
           "",
           "---",
           "",
-          `Use \`cinder_discover\` with \`action: "crawl_status"\` and \`id: "${result.id}"\` to poll.`,
+          `Use \`tomoshi_discover\` with \`action: "crawl_status"\` and \`id: "${result.id}"\` to poll.`,
           "The crawl runs asynchronously — poll until state is `completed` or `failed`.",
-          "Requires Redis-backed Cinder instance.",
+          "Requires Redis-backed Tomoshibi instance.",
         );
         return { content: [{ type: "text" as const, text: lines.join("\n") }] };
       }

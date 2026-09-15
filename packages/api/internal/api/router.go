@@ -35,7 +35,7 @@ func NewRouter(
 	// All API routes live under /v1.
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
-			"service": "cinder",
+			"service": "tomoshibi",
 			"version": "1.0",
 			"status":  "ok",
 			"docs":    "/swagger/index.html",
@@ -53,10 +53,10 @@ func NewRouter(
 	// Liveness probes: unauthenticated so load balancers and uptime
 	// monitors can check the API without an API key.
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "cinder"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "tomoshibi"})
 	})
 	r.GET("/v1/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "cinder"})
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "tomoshibi"})
 	})
 
 	// Swagger Docs mapping

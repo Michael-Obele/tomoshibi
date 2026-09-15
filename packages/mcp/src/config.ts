@@ -12,16 +12,18 @@ const OptionalUrl = v.optional(
 );
 
 const ConfigSchema = v.object({
-  /** Cinder API base URL — must point to your own Cinder instance */
+  /** Tomoshibi API base URL — must point to your own Tomoshibi instance */
+  TOMOSHI_API_URL: OptionalUrl,
+  /** Legacy compat — use TOMOSHI_API_URL */
   CINDER_API_URL: OptionalUrl,
-  /** Tomoshibi API URL (new name, preferred) */
-  TOMOSHIBI_API_URL: OptionalUrl,
 
-  /** Optional API key if Cinder requires authentication */
+  /** Optional API key if Tomoshibi requires authentication */
+  TOMOSHI_API_KEY: v.optional(v.string(), ""),
+  /** Legacy compat — use TOMOSHI_API_KEY */
   CINDER_API_KEY: v.optional(v.string(), ""),
 
   /** MCP server identity */
-  MCP_SERVER_NAME: v.optional(v.string(), "cinder-mcp"),
+  MCP_SERVER_NAME: v.optional(v.string(), "tomoshi-mcp"),
   MCP_SERVER_VERSION: v.optional(v.string(), "1.0.0"),
 
   /** HTTP server port */
@@ -73,17 +75,18 @@ export function getConfig(): Config {
 
   config = parsed.output;
 
-  // TOMOSHIBI_API_URL is the new name, CINDER_API_URL is legacy compat
-  const apiUrl = (config as any).TOMOSHIBI_API_URL || config.CINDER_API_URL;
+  // TOMOSHI_API_URL is the primary name, CINDER_API_URL is legacy compat
+  const apiUrl =
+    (config as any).TOMOSHI_API_URL || (config as any).CINDER_API_URL;
   if (!apiUrl) {
     console.error(
-      "❌ TOMOSHIBI_API_URL (or CINDER_API_URL) is required. Set it in your .env or via `fly secrets set TOMOSHIBI_API_URL=https://your-tomoshibi.fly.dev`",
+      "❌ TOMOSHI_API_URL (or legacy CINDER_API_URL) is required. Set it in your .env or via `fly secrets set TOMOSHI_API_URL=https://your-tomoshibi.fly.dev`",
     );
     process.exit(1);
   }
   // Normalize so downstream code can use either
   (config as any).CINDER_API_URL = apiUrl;
-  (config as any).TOMOSHIBI_API_URL = apiUrl;
+  (config as any).TOMOSHI_API_URL = apiUrl;
 
   return config;
 }

@@ -1,5 +1,5 @@
 import * as v from "valibot";
-import type { CinderClient } from "../client.js";
+import type { TomoshiClient } from "../client.js";
 
 /**
  * Schema for the tomoshi_monitor tool.
@@ -30,7 +30,7 @@ const MonitorCreateShape = v.object({
   webhook_secret: v.optional(
     v.pipe(
       v.string(),
-      v.description("HMAC-SHA256 key for the X-Cinder-Signature header"),
+      v.description("HMAC-SHA256 key for the X-Tomoshibi-Signature header"),
     ),
   ),
 });
@@ -62,10 +62,10 @@ export const MonitorSchema = v.variant("action", [
 export type MonitorInput = v.InferOutput<typeof MonitorSchema>;
 
 /**
- * Handler for the cinder_monitor tool.
+ * Handler for the tomoshi_monitor tool (formerly cinder_monitor).
  * Dispatches to create / status / delete based on the `action` field.
  */
-export function createMonitorHandler(client: CinderClient) {
+export function createMonitorHandler(client: TomoshiClient) {
   return async (input: Record<string, unknown>) => {
     const { action } = input as { action: string };
 
@@ -82,7 +82,7 @@ export function createMonitorHandler(client: CinderClient) {
           "",
           "---",
           "",
-          'Use `cinder_monitor` with `action: "status"` to check, or `action: "delete"` to stop monitoring.',
+          'Use `tomoshi_monitor` with `action: "status"` to check, or `action: "delete"` to stop monitoring.',
         ];
         return {
           content: [{ type: "text" as const, text: lines.join("\n") }],

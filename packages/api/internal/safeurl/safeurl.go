@@ -1,6 +1,6 @@
 // Package safeurl guards outbound fetches against SSRF.
 //
-// Cinder's entire job is to fetch a URL the caller names and hand back the
+// Tomoshibi's entire job is to fetch a URL the caller names and hand back the
 // body, so an unguarded instance is a proxy into whatever network it runs
 // on: cloud metadata endpoints (169.254.169.254), Redis on localhost, admin
 // panels on 10.0.0.0/8. Auth is off by default, so a public deploy is

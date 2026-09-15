@@ -1,6 +1,6 @@
 import * as v from "valibot";
 import type {
-  CinderClient,
+  TomoshiClient,
   ScrapeParams,
   MultiScrapeParams,
 } from "../client.js";
@@ -8,7 +8,7 @@ import type {
 /**
  * Resource-oriented multiplexed extraction tool.
  * Consolidates `cinder_scrape` + `cinder_links` + `cinder_batch_scrape`
- * into a single `tomoshi_extract` resource (5→1 with scrape_multi).
+ * into a single `tomoshi_extract` resource (5→1 with scrape_multi). Formerly Cinder.
  *
  * Principle: 1 tool per domain resource with `action` enum
  * (arch.md "Why 7 Tools Instead of 17" — FlarelyLegal 17→7).
@@ -354,7 +354,7 @@ const ExtractBatchStatusShape = v.object({
   batch_id: v.pipe(
     v.string(),
     v.minLength(1, "Batch ID is required"),
-    v.description("The batch_id returned by cinder_extract action=batch"),
+    v.description("The batch_id returned by tomoshi_extract action=batch"),
   ),
 });
 
@@ -367,7 +367,7 @@ export const ExtractSchema = v.variant("action", [
 ]);
 export type ExtractInput = v.InferOutput<typeof ExtractSchema>;
 
-export function createExtractHandler(client: CinderClient) {
+export function createExtractHandler(client: TomoshiClient) {
   return async (input: Record<string, unknown>) => {
     const { action } = input as { action: string };
     try {
@@ -578,8 +578,8 @@ export function createExtractHandler(client: CinderClient) {
           "",
           "---",
           "",
-          `Use \`cinder_extract\` with \`action: "batch_status"\` and \`batch_id: "${result.batch_id}"\` to poll.`,
-          "Requires Redis-backed Cinder instance.",
+          `Use \`tomoshi_extract\` with \`action: "batch_status"\` and \`batch_id: "${result.batch_id}"\` to poll.`,
+          "Requires Redis-backed Tomoshibi instance.",
         );
         return { content: [{ type: "text" as const, text: lines.join("\n") }] };
       }

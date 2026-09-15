@@ -1,6 +1,6 @@
 package main
 
-// @title           Cinder API
+// @title           Tomoshibi API
 // @version         1.0
 // @description     Web scraping, crawling, and AI data extraction API.
 // @BasePath        /v1
@@ -96,7 +96,7 @@ func run() error {
 
 	// 2. Init Logger
 	logger.Init(cfg.App.LogLevel)
-	logger.Log.Info("Starting Cinder API", "port", cfg.Server.Port, "mode", cfg.Server.Mode)
+	logger.Log.Info("Starting Tomoshibi API", "port", cfg.Server.Port, "mode", cfg.Server.Mode)
 
 	// Signal context: SIGTERM is routine, not exceptional. Fly.io's
 	// auto_stop sends it whenever the machine idles down, so this path runs

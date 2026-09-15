@@ -4,7 +4,7 @@ import "context"
 
 // LinkData represents one extracted hyperlink, mirroring Firecrawl's `links` format.
 // Firecrawl (self-hosted at http://localhost:3002) returns `links: ["https://..."]` as strings;
-// Cinder enriches each entry with anchor text and a same-host flag for parity.
+// Tomoshibi enriches each entry with anchor text and a same-host flag for parity.
 type LinkData struct {
 	URL        string `json:"url"`
 	Text       string `json:"text,omitempty"`

@@ -1,1382 +1,1302 @@
 {
-    "swagger": "2.0",
-    "info": {
-        "description": "Web scraping, crawling, and AI data extraction API.",
-        "title": "Cinder API",
-        "contact": {},
-        "version": "1.0"
-    },
-    "basePath": "/v1",
-    "paths": {
-        "/batch/scrape": {
-            "post": {
-                "description": "Enqueues one scrape task per URL and returns a batch ID for status polling.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "batch"
-                ],
-                "summary": "Scrape multiple URLs asynchronously",
-                "parameters": [
-                    {
-                        "description": "JSON request body",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.BatchRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "202": {
-                        "description": "Accepted",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.BatchResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+  "swagger": "2.0",
+  "info": {
+    "description": "Web scraping, crawling, and AI data extraction API.",
+    "title": "Tomoshibi API",
+    "contact": {},
+    "version": "1.0"
+  },
+  "basePath": "/v1",
+  "paths": {
+    "/batch/scrape": {
+      "post": {
+        "description": "Enqueues one scrape task per URL and returns a batch ID for status polling.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["batch"],
+        "summary": "Scrape multiple URLs asynchronously",
+        "parameters": [
+          {
+            "description": "JSON request body",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/handlers.BatchRequest"
             }
-        },
-        "/batch/{id}": {
-            "get": {
-                "description": "Aggregates the Asynq state of every task in the batch.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "batch"
-                ],
-                "summary": "Get the status of a batch scrape",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The batch ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.BatchStatusResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "$ref": "#/definitions/handlers.BatchResponse"
             }
-        },
-        "/crawl": {
-            "post": {
-                "description": "Submits a URL to be crawled asynchronously. The crawler performs BFS link-following up to maxDepth, scraping up to limit pages on the same domain. Requires Redis.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "crawl"
-                ],
-                "summary": "Enqueue a URL for asynchronous crawling",
-                "parameters": [
-                    {
-                        "description": "JSON request body",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.CrawlRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "202": {
-                        "description": "Accepted",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.CrawlResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
             }
-        },
-        "/crawl/{id}": {
-            "get": {
-                "description": "Retrieves the current status and result of a previously enqueued crawl task by its ID.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "crawl"
-                ],
-                "summary": "Get the status of an asynchronous crawl",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The crawl task ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "The task status and result payload",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Task not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
             }
-        },
-        "/map": {
-            "post": {
-                "description": "Discovers URLs for a site via robots.txt/sitemap.xml, falling back to link discovery. Returns up to limit URLs, optionally filtered by search.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "map"
-                ],
-                "summary": "Map a website's URLs",
-                "parameters": [
-                    {
-                        "description": "JSON request body",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MapRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MapResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/monitor": {
-            "post": {
-                "description": "Scrapes the URL on an interval, hashes the markdown, and fires a webhook when content changes. First check records the baseline.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "monitor"
-                ],
-                "summary": "Create a change-tracking monitor",
-                "parameters": [
-                    {
-                        "description": "JSON request body",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MonitorRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MonitorResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/monitor/{id}": {
-            "get": {
-                "description": "Returns the monitor configuration, last content hash, and next check time.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "monitor"
-                ],
-                "summary": "Get monitor status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The monitor ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Stops monitoring and removes the monitor record.",
-                "tags": [
-                    "monitor"
-                ],
-                "summary": "Delete a monitor",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The monitor ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/scrape": {
-            "get": {
-                "description": "Scrapes a given URL and returns its markdown content, metadata, links, and optionally captures a screenshot or extracts images if enabled. Links are extracted from readability DOM, resolved to absolute URLs, deduped, and flagged isInternal via same-host check — matching Firecrawl `formats: [\"links\"]` (Firecrawl returns `links: [\"https://...\"]`; Cinder enriches to `links: [{url, text, isInternal}]`). Include_links defaults to true. Accepts either `url` (single) or `urls` (up to 10) for synchronous multi-URL scrape; when `urls` is used the response is `{results: [{url, markdown, metadata, ...}]}`. Mirrors Firecrawl `POST /v2/scrape` (single) and `POST /v2/batch/scrape` (multi) and the `web_fetch_exa` multi-URL shape — see https://docs.firecrawl.dev/features/scrape and https://docs.firecrawl.dev/api-reference/endpoint/scrape. Research via http://localhost:3002/v1/scrape against those docs showed `links` as string array; Cinder returns objects with text/isInternal.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "scrape"
-                ],
-                "summary": "Scrape a webpage",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The URL to scrape (single mode)",
-                        "name": "url",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "JSON array alternative: use POST body {\\",
-                        "name": "urls",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Scraping mode: smart, static, dynamic",
-                        "name": "mode",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Deprecated: use mode=dynamic instead",
-                        "name": "render",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Capture full-page screenshot (requires mode=dynamic or smart)",
-                        "name": "screenshot",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Extract images from the page",
-                        "name": "images",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Image transport: 'url' (default, metadata only) or 'blob' (base64 data URIs)",
-                        "name": "image_format",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Maximum images to extract (default: 10)",
-                        "name": "max_images",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Max individual image size in KB (default: 5120)",
-                        "name": "max_image_size_kb",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Include extracted links (default true)",
-                        "name": "include_links",
-                        "in": "query"
-                    },
-                    {
-                        "description": "JSON request body (alternative to query params). Provide either `url` or `urls` (max 10, exclusive).",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ScrapeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "multi URL (when urls is provided)",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MultiScrapeResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Scrapes a given URL and returns its markdown content, metadata, links, and optionally captures a screenshot or extracts images if enabled. Links are extracted from readability DOM, resolved to absolute URLs, deduped, and flagged isInternal via same-host check — matching Firecrawl `formats: [\"links\"]` (Firecrawl returns `links: [\"https://...\"]`; Cinder enriches to `links: [{url, text, isInternal}]`). Include_links defaults to true. Accepts either `url` (single) or `urls` (up to 10) for synchronous multi-URL scrape; when `urls` is used the response is `{results: [{url, markdown, metadata, ...}]}`. Mirrors Firecrawl `POST /v2/scrape` (single) and `POST /v2/batch/scrape` (multi) and the `web_fetch_exa` multi-URL shape — see https://docs.firecrawl.dev/features/scrape and https://docs.firecrawl.dev/api-reference/endpoint/scrape. Research via http://localhost:3002/v1/scrape against those docs showed `links` as string array; Cinder returns objects with text/isInternal.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "scrape"
-                ],
-                "summary": "Scrape a webpage",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The URL to scrape (single mode)",
-                        "name": "url",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "JSON array alternative: use POST body {\\",
-                        "name": "urls",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Scraping mode: smart, static, dynamic",
-                        "name": "mode",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Deprecated: use mode=dynamic instead",
-                        "name": "render",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Capture full-page screenshot (requires mode=dynamic or smart)",
-                        "name": "screenshot",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Extract images from the page",
-                        "name": "images",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Image transport: 'url' (default, metadata only) or 'blob' (base64 data URIs)",
-                        "name": "image_format",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Maximum images to extract (default: 10)",
-                        "name": "max_images",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Max individual image size in KB (default: 5120)",
-                        "name": "max_image_size_kb",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Include extracted links (default true)",
-                        "name": "include_links",
-                        "in": "query"
-                    },
-                    {
-                        "description": "JSON request body (alternative to query params). Provide either `url` or `urls` (max 10, exclusive).",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.ScrapeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "multi URL (when urls is provided)",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.MultiScrapeResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/search": {
-            "get": {
-                "description": "Searches the web using DuckDuckGo HTML (free, no key) with Brave Search as fallback when BRAVE_SEARCH_API_KEY is set.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "search"
-                ],
-                "summary": "Search the web",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The search query",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Alias for query",
-                        "name": "q",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Pagination offset",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Pagination limit (max 100)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "general",
-                            "news",
-                            "code"
-                        ],
-                        "type": "string",
-                        "description": "Category filter: general, news, code",
-                        "name": "category",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Lightweight TF-IDF re-rank (pure Go, no ONNX)",
-                        "name": "rerank",
-                        "in": "query"
-                    },
-                    {
-                        "description": "JSON request body",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SearchRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SearchResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Searches the web using DuckDuckGo HTML (free, no key) with Brave Search as fallback when BRAVE_SEARCH_API_KEY is set.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "search"
-                ],
-                "summary": "Search the web",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "The search query",
-                        "name": "query",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Alias for query",
-                        "name": "q",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Pagination offset",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Pagination limit (max 100)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "general",
-                            "news",
-                            "code"
-                        ],
-                        "type": "string",
-                        "description": "Category filter: general, news, code",
-                        "name": "category",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Lightweight TF-IDF re-rank (pure Go, no ONNX)",
-                        "name": "rerank",
-                        "in": "query"
-                    },
-                    {
-                        "description": "JSON request body",
-                        "name": "body",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SearchRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handlers.SearchResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
+          }
         }
+      }
     },
-    "definitions": {
-        "domain.ExtractField": {
-            "type": "object",
-            "properties": {
-                "attr": {
-                    "description": "\"text\" (default), \"html\", or attribute name",
-                    "type": "string"
-                },
-                "multiple": {
-                    "type": "boolean"
-                },
-                "selector": {
-                    "type": "string"
-                }
+    "/batch/{id}": {
+      "get": {
+        "description": "Aggregates the Asynq state of every task in the batch.",
+        "produces": ["application/json"],
+        "tags": ["batch"],
+        "summary": "Get the status of a batch scrape",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The batch ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/handlers.BatchStatusResponse"
             }
-        },
-        "domain.ImageData": {
-            "type": "object",
-            "properties": {
-                "alt": {
-                    "type": "string"
-                },
-                "blob": {
-                    "type": "string"
-                },
-                "format": {
-                    "type": "string"
-                },
-                "height": {
-                    "type": "integer"
-                },
-                "size_bytes": {
-                    "type": "integer"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "width": {
-                    "type": "integer"
-                }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
             }
-        },
-        "domain.LinkData": {
-            "type": "object",
-            "properties": {
-                "isInternal": {
-                    "type": "boolean"
-                },
-                "text": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.ScrapeResult": {
-            "type": "object",
-            "properties": {
-                "extracted": {
-                    "description": "Extracted holds deterministic schema-extraction results.",
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "html": {
-                    "type": "string"
-                },
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.ImageData"
-                    }
-                },
-                "links": {
-                    "description": "Links holds extracted hyperlinks (after readability, deduped, absolute).",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.LinkData"
-                    }
-                },
-                "markdown": {
-                    "type": "string"
-                },
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "screenshot": {
-                    "description": "Image fields (omitted when not requested)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.ScreenshotData"
-                        }
-                    ]
-                },
-                "summary": {
-                    "description": "Summary holds the extractive summary when requested.",
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.ScreenshotData": {
-            "type": "object",
-            "properties": {
-                "blob": {
-                    "type": "string"
-                },
-                "captured_at": {
-                    "type": "string"
-                },
-                "format": {
-                    "type": "string"
-                },
-                "full_page": {
-                    "type": "boolean"
-                },
-                "height": {
-                    "type": "integer"
-                },
-                "size_bytes": {
-                    "type": "integer"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "width": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.ActionReq": {
-            "type": "object",
-            "properties": {
-                "ms": {
-                    "type": "integer"
-                },
-                "selector": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.BatchRequest": {
-            "type": "object",
-            "required": [
-                "urls"
-            ],
-            "properties": {
-                "urls": {
-                    "type": "array",
-                    "maxItems": 20,
-                    "minItems": 1,
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "handlers.BatchResponse": {
-            "type": "object",
-            "properties": {
-                "batch_id": {
-                    "type": "string"
-                },
-                "tasks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.BatchTask"
-                    }
-                }
-            }
-        },
-        "handlers.BatchStatusResponse": {
-            "type": "object",
-            "properties": {
-                "batch_id": {
-                    "type": "string"
-                },
-                "completed": {
-                    "type": "integer"
-                },
-                "failed": {
-                    "type": "integer"
-                },
-                "tasks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.BatchTask"
-                    }
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.BatchTask": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.CrawlRequest": {
-            "type": "object",
-            "required": [
-                "url"
-            ],
-            "properties": {
-                "exclude_paths": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "image_format": {
-                    "type": "string"
-                },
-                "images": {
-                    "type": "boolean"
-                },
-                "include_paths": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "limit": {
-                    "type": "integer"
-                },
-                "maxDepth": {
-                    "type": "integer"
-                },
-                "render": {
-                    "type": "boolean"
-                },
-                "screenshot": {
-                    "type": "boolean"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "webhook_secret": {
-                    "type": "string"
-                },
-                "webhook_url": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.CrawlResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "image_format": {
-                    "type": "string"
-                },
-                "images": {
-                    "type": "boolean"
-                },
-                "limit": {
-                    "type": "integer"
-                },
-                "maxDepth": {
-                    "type": "integer"
-                },
-                "render": {
-                    "type": "boolean"
-                },
-                "screenshot": {
-                    "type": "boolean"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.ImageProcessReq": {
-            "type": "object",
-            "properties": {
-                "format": {
-                    "description": "\"jpeg\" (default) or \"png\"",
-                    "type": "string"
-                },
-                "max_width": {
-                    "type": "integer"
-                },
-                "quality": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.MapRequest": {
-            "type": "object",
-            "required": [
-                "url"
-            ],
-            "properties": {
-                "limit": {
-                    "description": "default 100, max 5000",
-                    "type": "integer"
-                },
-                "search": {
-                    "description": "optional substring filter",
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.MapResponse": {
-            "type": "object",
-            "properties": {
-                "count": {
-                    "type": "integer"
-                },
-                "links": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/sitemap.DiscoveredURL"
-                    }
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.MonitorRequest": {
-            "type": "object",
-            "required": [
-                "url"
-            ],
-            "properties": {
-                "interval_seconds": {
-                    "type": "integer"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "webhook_secret": {
-                    "type": "string"
-                },
-                "webhook_url": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.MonitorResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "interval_seconds": {
-                    "type": "integer"
-                },
-                "next_check": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "handlers.MultiScrapeItem": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string"
-                },
-                "extracted": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "html": {
-                    "type": "string"
-                },
-                "images": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.ImageData"
-                    }
-                },
-                "links": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.LinkData"
-                    }
-                },
-                "markdown": {
-                    "type": "string"
-                },
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "screenshot": {
-                    "$ref": "#/definitions/domain.ScreenshotData"
-                },
-                "summary": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "word_count": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.MultiScrapeResponse": {
-            "type": "object",
-            "properties": {
-                "results": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.MultiScrapeItem"
-                    }
-                }
-            }
-        },
-        "handlers.ScrapeRequest": {
-            "type": "object",
-            "properties": {
-                "actions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handlers.ActionReq"
-                    }
-                },
-                "block_ads": {
-                    "type": "boolean"
-                },
-                "extract_schema": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/domain.ExtractField"
-                    }
-                },
-                "image_format": {
-                    "description": "\"url\" or \"blob\"",
-                    "type": "string"
-                },
-                "image_process": {
-                    "$ref": "#/definitions/handlers.ImageProcessReq"
-                },
-                "images": {
-                    "type": "boolean"
-                },
-                "include_links": {
-                    "type": "boolean"
-                },
-                "max_image_size_kb": {
-                    "type": "integer"
-                },
-                "max_images": {
-                    "type": "integer"
-                },
-                "mode": {
-                    "description": "\"smart\", \"static\", \"dynamic\"",
-                    "type": "string"
-                },
-                "redact_pii": {
-                    "type": "boolean"
-                },
-                "remove_base64_images": {
-                    "type": "boolean"
-                },
-                "render": {
-                    "description": "Deprecated: usage ignores Mode if true",
-                    "type": "boolean"
-                },
-                "screenshot": {
-                    "type": "boolean"
-                },
-                "screenshot_opts": {
-                    "$ref": "#/definitions/handlers.ScreenshotOpts"
-                },
-                "summary": {
-                    "type": "boolean"
-                },
-                "summary_sentences": {
-                    "type": "integer"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "urls": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "handlers.ScreenshotOpts": {
-            "type": "object",
-            "properties": {
-                "format": {
-                    "type": "string"
-                },
-                "full_page": {
-                    "type": "boolean"
-                },
-                "height": {
-                    "type": "integer"
-                },
-                "quality": {
-                    "type": "integer"
-                },
-                "wait_selector": {
-                    "type": "string"
-                },
-                "width": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handlers.SearchRequest": {
-            "type": "object",
-            "required": [
-                "query"
-            ],
-            "properties": {
-                "category": {
-                    "type": "string"
-                },
-                "excludeDomains": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "includeDomains": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "limit": {
-                    "type": "integer"
-                },
-                "maxAge": {
-                    "type": "integer"
-                },
-                "mode": {
-                    "type": "string"
-                },
-                "offset": {
-                    "type": "integer"
-                },
-                "query": {
-                    "type": "string"
-                },
-                "requiredText": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "rerank": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "handlers.SearchResponse": {
-            "type": "object",
-            "properties": {
-                "count": {
-                    "type": "integer"
-                },
-                "hasMore": {
-                    "type": "boolean"
-                },
-                "nextOffset": {
-                    "type": "integer"
-                },
-                "query": {
-                    "type": "string"
-                },
-                "results": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/search.Result"
-                    }
-                }
-            }
-        },
-        "search.Result": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "domain": {
-                    "type": "string"
-                },
-                "highlights": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "relevance": {
-                    "type": "number"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "sitemap.DiscoveredURL": {
-            "type": "object",
-            "properties": {
-                "source": {
-                    "description": "\"sitemap\" or \"link\"",
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                }
-            }
+          }
         }
+      }
+    },
+    "/crawl": {
+      "post": {
+        "description": "Submits a URL to be crawled asynchronously. The crawler performs BFS link-following up to maxDepth, scraping up to limit pages on the same domain. Requires Redis.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["crawl"],
+        "summary": "Enqueue a URL for asynchronous crawling",
+        "parameters": [
+          {
+            "description": "JSON request body",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/handlers.CrawlRequest"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "schema": {
+              "$ref": "#/definitions/handlers.CrawlResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "/crawl/{id}": {
+      "get": {
+        "description": "Retrieves the current status and result of a previously enqueued crawl task by its ID.",
+        "produces": ["application/json"],
+        "tags": ["crawl"],
+        "summary": "Get the status of an asynchronous crawl",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The crawl task ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The task status and result payload",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "/map": {
+      "post": {
+        "description": "Discovers URLs for a site via robots.txt/sitemap.xml, falling back to link discovery. Returns up to limit URLs, optionally filtered by search.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["map"],
+        "summary": "Map a website's URLs",
+        "parameters": [
+          {
+            "description": "JSON request body",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/handlers.MapRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/handlers.MapResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "/monitor": {
+      "post": {
+        "description": "Scrapes the URL on an interval, hashes the markdown, and fires a webhook when content changes. First check records the baseline.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["monitor"],
+        "summary": "Create a change-tracking monitor",
+        "parameters": [
+          {
+            "description": "JSON request body",
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/handlers.MonitorRequest"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "schema": {
+              "$ref": "#/definitions/handlers.MonitorResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "/monitor/{id}": {
+      "get": {
+        "description": "Returns the monitor configuration, last content hash, and next check time.",
+        "produces": ["application/json"],
+        "tags": ["monitor"],
+        "summary": "Get monitor status",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The monitor ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Stops monitoring and removes the monitor record.",
+        "tags": ["monitor"],
+        "summary": "Delete a monitor",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The monitor ID",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "/scrape": {
+      "get": {
+        "description": "Scrapes a given URL and returns its markdown content, metadata, links, and optionally captures a screenshot or extracts images if enabled. Links are extracted from readability DOM, resolved to absolute URLs, deduped, and flagged isInternal via same-host check — matching Firecrawl `formats: [\"links\"]` (Firecrawl returns `links: [\"https://...\"]`; Cinder enriches to `links: [{url, text, isInternal}]`). Include_links defaults to true. Accepts either `url` (single) or `urls` (up to 10) for synchronous multi-URL scrape; when `urls` is used the response is `{results: [{url, markdown, metadata, ...}]}`. Mirrors Firecrawl `POST /v2/scrape` (single) and `POST /v2/batch/scrape` (multi) and the `web_fetch_exa` multi-URL shape — see https://docs.firecrawl.dev/features/scrape and https://docs.firecrawl.dev/api-reference/endpoint/scrape. Research via http://localhost:3002/v1/scrape against those docs showed `links` as string array; Cinder returns objects with text/isInternal.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["scrape"],
+        "summary": "Scrape a webpage",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The URL to scrape (single mode)",
+            "name": "url",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "JSON array alternative: use POST body {\\",
+            "name": "urls",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Scraping mode: smart, static, dynamic",
+            "name": "mode",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Deprecated: use mode=dynamic instead",
+            "name": "render",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Capture full-page screenshot (requires mode=dynamic or smart)",
+            "name": "screenshot",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Extract images from the page",
+            "name": "images",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Image transport: 'url' (default, metadata only) or 'blob' (base64 data URIs)",
+            "name": "image_format",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Maximum images to extract (default: 10)",
+            "name": "max_images",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Max individual image size in KB (default: 5120)",
+            "name": "max_image_size_kb",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Include extracted links (default true)",
+            "name": "include_links",
+            "in": "query"
+          },
+          {
+            "description": "JSON request body (alternative to query params). Provide either `url` or `urls` (max 10, exclusive).",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/handlers.ScrapeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "multi URL (when urls is provided)",
+            "schema": {
+              "$ref": "#/definitions/handlers.MultiScrapeResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Scrapes a given URL and returns its markdown content, metadata, links, and optionally captures a screenshot or extracts images if enabled. Links are extracted from readability DOM, resolved to absolute URLs, deduped, and flagged isInternal via same-host check — matching Firecrawl `formats: [\"links\"]` (Firecrawl returns `links: [\"https://...\"]`; Cinder enriches to `links: [{url, text, isInternal}]`). Include_links defaults to true. Accepts either `url` (single) or `urls` (up to 10) for synchronous multi-URL scrape; when `urls` is used the response is `{results: [{url, markdown, metadata, ...}]}`. Mirrors Firecrawl `POST /v2/scrape` (single) and `POST /v2/batch/scrape` (multi) and the `web_fetch_exa` multi-URL shape — see https://docs.firecrawl.dev/features/scrape and https://docs.firecrawl.dev/api-reference/endpoint/scrape. Research via http://localhost:3002/v1/scrape against those docs showed `links` as string array; Cinder returns objects with text/isInternal.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["scrape"],
+        "summary": "Scrape a webpage",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The URL to scrape (single mode)",
+            "name": "url",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "JSON array alternative: use POST body {\\",
+            "name": "urls",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Scraping mode: smart, static, dynamic",
+            "name": "mode",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Deprecated: use mode=dynamic instead",
+            "name": "render",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Capture full-page screenshot (requires mode=dynamic or smart)",
+            "name": "screenshot",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Extract images from the page",
+            "name": "images",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Image transport: 'url' (default, metadata only) or 'blob' (base64 data URIs)",
+            "name": "image_format",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Maximum images to extract (default: 10)",
+            "name": "max_images",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Max individual image size in KB (default: 5120)",
+            "name": "max_image_size_kb",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Include extracted links (default true)",
+            "name": "include_links",
+            "in": "query"
+          },
+          {
+            "description": "JSON request body (alternative to query params). Provide either `url` or `urls` (max 10, exclusive).",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/handlers.ScrapeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "multi URL (when urls is provided)",
+            "schema": {
+              "$ref": "#/definitions/handlers.MultiScrapeResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "description": "Searches the web using DuckDuckGo HTML (free, no key) with Brave Search as fallback when BRAVE_SEARCH_API_KEY is set.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["search"],
+        "summary": "Search the web",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The search query",
+            "name": "query",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Alias for query",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Pagination offset",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Pagination limit (max 100)",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "enum": ["general", "news", "code"],
+            "type": "string",
+            "description": "Category filter: general, news, code",
+            "name": "category",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Lightweight TF-IDF re-rank (pure Go, no ONNX)",
+            "name": "rerank",
+            "in": "query"
+          },
+          {
+            "description": "JSON request body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/handlers.SearchRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/handlers.SearchResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "post": {
+        "description": "Searches the web using DuckDuckGo HTML (free, no key) with Brave Search as fallback when BRAVE_SEARCH_API_KEY is set.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "tags": ["search"],
+        "summary": "Search the web",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "The search query",
+            "name": "query",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "description": "Alias for query",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Pagination offset",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "description": "Pagination limit (max 100)",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "enum": ["general", "news", "code"],
+            "type": "string",
+            "description": "Category filter: general, news, code",
+            "name": "category",
+            "in": "query"
+          },
+          {
+            "type": "boolean",
+            "description": "Lightweight TF-IDF re-rank (pure Go, no ONNX)",
+            "name": "rerank",
+            "in": "query"
+          },
+          {
+            "description": "JSON request body",
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/handlers.SearchRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/handlers.SearchResponse"
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      }
     }
+  },
+  "definitions": {
+    "domain.ExtractField": {
+      "type": "object",
+      "properties": {
+        "attr": {
+          "description": "\"text\" (default), \"html\", or attribute name",
+          "type": "string"
+        },
+        "multiple": {
+          "type": "boolean"
+        },
+        "selector": {
+          "type": "string"
+        }
+      }
+    },
+    "domain.ImageData": {
+      "type": "object",
+      "properties": {
+        "alt": {
+          "type": "string"
+        },
+        "blob": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "size_bytes": {
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer"
+        }
+      }
+    },
+    "domain.LinkData": {
+      "type": "object",
+      "properties": {
+        "isInternal": {
+          "type": "boolean"
+        },
+        "text": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "domain.ScrapeResult": {
+      "type": "object",
+      "properties": {
+        "extracted": {
+          "description": "Extracted holds deterministic schema-extraction results.",
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "html": {
+          "type": "string"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/domain.ImageData"
+          }
+        },
+        "links": {
+          "description": "Links holds extracted hyperlinks (after readability, deduped, absolute).",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/domain.LinkData"
+          }
+        },
+        "markdown": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "screenshot": {
+          "description": "Image fields (omitted when not requested)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/domain.ScreenshotData"
+            }
+          ]
+        },
+        "summary": {
+          "description": "Summary holds the extractive summary when requested.",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "domain.ScreenshotData": {
+      "type": "object",
+      "properties": {
+        "blob": {
+          "type": "string"
+        },
+        "captured_at": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "full_page": {
+          "type": "boolean"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "size_bytes": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer"
+        }
+      }
+    },
+    "handlers.ActionReq": {
+      "type": "object",
+      "properties": {
+        "ms": {
+          "type": "integer"
+        },
+        "selector": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
+    "handlers.BatchRequest": {
+      "type": "object",
+      "required": ["urls"],
+      "properties": {
+        "urls": {
+          "type": "array",
+          "maxItems": 20,
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "handlers.BatchResponse": {
+      "type": "object",
+      "properties": {
+        "batch_id": {
+          "type": "string"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/handlers.BatchTask"
+          }
+        }
+      }
+    },
+    "handlers.BatchStatusResponse": {
+      "type": "object",
+      "properties": {
+        "batch_id": {
+          "type": "string"
+        },
+        "completed": {
+          "type": "integer"
+        },
+        "failed": {
+          "type": "integer"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/handlers.BatchTask"
+          }
+        },
+        "total": {
+          "type": "integer"
+        }
+      }
+    },
+    "handlers.BatchTask": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "handlers.CrawlRequest": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "exclude_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "image_format": {
+          "type": "string"
+        },
+        "images": {
+          "type": "boolean"
+        },
+        "include_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "maxDepth": {
+          "type": "integer"
+        },
+        "render": {
+          "type": "boolean"
+        },
+        "screenshot": {
+          "type": "boolean"
+        },
+        "url": {
+          "type": "string"
+        },
+        "webhook_secret": {
+          "type": "string"
+        },
+        "webhook_url": {
+          "type": "string"
+        }
+      }
+    },
+    "handlers.CrawlResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "image_format": {
+          "type": "string"
+        },
+        "images": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "maxDepth": {
+          "type": "integer"
+        },
+        "render": {
+          "type": "boolean"
+        },
+        "screenshot": {
+          "type": "boolean"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "handlers.ImageProcessReq": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "description": "\"jpeg\" (default) or \"png\"",
+          "type": "string"
+        },
+        "max_width": {
+          "type": "integer"
+        },
+        "quality": {
+          "type": "integer"
+        }
+      }
+    },
+    "handlers.MapRequest": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "limit": {
+          "description": "default 100, max 5000",
+          "type": "integer"
+        },
+        "search": {
+          "description": "optional substring filter",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "handlers.MapResponse": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/sitemap.DiscoveredURL"
+          }
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "handlers.MonitorRequest": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "interval_seconds": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "webhook_secret": {
+          "type": "string"
+        },
+        "webhook_url": {
+          "type": "string"
+        }
+      }
+    },
+    "handlers.MonitorResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "interval_seconds": {
+          "type": "integer"
+        },
+        "next_check": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "handlers.MultiScrapeItem": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "extracted": {
+          "type": "object",
+          "additionalProperties": {}
+        },
+        "html": {
+          "type": "string"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/domain.ImageData"
+          }
+        },
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/domain.LinkData"
+          }
+        },
+        "markdown": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "screenshot": {
+          "$ref": "#/definitions/domain.ScreenshotData"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "word_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "handlers.MultiScrapeResponse": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/handlers.MultiScrapeItem"
+          }
+        }
+      }
+    },
+    "handlers.ScrapeRequest": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/handlers.ActionReq"
+          }
+        },
+        "block_ads": {
+          "type": "boolean"
+        },
+        "extract_schema": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/domain.ExtractField"
+          }
+        },
+        "image_format": {
+          "description": "\"url\" or \"blob\"",
+          "type": "string"
+        },
+        "image_process": {
+          "$ref": "#/definitions/handlers.ImageProcessReq"
+        },
+        "images": {
+          "type": "boolean"
+        },
+        "include_links": {
+          "type": "boolean"
+        },
+        "max_image_size_kb": {
+          "type": "integer"
+        },
+        "max_images": {
+          "type": "integer"
+        },
+        "mode": {
+          "description": "\"smart\", \"static\", \"dynamic\"",
+          "type": "string"
+        },
+        "redact_pii": {
+          "type": "boolean"
+        },
+        "remove_base64_images": {
+          "type": "boolean"
+        },
+        "render": {
+          "description": "Deprecated: usage ignores Mode if true",
+          "type": "boolean"
+        },
+        "screenshot": {
+          "type": "boolean"
+        },
+        "screenshot_opts": {
+          "$ref": "#/definitions/handlers.ScreenshotOpts"
+        },
+        "summary": {
+          "type": "boolean"
+        },
+        "summary_sentences": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "handlers.ScreenshotOpts": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "type": "string"
+        },
+        "full_page": {
+          "type": "boolean"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "quality": {
+          "type": "integer"
+        },
+        "wait_selector": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer"
+        }
+      }
+    },
+    "handlers.SearchRequest": {
+      "type": "object",
+      "required": ["query"],
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "excludeDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "includeDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "maxAge": {
+          "type": "integer"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "query": {
+          "type": "string"
+        },
+        "requiredText": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rerank": {
+          "type": "boolean"
+        }
+      }
+    },
+    "handlers.SearchResponse": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "hasMore": {
+          "type": "boolean"
+        },
+        "nextOffset": {
+          "type": "integer"
+        },
+        "query": {
+          "type": "string"
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/search.Result"
+          }
+        }
+      }
+    },
+    "search.Result": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "highlights": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "relevance": {
+          "type": "number"
+        },
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "sitemap.DiscoveredURL": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "description": "\"sitemap\" or \"link\"",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    }
+  }
 }

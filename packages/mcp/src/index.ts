@@ -121,7 +121,7 @@ serve({
     if (url.pathname === "/" || url.pathname === "/health") {
       return new Response(
         JSON.stringify({
-          service: "cinder-mcp",
+          service: "tomoshi-mcp",
           status: "ok",
           version: config.MCP_SERVER_VERSION,
           endpoints: {
@@ -158,7 +158,9 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
-console.log(`🚀 Cinder MCP server running on port ${config.PORT}`);
+console.log(
+  `🚀 Tomoshibi MCP server running on port ${config.PORT} (formerly Cinder)`,
+);
 console.log(`   Health: http://localhost:${config.PORT}/health`);
 console.log(`   MCP:    http://localhost:${config.PORT}/mcp`);
 console.log(`   SSE:    http://localhost:${config.PORT}/sse`);

@@ -195,7 +195,7 @@ func fetch(ctx context.Context, rawURL string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "CinderBot/1.0 (+http://github.com/Michael-Obele/tomoshibi)")
+	req.Header.Set("User-Agent", "TomoshibiBot/1.0 (+http://github.com/Michael-Obele/tomoshibi)")
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
