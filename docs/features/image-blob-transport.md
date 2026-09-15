@@ -13,7 +13,7 @@
 
 ### Current Limitation
 
-Cinder's scrape/search results return **text only** (Markdown + HTML). When consumers want to send scraped content to multimodal AI models, they must:
+Tomoshibi's scrape/search results return **text only** (Markdown + HTML). When consumers want to send scraped content to multimodal AI models, they must:
 
 1. Re-fetch the page to capture screenshots.
 2. Download images separately by parsing HTML for `<img>` tags.
@@ -247,7 +247,7 @@ import (
     "strings"
     "time"
 
-    "github.com/standard-user/cinder/internal/domain"
+    "github.com/standard-user/tomoshibi/internal/domain"
 )
 
 const (
@@ -338,7 +338,7 @@ import (
     "time"
 
     "github.com/chromedp/chromedp"
-    "github.com/standard-user/cinder/internal/domain"
+    "github.com/standard-user/tomoshibi/internal/domain"
 )
 
 // CaptureScreenshot takes a screenshot using an existing chromedp allocator.
@@ -418,7 +418,7 @@ import (
     "strings"
 
     "github.com/PuerkitoBio/goquery"
-    "github.com/standard-user/cinder/internal/domain"
+    "github.com/standard-user/tomoshibi/internal/domain"
 )
 
 // ExtractPageImages parses HTML and extracts image metadata.

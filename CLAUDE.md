@@ -4,7 +4,7 @@ This file give guidance to Claude Code (claude.ai/code) for work with code in th
 
 ## Project
 
-Cinder = self-hosted web scrape API in Go. Turn website into LLM-ready markdown (open-source Firecrawl alternative). Ship as **monolith with embedded worker**: `cmd/api` run both Gin HTTP server and Asynq background worker in one process, sized for 512MB–1GB hobby-tier host.
+Tomoshibi = self-hosted web scrape API in Go (formerly Cinder). Turn website into LLM-ready markdown (open-source Firecrawl alternative). Ship as **monolith with embedded worker**: `cmd/api` run both Gin HTTP server and Asynq background worker in one process, sized for 512MB–1GB hobby-tier host.
 
 ## Commands
 
@@ -39,11 +39,12 @@ Dependency go one way: `cmd/` → `internal/api/` → `internal/scraper/` → `i
 **Startup wiring** (`cmd/api/main.go`) = map of system: config → logger → optional Redis client → Colly scraper + Chromedp scraper → `scraper.Service` → handlers → optional crawl handler + embedded worker + monitor scheduler → router.
 
 **Engine selection** (`internal/scraper/service.go:55`) = core decision point:
+
 - `static` → Colly. `dynamic` → Chromedp. `smart` (default) → Colly first, then `ShouldUseDynamic(html)` (`heuristics.go`, SPA-shell marker + content-size check) decide whether redo in Chromedp.
 - Page `actions` force dynamic, and `static` + actions = hard error. `screenshot` in smart mode go straight to dynamic.
 - Post-scrape enrichment run in fixed order: schema extraction → summary → PII redaction → image extraction/blob fetch (bounded `errgroup`, limit 5).
 
-**Caching** = gzip-compressed JSON in Redis, 7-day TTL. Key = SHA-256 of URL + mode + *whole* `ScrapeOptions` struct (`cacheKeyFor`), so add field to `ScrapeOptions` auto-prevent stale hit — no hand-roll narrower key. Compression deliberate (hobby-tier storage), and read path still tolerate legacy uncompressed value. `Service.cache` = two-method `cacheStore` interface, not `*redis.Client`, so test can drive cache branch; `NewService` still take concrete client and assign only when non-nil, because nil `*redis.Client` in interface is not nil interface.
+**Caching** = gzip-compressed JSON in Redis, 7-day TTL. Key = SHA-256 of URL + mode + _whole_ `ScrapeOptions` struct (`cacheKeyFor`), so add field to `ScrapeOptions` auto-prevent stale hit — no hand-roll narrower key. Compression deliberate (hobby-tier storage), and read path still tolerate legacy uncompressed value. `Service.cache` = two-method `cacheStore` interface, not `*redis.Client`, so test can drive cache branch; `NewService` still take concrete client and assign only when non-nil, because nil `*redis.Client` in interface is not nil interface.
 
 **Browser lifetime** (`internal/scraper/chromedp.go`): one shared exec allocator for process, light tab per scrape, full allocator restart every `CHROME_RECYCLE_AFTER` scrape to bound Chrome memory growth. Never spawn browser per request. Allocator warm up sync at startup so missing Chromium show as startup warning and dynamic mode degrade instead of fail later.
 
@@ -55,7 +56,7 @@ Crawl tuning read from environment at call time via `clampEnvInt` helper at bott
 
 **Graceful degradation = design rule.** Redis optional: without it, `/v1/crawl` return 503 and `/v1/batch` + `/v1/monitor` never registered (`internal/api/router.go:79`). Readability failure return raw HTML with nil error. Per-image fetch failure logged and skipped. Scrape must not fail because enrichment step did.
 
-**SSRF defense** (`internal/safeurl`) = two layer, because either layer alone leak. `safeurl.Client`/`Transport`/`Dialer` install `net.Dialer.Control` hook that run *after* DNS resolution, so it catch redirect and DNS rebinding; `safeurl.Check` = pre-flight URL check used only where we not own connection (chromedp drive real browser). Every outbound fetch path must go through one of them. Private, loopback, link-local, multicast and CGNAT address refused by default; `SSRF_ALLOW_PRIVATE=true` opt out for operator scraping internal wiki. Test that use `httptest` bind to 127.0.0.1 so need that variable set — package do it in `TestMain` (see `internal/scraper/main_test.go`), and test that exercise the guard itself override with `t.Setenv`.
+**SSRF defense** (`internal/safeurl`) = two layer, because either layer alone leak. `safeurl.Client`/`Transport`/`Dialer` install `net.Dialer.Control` hook that run _after_ DNS resolution, so it catch redirect and DNS rebinding; `safeurl.Check` = pre-flight URL check used only where we not own connection (chromedp drive real browser). Every outbound fetch path must go through one of them. Private, loopback, link-local, multicast and CGNAT address refused by default; `SSRF_ALLOW_PRIVATE=true` opt out for operator scraping internal wiki. Test that use `httptest` bind to 127.0.0.1 so need that variable set — package do it in `TestMain` (see `internal/scraper/main_test.go`), and test that exercise the guard itself override with `t.Setenv`.
 
 **Shutdown** (`cmd/api/main.go`) drain HTTP server and embedded worker at same time, not in sequence: `signal.NotifyContext` fire → worker `Shutdown()` start in goroutine → `srv.Shutdown` run in foreground → `select` wait on whichever finish first, bounded by `SHUTDOWN_TIMEOUT` (default 20s) and 5s `workerDrainGrace`. Asynq own shutdown cannot beat its `TaskCheckInterval` on idle queue (`processor.go` sleep uninterruptibly for roughly half of it), so 15s of check interval = floor on worker drain — that is what grace window absorb.
 

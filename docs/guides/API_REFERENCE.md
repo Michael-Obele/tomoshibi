@@ -1,6 +1,6 @@
-# Cinder API Documentation
+# Tomoshibi API Documentation
 
-Cinder provides a high-performance, self-hosted web scraping API. All API endpoints are prefixed with `/v1`.
+Tomoshibi provides a high-performance, self-hosted web scraping API. All API endpoints are prefixed with `/v1`.
 
 ## Base URL
 
@@ -8,7 +8,7 @@ Cinder provides a high-performance, self-hosted web scraping API. All API endpoi
 http://localhost:8080/v1
 ```
 
-> **Note:** When using Cinder in a production environment, the `http://localhost:8080` portion will be replaced by your actual domain or production URL. All API endpoints and payload structures remain identical.
+> **Note:** When using Tomoshibi in a production environment, the `http://localhost:8080` portion will be replaced by your actual domain or production URL. All API endpoints and payload structures remain identical.
 
 ---
 
@@ -44,7 +44,7 @@ You can send parameters as a JSON body (for `POST`) or as query string parameter
 | `redact_pii`           | boolean  | No        | `false` | Mask emails, phone numbers, and card-shaped digit runs in markdown/summary.                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `block_ads`            | boolean  | No        | `true`  | Strip common ad/tracker containers before markdown conversion.                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `remove_base64_images` | boolean  | No        | `true`  | Drop inline `data:` images before markdown conversion.                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `include_links`        | boolean  | No        | `true`  | Include `links: [{url, text, isInternal}]` extracted from readability DOM (resolved absolute, deduped, same-host flagged). Matches Firecrawl `formats: ["links"]` (Firecrawl returns string array; Cinder returns enriched objects). Disable with `include_links: false` or `?include_links=false`. Cache key includes this flag.                                                                                                                                                      |
+| `include_links`        | boolean  | No        | `true`  | Include `links: [{url, text, isInternal}]` extracted from readability DOM (resolved absolute, deduped, same-host flagged). Matches Firecrawl `formats: ["links"]` (Firecrawl returns string array; Tomoshibi returns enriched objects). Disable with `include_links: false` or `?include_links=false`. Cache key includes this flag.                                                                                                                                                      |
 | `render`               | boolean  | No        | `false` | _Deprecated_. Behaves the same as `mode=dynamic`.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ### Example Request (`POST`)
@@ -74,7 +74,7 @@ curl "http://localhost:8080/v1/scrape?url=https://example.com&mode=smart"
 
 ### Example Request — Sync Multi-URL (`urls: []`)
 
-Mirrors `web_fetch_exa` and Firecrawl `POST /v2/batch/scrape` (https://docs.firecrawl.dev/api-reference/endpoint/batch-scrape) but synchronous — no Redis, no polling. Research captured via `http://localhost:3002/v1/scrape` against https://docs.firecrawl.dev/features/scrape and https://docs.firecrawl.dev/api-reference/endpoint/scrape: Firecrawl single-URL `POST /v2/scrape` returns `{success, data:{markdown,html,metadata}}`; batch is `POST /v2/batch/scrape` with `urls: []` + `maxConcurrency`. Cinder's sync variant reuses `Service.Scrape` per URL with `errgroup` limit 5, ordered results.
+Mirrors `web_fetch_exa` and Firecrawl `POST /v2/batch/scrape` (https://docs.firecrawl.dev/api-reference/endpoint/batch-scrape) but synchronous — no Redis, no polling. Research captured via `http://localhost:3002/v1/scrape` against https://docs.firecrawl.dev/features/scrape and https://docs.firecrawl.dev/api-reference/endpoint/scrape: Firecrawl single-URL `POST /v2/scrape` returns `{success, data:{markdown,html,metadata}}`; batch is `POST /v2/batch/scrape` with `urls: []` + `maxConcurrency`. Tomoshibi's sync variant reuses `Service.Scrape` per URL with `errgroup` limit 5, ordered results.
 
 ```bash
 curl -X POST http://localhost:8080/v1/scrape \
@@ -136,7 +136,7 @@ curl -X POST http://localhost:8080/v1/scrape \
 }
 ```
 
-_(Note: If `screenshot` or `images` are requested, the response payload will also contain `screenshot` and `images` objects with base64 data strings). `links` is included by default (`include_links: true`) — set `include_links: false` to omit. Research via `http://localhost:3002/v1/scrape` with `formats: ["links"]` on https://docs.firecrawl.dev/features/scrape showed Firecrawl returns `links: ["https://..."]` (string array); Cinder enriches to `{url, text, isInternal}` after readability, resolved absolute and deduped. For multi-URL the same fields appear per entry inside `results`._
+_(Note: If `screenshot` or `images` are requested, the response payload will also contain `screenshot` and `images` objects with base64 data strings). `links` is included by default (`include_links: true`) — set `include_links: false` to omit. Research via `http://localhost:3002/v1/scrape` with `formats: ["links"]` on https://docs.firecrawl.dev/features/scrape showed Firecrawl returns `links: ["https://..."]` (string array); Tomoshibi enriches to `{url, text, isInternal}` after readability, resolved absolute and deduped. For multi-URL the same fields appear per entry inside `results`._
 
 ---
 
@@ -146,7 +146,7 @@ Searches the web using the configured search provider (SearXNG primary, Brave fa
 
 ### Search Backends (HybridService)
 
-Cinder tries backends in order: **SearXNG (free, self-hosted) → Brave API (paid, 1 QPS) → Stealth (chromedp fallback, reuses shared allocator)**.
+Tomoshibi tries backends in order: **SearXNG (free, self-hosted) → Brave API (paid, 1 QPS) → Stealth (chromedp fallback, reuses shared allocator)**.
 
 - `SEARXNG_ENDPOINT=http://searxng:8080` — primary, aggregates many engines
 - `BRAVE_SEARCH_API_KEY` — fallback when SearXNG 429/captcha
@@ -180,7 +180,7 @@ Stealth is last resort: it scrapes Brave Search HTML via the shared chromedp tab
 curl -X POST http://localhost:8080/v1/search \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "cinder web scraper",
+    "query": "tomoshibi web scraper",
     "limit": 5,
     "offset": 0
   }'
@@ -190,11 +190,11 @@ curl -X POST http://localhost:8080/v1/search \
 
 ```json
 {
-  "query": "cinder web scraper",
+  "query": "tomoshibi web scraper",
   "results": [
     {
-      "title": "Cinder on GitHub",
-      "url": "https://github.com/standard-user/cinder",
+      "title": "Tomoshibi on GitHub",
+      "url": "https://github.com/standard-user/tomoshibi",
       "description": "A high-performance web crawling API...",
       "highlights": ["…high-performance web crawling API…"],
       "relevance": 0.85
@@ -236,7 +236,7 @@ Accepts a JSON body with scraping parameters and crawl-specific options.
 | `include_paths`  | array   | No       | -       | Only follow links whose path matches these globs (e.g. `["/blog/*"]`). |
 | `exclude_paths`  | array   | No       | -       | Never follow links whose path matches these globs (exclusion wins).    |
 | `webhook_url`    | string  | No       | -       | POST the crawl result here on completion.                              |
-| `webhook_secret` | string  | No       | -       | HMAC-SHA256 key for the `X-Cinder-Signature` header.                   |
+| `webhook_secret` | string  | No       | -       | HMAC-SHA256 key for the `X-Tomoshibi-Signature` header.                   |
 
 ### Crawl Behavior
 
@@ -260,7 +260,7 @@ curl -X POST http://localhost:8080/v1/crawl \
     "maxDepth": 3,
     "limit": 20,
     "exclude_paths": ["/admin/*", "/login"],
-    "webhook_url": "https://myapp.example.com/hooks/cinder",
+    "webhook_url": "https://myapp.example.com/hooks/tomoshibi",
     "webhook_secret": "s3cret"
   }'
 ```
@@ -470,7 +470,7 @@ curl -X POST http://localhost:8080/v1/monitor \
 }
 ```
 
-The webhook carries `X-Cinder-Signature: sha256=<hmac-hex>` (HMAC-SHA256 of the body keyed by `webhook_secret`).
+The webhook carries `X-Tomoshibi-Signature: sha256=<hmac-hex>` (HMAC-SHA256 of the body keyed by `webhook_secret`).
 
 ---
 
@@ -496,7 +496,7 @@ When rate limiting is enabled, exceeding the limit returns `429` with `retry_aft
 
 ## Swagger Docs
 
-If you start Cinder in `debug` mode, interactive API documentation is automatically generated by Swagger and available at:
+If you start Tomoshibi in `debug` mode, interactive API documentation is automatically generated by Swagger and available at:
 
 ```
 http://localhost:8080/swagger/index.html

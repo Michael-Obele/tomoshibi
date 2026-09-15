@@ -2,7 +2,7 @@
 
 ## 🚀 Goal
 
-Transform Cinder from a "PoC" scraper into a **production-grade**, high-throughput engine capable of running efficiently on serverless/container infrastructure.
+Transform Tomoshibi from a "PoC" scraper into a **production-grade**, high-throughput engine capable of running efficiently on serverless/container infrastructure.
 
 ---
 

@@ -1,15 +1,15 @@
-# Cinder: The Svelte/JS Developer's Guide
+# Tomoshibi: The Svelte/JS Developer's Guide
 
 > Looking for documentation for a specific part of the code? Check the [Documentation Index](INDEX.md).
 
-Welcome to Cinder! If you're coming from the JavaScript/TypeScript ecosystem (SvelteKit, Next.js, Node.js), this guide is designed to translate Go concepts into terms you already understand.
+Welcome to Tomoshibi! If you're coming from the JavaScript/TypeScript ecosystem (SvelteKit, Next.js, Node.js), this guide is designed to translate Go concepts into terms you already understand.
 
 ## 🗺️ Project Map (File Tree)
 
 For a deeper dive into the architecture, check the [Architecture Guide](ARCHITECTURE.md).
 
 ```text
-cinder/
+tomoshibi/
 ├── cmd/                        # 🚀 "scripts/" or "entry points"
 │   ├── api/main.go             # The Hono/Express Server (monolith — API + Worker)
 │   ├── worker/main.go          # The standalone Background Worker entry point

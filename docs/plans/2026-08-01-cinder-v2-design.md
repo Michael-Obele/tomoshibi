@@ -1,4 +1,4 @@
-# Cinder v2 — Design Doc
+# Tomoshibi v2 — Design Doc
 
 **Date:** 2026-08-01
 **Status:** Approved (Approach 1 — sprint-based, all five sprints)
@@ -8,7 +8,7 @@
 
 ## 1. Goal
 
-Make Cinder faster, crawl better, fetch images better, and add competitive new features — while staying self-hosted, hobby-tier friendly, and zero-external-dependency.
+Make Tomoshibi faster, crawl better, fetch images better, and add competitive new features — while staying self-hosted, hobby-tier friendly, and zero-external-dependency.
 
 ## 2. Evidence Base
 
@@ -77,7 +77,7 @@ graph TD
 2. **Per-domain politeness** — min interval between requests to the same host (default 1s, env `CRAWL_DOMAIN_DELAY`), enforced with a per-host token bucket.
 3. **Retry policy** — in-task retry with exponential backoff (max 2) for 5xx/network errors; 4xx recorded as failed immediately, never retried (asynq `MaxRetry` stays for infra failures).
 4. **Include/exclude patterns** — `include_paths` / `exclude_paths` arrays of glob patterns (`/blog/*`) matched against URL path; exclusion wins.
-5. **Signed webhook** — `webhook_url` + `webhook_secret`; on completion POST the `CrawlResult` JSON with `X-Cinder-Signature: sha256=<hmac>`; 3 delivery attempts with backoff; failures recorded in task result.
+5. **Signed webhook** — `webhook_url` + `webhook_secret`; on completion POST the `CrawlResult` JSON with `X-Tomoshibi-Signature: sha256=<hmac>`; 3 delivery attempts with backoff; failures recorded in task result.
 
 ### Sprint D — Discovery & Endpoints
 

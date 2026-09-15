@@ -1,13 +1,13 @@
-# Cinder Architecture Guide (For JS/SvelteKit Developers)
+# Tomoshibi Architecture Guide (For JS/SvelteKit Developers)
 
 > [!TIP]
 > New here? Start with the [Documentation Index](INDEX.md) for a guided tour.
 
-Welcome to the Cinder codebase! If you're coming from a SvelteKit/Node.js background, some Go patterns might feel "different." This guide bridges that gap by comparing Go's structure and syntax to the JS ecosystem you already know.
+Welcome to the Tomoshibi codebase! If you're coming from a SvelteKit/Node.js background, some Go patterns might feel "different." This guide bridges that gap by comparing Go's structure and syntax to the JS ecosystem you already know.
 
 ## 🏗 High-Level Architecture
 
-Cinder is a Go-based distributed scraper (a lightweight alternative to Firecrawl). It uses a **Task Queue** pattern to handle long-running scrapes without blocking the main API. For a more detailed look at the project layout, see the [Project Tour](PROJECT_TOUR.md).
+Tomoshibi is a Go-based distributed scraper (a lightweight alternative to Firecrawl). It uses a **Task Queue** pattern to handle long-running scrapes without blocking the main API. For a more detailed look at the project layout, see the [Project Tour](PROJECT_TOUR.md).
 
 ### Project Layout (Standard Go)
 
@@ -22,7 +22,7 @@ Cinder is a Go-based distributed scraper (a lightweight alternative to Firecrawl
 
 ## 🔄 The "JS to Go" Rosetta Stone
 
-| Concept           | JS/SvelteKit Equivalent        | How it works in Cinder                                              |
+| Concept           | JS/SvelteKit Equivalent        | How it works in Tomoshibi                                              |
 | :---------------- | :----------------------------- | :------------------------------------------------------------------ |
 | **Interfaces**    | TypeScript `interface` or Type | Decouples code. Any struct with a `Scrape()` method is a `Scraper`. |
 | **Gin**           | Express / Hono                 | The web framework used for routing and middleware.                  |
@@ -116,7 +116,7 @@ Before you start, you'll need:
 
    ```bash
    git clone <your-repo-url>
-   cd cinder
+   cd tomoshibi
    ```
 
 2. **Install dependencies**:
@@ -149,10 +149,10 @@ Before you start, you'll need:
 
 ```bash
 # Build the API server
-go build -o bin/cinder-api cmd/api/main.go
+go build -o bin/tomoshibi-api cmd/api/main.go
 
 # Build the async worker
-go build -o bin/cinder-worker cmd/worker/main.go
+go build -o bin/tomoshibi-worker cmd/worker/main.go
 
 # Build both at once
 go build ./cmd/...
@@ -162,10 +162,10 @@ go build ./cmd/...
 
 ```bash
 # Build for Linux (common for deployment)
-GOOS=linux GOARCH=amd64 go build -o bin/cinder-api-linux cmd/api/main.go
+GOOS=linux GOARCH=amd64 go build -o bin/tomoshibi-api-linux cmd/api/main.go
 
 # Build for different architectures
-GOOS=darwin GOARCH=arm64 go build -o bin/cinder-api-mac-arm64 cmd/api/main.go
+GOOS=darwin GOARCH=arm64 go build -o bin/tomoshibi-api-mac-arm64 cmd/api/main.go
 ```
 
 ### Running Tests
@@ -242,10 +242,10 @@ The `Dockerfile` uses a **multi-stage build**:
 
 ```bash
 # Build the Docker image
-docker build -t cinder .
+docker build -t tomoshibi .
 
 # Run the container
-docker run -p 8080:8080 --env-file .env cinder
+docker run -p 8080:8080 --env-file .env tomoshibi
 ```
 
 ### Docker Compose (Full Stack)
@@ -279,7 +279,7 @@ docker compose down
 
 ## 🚀 Deployment on Leapcell
 
-Leapcell is a serverless platform perfect for Go applications with async workers like Cinder. It offers pay-as-you-go pricing - you only pay when your service is processing requests.
+Leapcell is a serverless platform perfect for Go applications with async workers like Tomoshibi. It offers pay-as-you-go pricing - you only pay when your service is processing requests.
 
 ### Prerequisites
 
@@ -347,7 +347,7 @@ curl -X POST https://your-app-name.leapcell.dev/v1/scrape \
 
 For production with heavy async workloads, consider:
 
-- **Separate Worker Service**: Deploy the worker (`./cinder-worker`) as a separate Leapcell service
+- **Separate Worker Service**: Deploy the worker (`./tomoshibi-worker`) as a separate Leapcell service
   - **Build Command**: `chmod +x install_browser.sh && ./install_browser.sh && go build -o worker cmd/worker/main.go`
   - **Start Command**: `export PATH=$PATH:. && ./worker`
 - **Auto-scaling**: Leapcell scales automatically based on traffic

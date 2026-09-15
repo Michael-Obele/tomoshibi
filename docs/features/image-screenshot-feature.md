@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document outlines the implementation of image and screenshot capture capabilities in Cinder. Users can now toggle `screenshot` and `images` flags in both the **Synchronous Scrape API** and **Asynchronous Crawl API**.
+This document outlines the implementation of image and screenshot capture capabilities in Tomoshibi. Users can now toggle `screenshot` and `images` flags in both the **Synchronous Scrape API** and **Asynchronous Crawl API**.
 
 ### Current Implementation
 
@@ -26,7 +26,7 @@ This document outlines the implementation of image and screenshot capture capabi
 We will move image-related data structures to the `internal/domain` layer to ensure they are accessible by both the Scraper and Search services (avoiding circular dependencies).
 
 ```
-cinder/
+tomoshibi/
 ├── internal/
 │   ├── domain/
 │   │   ├── scraper.go          (EXISTING - Update ScrapeResult)
@@ -344,7 +344,7 @@ Hardcoded limits in `internal/image/processor.go`:
 Since you're coming from a JS background, think of this like this:
 
 ```javascript
-// BEFORE (like current Cinder)
+// BEFORE (like current Tomoshibi)
 const results = await search("golang tutorials");
 // Returns: [ { title, url, description, ... } ]
 

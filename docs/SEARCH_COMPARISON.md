@@ -1,7 +1,7 @@
-# Search & Scrape Comparison — Cinder vs Exa vs Firecrawl (2026-08-30)
+# Search & Scrape Comparison — Tomoshibi vs Exa vs Firecrawl (2026-08-30)
 
-Backed-by-benchmark comparison of Cinder's search and scrape against Exa
-(paid API) and a self-hosted Firecrawl (`v2.11.162`). Every Cinder and
+Backed-by-benchmark comparison of Tomoshibi's search and scrape against Exa
+(paid API) and a self-hosted Firecrawl (`v2.11.162`). Every Tomoshibi and
 Firecrawl number below was measured on this machine against live local
 instances; Exa numbers are from its published free-tier limits and docs
 (its API is not load-testable here without a key).
@@ -12,13 +12,13 @@ instances; Exa numbers are from its published free-tier limits and docs
   varied real-world queries (`golang concurrency`, `svelte 5 runes`,
   `cloudflare workers durable objects`, ...), reporting success rate and
   latency percentiles.
-- Scrape: 5 concurrent `POST /v1/scrape` (Cinder) vs `POST /v2/scrape`
+- Scrape: 5 concurrent `POST /v1/scrape` (Tomoshibi) vs `POST /v2/scrape`
   (Firecrawl) of `https://go.dev/blog`, reporting status + wall time.
 - Same host, same network, same moment in time.
 
 ## Search — measured
 
-| Metric       | **Cinder (SearXNG)**                                        | **Firecrawl (self-hosted)** | Exa (cloud)                |
+| Metric       | **Tomoshibi (SearXNG)**                                        | **Firecrawl (self-hosted)** | Exa (cloud)                |
 | ------------ | ----------------------------------------------------------- | --------------------------- | -------------------------- |
 | Throughput   | **560 req/s**                                               | 1.9 req/s                   | rate-limited free tier     |
 | p50 latency  | **11 ms**                                                   | 5.4 s                       | n/a (paid)                 |
@@ -27,12 +27,12 @@ instances; Exa numbers are from its published free-tier limits and docs
 | Cost         | **$0** (self-hosted)                                        | $0 (self-hosted)            | paid API                   |
 | Backend      | SearXNG (aggregates Google/Bing/DDG/Brave/Mojeek/Wikipedia) | proprietary                 | proprietary semantic index |
 
-Cinder's search is **~300× the throughput and ~500× lower p50 latency** than
+Tomoshibi's search is **~300× the throughput and ~500× lower p50 latency** than
 self-hosted Firecrawl's search, at the same $0 cost. Firecrawl's search is
 slow because it fetches and extracts each result page rather than returning
 result metadata.
 
-### Why Cinder's search is fast
+### Why Tomoshibi's search is fast
 
 1. **Self-hosted SearXNG** — no per-query cost, no third-party rate limit;
    SearXNG aggregates many engines and handles concurrency internally.
@@ -45,7 +45,7 @@ result metadata.
 
 ## Scrape — measured (5× go.dev/blog)
 
-| Metric                                         | **Cinder**                         | **Firecrawl (self-hosted)**           |
+| Metric                                         | **Tomoshibi**                         | **Firecrawl (self-hosted)**           |
 | ---------------------------------------------- | ---------------------------------- | ------------------------------------- |
 | Success                                        | **5/5**                            | 5/5                                   |
 | Latency                                        | **7–14 ms** (Redis-cached)         | ~17 s each (no cache)                 |
@@ -53,14 +53,14 @@ result metadata.
 | JS rendering                                   | ✅ Chromedp (smart/static/dynamic) | ✅ Playwright                         |
 | Screenshots / images / schema extraction / PII | ✅                                 | partial (screenshots yes)             |
 
-Cinder's scrape is ~1,500× faster on repeat scrapes thanks to its gzip
-Redis cache; Firecrawl re-renders every request. Both render JS, but Cinder
+Tomoshibi's scrape is ~1,500× faster on repeat scrapes thanks to its gzip
+Redis cache; Firecrawl re-renders every request. Both render JS, but Tomoshibi
 additionally does deterministic CSS-selector extraction, image extraction,
 and PII redaction out of the box.
 
 ## Feature matrix
 
-| Capability                              | **Cinder**    | Exa       | Firecrawl (self-hosted) |
+| Capability                              | **Tomoshibi**    | Exa       | Firecrawl (self-hosted) |
 | --------------------------------------- | ------------- | --------- | ----------------------- |
 | Clean markdown fetch                    | ✅            | ✅        | ✅                      |
 | JS rendering (SPAs)                     | ✅ Chromedp   | ❌ static | ✅ Playwright           |
@@ -79,7 +79,7 @@ and PII redaction out of the box.
 
 ## Bottom line
 
-Cinder is now the **fastest free search+scrape stack of the three** on this
+Tomoshibi is now the **fastest free search+scrape stack of the three** on this
 machine: search at 560 req/s with 11 ms p50, scrape with a Redis cache that
 makes repeat requests near-instant, and JS rendering that matches Firecrawl.
 Exa's remaining moat is semantic search — tracked in `docs/EXA_PARITY.md`
@@ -89,15 +89,15 @@ re-rank).
 ## Reproduce
 
 ```bash
-# search benchmark (Cinder)
+# search benchmark (Tomoshibi)
 python3 scripts/search-bench.py --url http://localhost:8080/v1/search \
-  --concurrency 10 --duration 30 --label "Cinder (SearXNG)"
+  --concurrency 10 --duration 30 --label "Tomoshibi (SearXNG)"
 
 # search benchmark (Firecrawl)
 python3 scripts/search-bench.py --url http://localhost:3002/v1/search \
   --concurrency 10 --duration 30 --label "Firecrawl"
 
-# scrape burst (Cinder)
+# scrape burst (Tomoshibi)
 for i in 1 2 3 4 5; do curl -s -o /dev/null -w "%{http_code} %{time_total}s\n" \
   -X POST http://localhost:8080/v1/scrape -H 'Content-Type: application/json' \
   -d '{"url":"https://go.dev/blog","mode":"smart"}' & done; wait

@@ -50,11 +50,11 @@
 
 		<Card.Content>
 			<form
-				{...form.enhance(async ({ form: formEl, submit }) => {
+				{...form.enhance(async (formInstance) => {
 					isSubmitting = true;
 					submitError = null;
 					try {
-						await submit();
+						await formInstance.submit();
 					} catch (error) {
 						submitError = error instanceof Error ? error.message : 'An error occurred';
 					} finally {

@@ -1,4 +1,4 @@
-# 🔥 Cinder: Go for Svelte Developers
+# 🔥 Tomoshibi: Go for Svelte Developers
 
 A comprehensive guide to understanding this Go codebase, written specifically for full-stack Svelte/TypeScript developers.
 
@@ -29,7 +29,7 @@ A comprehensive guide to understanding this Go codebase, written specifically fo
 
 ## Quick Mental Model
 
-| Svelte/JS Concept         | Go Equivalent          | Cinder Example                                              |
+| Svelte/JS Concept         | Go Equivalent          | Tomoshibi Example                                              |
 | ------------------------- | ---------------------- | ----------------------------------------------------------- |
 | `npm`/`pnpm`              | `go mod`               | `go.mod`                                                    |
 | `package.json`            | `go.mod`               | Lists dependencies                                          |
@@ -51,14 +51,14 @@ A comprehensive guide to understanding this Go codebase, written specifically fo
 
 ```typescript
 // TypeScript
-const name: string = "cinder";
+const name: string = "tomoshibi";
 let count: number = 0;
 let items: string[] = ["a", "b"];
 ```
 
 ```go
 // Go (from internal/config/config.go)
-name := "cinder"           // Short declaration (type inferred)
+name := "tomoshibi"           // Short declaration (type inferred)
 var count int = 0          // Explicit declaration
 items := []string{"a", "b"} // Slice (dynamic array)
 ```
@@ -114,7 +114,7 @@ go func() {
 ## Project Structure Explained
 
 ```
-cinder/
+tomoshibi/
 ├── cmd/                    # Entry points (like SvelteKit's +page.server.ts)
 │   ├── api/main.go         # Main API server entry
 │   └── worker/main.go      # Standalone worker entry
@@ -149,7 +149,7 @@ This is a **standard Go project layout**:
 
 ```go
 // go.mod
-module github.com/standard-user/cinder  // Package name (like "name" in package.json)
+module github.com/standard-user/tomoshibi  // Package name (like "name" in package.json)
 
 go 1.25  // Go version required
 
@@ -183,8 +183,8 @@ import (
     "net/http"  // Standard library (no domain = stdlib)
 
     "github.com/gin-gonic/gin"                      // External package
-    "github.com/standard-user/cinder/internal/scraper"  // Internal package
-    "github.com/standard-user/cinder/pkg/logger"       // Our logger package
+    "github.com/standard-user/tomoshibi/internal/scraper"  // Internal package
+    "github.com/standard-user/tomoshibi/pkg/logger"       // Our logger package
 )
 ```
 
@@ -252,7 +252,7 @@ This is Go's visibility system – **no `export` keyword needed**. Just capitali
 
 ```go
 // cmd/api/main.go
-import "github.com/standard-user/cinder/internal/scraper"
+import "github.com/standard-user/tomoshibi/internal/scraper"
 
 // You access exports via package name:
 scraperService := scraper.NewService(...)  // package.ExportedFunc

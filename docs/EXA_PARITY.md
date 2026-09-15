@@ -1,8 +1,8 @@
-# Cinder vs Exa — Parity Analysis (2026-08-30)
+# Tomoshibi vs Exa — Parity Analysis (2026-08-30)
 
-Research target: make Cinder's MCP surface (via `cinder-tmcp`) as good as or
+Research target: make Tomoshibi's MCP surface (via `tomoshibi-mcp`) as good as or
 better than the **Exa MCP server** (`exa-labs/exa-mcp-server`). This document
-maps Exa's capabilities against Cinder's, records where each wins, and lists
+maps Exa's capabilities against Tomoshibi's, records where each wins, and lists
 the concrete gaps to close. Research was done against Exa's public docs and
 the live `web_search_exa` / `web_fetch_exa` tools.
 
@@ -18,7 +18,7 @@ the live `web_search_exa` / `web_fetch_exa` tools.
 Exa's core differentiator: **semantic search over its own index**, plus
 highlights and summaries that make results immediately usable by an LLM.
 
-## Cinder MCP surface (cinder-tmcp)
+## Tomoshibi MCP surface (tomoshibi-mcp)
 
 | Tool                                   | What it does                                                                                                                                                                                                                                         |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -29,36 +29,36 @@ highlights and summaries that make results immediately usable by an LLM.
 
 ## Parity table
 
-| Capability                             | Exa                               | Cinder                                     | Winner     |
+| Capability                             | Exa                               | Tomoshibi                                     | Winner     |
 | -------------------------------------- | --------------------------------- | ------------------------------------------ | ---------- |
 | Semantic (vector) search               | ✅                                | ❌ (keyword via SearXNG/Brave)             | **Exa**    |
 | Search highlights / excerpts           | ✅                                | ❌                                         | **Exa**    |
 | Search summaries                       | ✅ (advanced)                     | ✅ (extractive, LLM-free)                  | Tie        |
 | Clean markdown fetch                   | ✅                                | ✅ (readability + html-to-markdown)        | Tie        |
-| JS rendering (SPAs)                    | ❌ (static fetch)                 | ✅ (Chromedp)                              | **Cinder** |
-| Screenshots                            | ❌                                | ✅                                         | **Cinder** |
-| Image extraction                       | ❌                                | ✅ (srcset/picture/lazy, resize/re-encode) | **Cinder** |
-| Structured extraction (CSS selectors)  | ❌                                | ✅                                         | **Cinder** |
-| PII redaction                          | ❌                                | ✅                                         | **Cinder** |
-| Page actions (click/wait/scroll)       | ❌                                | ✅                                         | **Cinder** |
-| Multi-page crawling                    | Partial (subpage crawl in search) | ✅ (BFS, globs, webhooks)                  | **Cinder** |
-| Change-tracking monitors               | ❌                                | ✅                                         | **Cinder** |
+| JS rendering (SPAs)                    | ❌ (static fetch)                 | ✅ (Chromedp)                              | **Tomoshibi** |
+| Screenshots                            | ❌                                | ✅                                         | **Tomoshibi** |
+| Image extraction                       | ❌                                | ✅ (srcset/picture/lazy, resize/re-encode) | **Tomoshibi** |
+| Structured extraction (CSS selectors)  | ❌                                | ✅                                         | **Tomoshibi** |
+| PII redaction                          | ❌                                | ✅                                         | **Tomoshibi** |
+| Page actions (click/wait/scroll)       | ❌                                | ✅                                         | **Tomoshibi** |
+| Multi-page crawling                    | Partial (subpage crawl in search) | ✅ (BFS, globs, webhooks)                  | **Tomoshibi** |
+| Change-tracking monitors               | ❌                                | ✅                                         | **Tomoshibi** |
 | Batch URL fetch                        | ✅ (multi-URL fetch)              | ✅ (async batch)                           | Tie        |
 | Category filters (company/news/people) | ✅                                | ❌                                         | **Exa**    |
 | Date-range / freshness filters         | ✅                                | Partial (maxAge)                           | **Exa**    |
 | Domain filters                         | ✅                                | ✅ (include/exclude)                       | Tie        |
-| Self-hosted / no per-request cost      | ❌ (paid API)                     | ✅                                         | **Cinder** |
+| Self-hosted / no per-request cost      | ❌ (paid API)                     | ✅                                         | **Tomoshibi** |
 | Multi-step research agent              | ✅ (`agent_run`)                  | ❌ (client-side)                           | **Exa**    |
 
 ## Verdict
 
-Cinder already **beats Exa on content fidelity**: it renders JS, captures
+Tomoshibi already **beats Exa on content fidelity**: it renders JS, captures
 screenshots, extracts images, does structured extraction, redacts PII, and
 crawls — none of which Exa's fetch does. For "turn a URL into clean,
-LLM-ready content", Cinder is strictly more capable.
+LLM-ready content", Tomoshibi is strictly more capable.
 
 The gap is on the **search side**: Exa's semantic search, highlights, and
-category/date filters are its moat. Cinder's search is keyword-based
+category/date filters are its moat. Tomoshibi's search is keyword-based
 (SearXNG/Brave) — SearXNG aggregates many engines so it is stable and free,
 but it is still keyword matching, not vector similarity.
 
@@ -97,7 +97,7 @@ but it is still keyword matching, not vector similarity.
 
 ## Notes
 
-- The MCP layer itself lives in `cinder-tmcp` (TMCP + Bun) and was **not**
+- The MCP layer itself lives in `tomoshibi-mcp` (TMCP + Bun) and was **not**
   changed in this sprint; backend changes here flow through automatically.
 - Exa's `agent_run` is an LLM-orchestration feature, not a scraping feature;
   parity there is a client concern (the AI assistant already provides the

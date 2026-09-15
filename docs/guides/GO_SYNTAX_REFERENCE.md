@@ -13,7 +13,7 @@ A compact reference for Go syntax patterns, shorthands, and idioms found in this
 ```go
 // Type inferred from right side
 x := 5                          // int
-name := "cinder"                // string
+name := "tomoshibi"                // string
 items := []string{"a", "b"}     // slice of strings
 m := map[string]int{}           // empty map
 
@@ -26,7 +26,7 @@ url, err := parseURL(input)
 
 ```go
 var x int                       // Zero value (0)
-var name string = "cinder"      // With initial value
+var name string = "tomoshibi"      // With initial value
 var Log *slog.Logger            // Package-level (can't use :=)
 
 // Multiple at once

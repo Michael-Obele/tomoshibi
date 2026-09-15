@@ -1,6 +1,6 @@
 # Performance Refactor: A Guide for JS Developers
 
-We've just optimized the Cinder scraping engine. If you're coming from a Node.js/JS background (Puppeteer/Playwright), here is what changed and why.
+We've just optimized the Tomoshibi scraping engine. If you're coming from a Node.js/JS background (Puppeteer/Playwright), here is what changed and why.
 
 > [!NOTE]
 > For a full walkthrough of the current codebase structure, see the [Code Walkthrough](CODE_WALKTHROUGH.md) or the [Documentation Index](INDEX.md).

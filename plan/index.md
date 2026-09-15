@@ -1,13 +1,13 @@
 ---
-title: Cinder (Go Scraper Backend)
+title: Tomoshibi (Go Scraper Backend)
 status: planning
 owner: standard-user
-tags: [go, gin, scraping, colly, chromedp, firecrawl, redis, asynq, cinder]
+tags: [go, gin, scraping, colly, chromedp, firecrawl, redis, asynq, tomoshibi]
 ---
 
-# Cinder (Go Scraper Backend)
+# Tomoshibi (Go Scraper Backend)
 
-A high-performance, self-hosted web scraping API built with Go. **Cinder** is designed to be a drop-in alternative to Firecrawl, capable of turning any website (static or JS-rendered) into LLM-ready markdown.
+A high-performance, self-hosted web scraping API built with Go. **Tomoshibi** is designed to be a drop-in alternative to Firecrawl, capable of turning any website (static or JS-rendered) into LLM-ready markdown.
 
 ## 🎯 Goal
 

@@ -1,6 +1,6 @@
-# Cinder 🔥 - Gemini Context
+# Tomoshibi 🔥 - Gemini Context
 
-Cinder is a high-performance, self-hosted web scraping API built with Go, designed as a drop-in alternative to Firecrawl. It converts complex websites into LLM-ready markdown.
+Tomoshibi is a high-performance, self-hosted web scraping API built with Go, designed as a drop-in alternative to Firecrawl. It converts complex websites into LLM-ready markdown.
 
 ## 🏗️ Project Overview
 
@@ -21,7 +21,7 @@ Cinder is a high-performance, self-hosted web scraping API built with Go, design
 - `internal/config/`: Configuration management using Viper/Godotenv.
 - `pkg/logger/`: Centralized structured logging (slog).
 - `docs/`: Extensive project documentation and feature specs.
-- `cinder-js/` & `cinder-js-gpt/`: Related JS/Bun implementations or research.
+- `tomoshibi-js/` & `tomoshibi-js-gpt/`: Related JS/Bun implementations or research.
 
 ## 🚀 Building and Running
 
@@ -37,10 +37,10 @@ go run ./cmd/api
 ### Docker
 ```bash
 # Build the image
-docker build -t cinder .
+docker build -t tomoshibi .
 
 # Run the container
-docker run -p 8080:8080 -e SERVER_MODE=release cinder
+docker run -p 8080:8080 -e SERVER_MODE=release tomoshibi
 ```
 
 ### Testing

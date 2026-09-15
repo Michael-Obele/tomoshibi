@@ -1,6 +1,6 @@
 # 🛠️ Svelte Developer Workflow: Run, Use, Test & Debug
 
-Welcome to the day-to-day workflow guide! As a Svelte developer working on Cinder, you're bridging the gap between a robust Go backend and a sleek Svelte/JS frontend ecosystem. This guide tells you exactly how to spin things up, handle integrations, and troubleshoot when things go wrong.
+Welcome to the day-to-day workflow guide! As a Svelte developer working on Tomoshibi, you're bridging the gap between a robust Go backend and a sleek Svelte/JS frontend ecosystem. This guide tells you exactly how to spin things up, handle integrations, and troubleshoot when things go wrong.
 
 > [!IMPORTANT]
 > This guide focuses on **daily development tasks**. For a deeper understanding of the code, see the [Go for Svelte Devs](GO_FOR_SVELTE_DEVS.md) guide and the [Documentation Index](INDEX.md).
@@ -9,7 +9,7 @@ Welcome to the day-to-day workflow guide! As a Svelte developer working on Cinde
 
 ## 🏃 1. How to Run the Project
 
-The Cinder project uses a **monolith pattern** for local development. You do not need to start up five different microservices.
+The Tomoshibi project uses a **monolith pattern** for local development. You do not need to start up five different microservices.
 
 ### Running the Go Backend
 
@@ -29,7 +29,7 @@ go run cmd/api/main.go
 
 ### Running the Frontend / JS Services
 
-If you are working in `cinder-js` or a SvelteKit consuming app:
+If you are working in `tomoshibi-js` or a SvelteKit consuming app:
 
 ```bash
 # In your Svelte/JS directory
@@ -66,7 +66,7 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
   if (!response.ok) {
     const errorData = await response.json();
-    console.error("Cinder API Error:", errorData);
+    console.error("Tomoshibi API Error:", errorData);
     return { error: "Failed to scrape" };
   }
 
@@ -191,7 +191,7 @@ Don't just use `fmt.Println` (the Go equivalent of `console.log`). Use the debug
      "version": "0.2.0",
      "configurations": [
        {
-         "name": "Launch Cinder API",
+         "name": "Launch Tomoshibi API",
          "type": "go",
          "request": "launch",
          "mode": "auto",
@@ -211,7 +211,7 @@ Don't just use `fmt.Println` (the Go equivalent of `console.log`). Use the debug
 If you must "console.log" something quickly in Go, use the structured logger instead of `fmt.Println`:
 
 ```go
-import "github.com/standard-user/cinder/pkg/logger"
+import "github.com/standard-user/tomoshibi/pkg/logger"
 
 // Equivalent to console.log("Data:", myVar)
 logger.Log.Info("Debugging", "myVar", myVar)
@@ -224,7 +224,7 @@ Make sure your server is running with `LOG_LEVEL=debug` if you are using `logger
 
 ### Upstash Redis (Free Tier Friendly)
 
-You don't need a local Redis server. Cinder can auto-configure Upstash Redis from the standard env vars:
+You don't need a local Redis server. Tomoshibi can auto-configure Upstash Redis from the standard env vars:
 
 ```bash
 # In your .env file — just paste from Upstash console:

@@ -45,4 +45,4 @@ Since we are deploying on Leapcell, the choice of Redis provider significantly i
 - Or, use **Leapcell Redis** if your "Serverless Duration" allows, as it removes the network latency bottleneck.
 
 **Verdict:**
-Use **Upstash** with **TLS enabled** (configured in Cinder). It's the standard for serverless Redis. The Monolith architecture saves you because the worker stops polling when the container spins down.
+Use **Upstash** with **TLS enabled** (configured in Tomoshibi). It's the standard for serverless Redis. The Monolith architecture saves you because the worker stops polling when the container spins down.

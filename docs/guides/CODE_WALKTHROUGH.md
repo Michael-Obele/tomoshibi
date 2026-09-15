@@ -1,6 +1,6 @@
-# 📂 Cinder Codebase Walkthrough
+# 📂 Tomoshibi Codebase Walkthrough
 
-A detailed file-by-file exploration of the Cinder codebase with annotated code examples.
+A detailed file-by-file exploration of the Tomoshibi codebase with annotated code examples.
 
 > [!TIP]
 > This is a deep dive. For a high-level overview, check the [Architecture Guide](ARCHITECTURE.md) or the [Project Tour](PROJECT_TOUR.md).
@@ -27,13 +27,13 @@ import (
     "os"
 
     // Our internal packages
-    "github.com/standard-user/cinder/internal/api"
-    "github.com/standard-user/cinder/internal/api/handlers"
-    "github.com/standard-user/cinder/internal/config"
-    "github.com/standard-user/cinder/internal/scraper"
-    "github.com/standard-user/cinder/internal/search"
-    "github.com/standard-user/cinder/internal/worker"
-    "github.com/standard-user/cinder/pkg/logger"
+    "github.com/standard-user/tomoshibi/internal/api"
+    "github.com/standard-user/tomoshibi/internal/api/handlers"
+    "github.com/standard-user/tomoshibi/internal/config"
+    "github.com/standard-user/tomoshibi/internal/scraper"
+    "github.com/standard-user/tomoshibi/internal/search"
+    "github.com/standard-user/tomoshibi/internal/worker"
+    "github.com/standard-user/tomoshibi/pkg/logger"
 
     // External packages
     "github.com/hibiken/asynq"
@@ -952,7 +952,7 @@ func Init(level string) {
 **Usage elsewhere**:
 
 ```go
-import "github.com/standard-user/cinder/pkg/logger"
+import "github.com/standard-user/tomoshibi/pkg/logger"
 
 logger.Log.Info("Starting server", "port", 8080)
 logger.Log.Error("Something failed", "error", err)

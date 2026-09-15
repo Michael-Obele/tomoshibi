@@ -2,7 +2,7 @@
 
 ## Phase 1: Setup & Static Scraping
 
-- [x] **Init Project**: Run `go mod init github.com/standard-user/cinder`.
+- [x] **Init Project**: Run `go mod init github.com/standard-user/tomoshibi`.
 - [x] **Install Deps**: `go get -u github.com/gin-gonic/gin github.com/gocolly/colly/v2 github.com/spf13/viper github.com/brianvoe/gofakeit/v6`.
 - [x] **Config**: Create `internal/config` package to load `env` variables using Viper.
 - [x] **Logger**: Set up a structured logger (slog or zap) in `pkg/logger`.
@@ -50,7 +50,7 @@
 - [x] **Stability**: Periodic browser restarts (`CHROME_RECYCLE_AFTER`, default 100) to prevent memory leaks.
 - [x] **Resilience**: Tune Redis timeouts for high-latency environments.
 
-## Phase 6: Cinder v2 Feature Sprint (2026-08-01)
+## Phase 6: Tomoshibi v2 Feature Sprint (2026-08-01)
 
 - [x] **Core Quality**: readability main-content extraction, full-options cache keys, ScreenshotOptions, UA rotation, parallel blob fetch, browser recycling.
 - [x] **Image Engine v2**: srcset/lazy/picture extraction, optimizer unwrap, quality ranking, dimension sniffing, resize/re-encode.

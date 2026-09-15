@@ -1,10 +1,10 @@
 # Interactive API Documentation (Swagger)
 
-Cinder provides interactive API documentation out-of-the-box using Swagger (via Swaggo). This allows you to view the API schema and test endpoints directly from your browser.
+Tomoshibi provides interactive API documentation out-of-the-box using Swagger (via Swaggo). This allows you to view the API schema and test endpoints directly from your browser.
 
 ## Accessing the Swagger UI
 
-1. Start the Cinder API server:
+1. Start the Tomoshibi API server:
    ```bash
    go run cmd/api/main.go
    ```
@@ -12,7 +12,7 @@ Cinder provides interactive API documentation out-of-the-box using Swagger (via 
    ```http
    http://localhost:8080/swagger/index.html
    ```
-   *(Adjust the port if you have configured Cinder to run on a port other than `8080`)*.
+   *(Adjust the port if you have configured Tomoshibi to run on a port other than `8080`)*.
 
 The Swagger interface allows you to view all available endpoints, required parameters, and response types. You can even execute actual test requests (e.g., triggering a `/v1/scrape`) directly against your local running instance.
 

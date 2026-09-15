@@ -35,7 +35,7 @@ discovered while following pages.
 ### 5. Signed completion webhooks
 
 `webhook_url` + `webhook_secret` POST the full `CrawlResult` on completion
-with header `X-Cinder-Signature: sha256=<hmac-hex>`. Three delivery attempts
+with header `X-Tomoshibi-Signature: sha256=<hmac-hex>`. Three delivery attempts
 with backoff; 4xx responses are not retried. Delivery failure never fails the
 crawl — it's logged and visible via the task result.
 
@@ -64,7 +64,7 @@ counter keeps the queue from carrying more than `limit` unprocessed entries.
   "limit": 50,
   "include_paths": ["/docs/*"],
   "exclude_paths": ["/docs/internal/*", "/login"],
-  "webhook_url": "https://myapp.example.com/hooks/cinder",
+  "webhook_url": "https://myapp.example.com/hooks/tomoshibi",
   "webhook_secret": "s3cret"
 }
 ```

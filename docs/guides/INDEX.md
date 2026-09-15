@@ -1,6 +1,6 @@
-# 📚 Cinder Documentation Index
+# 📚 Tomoshibi Documentation Index
 
-Welcome to the Cinder documentation! This guide is designed to help **full-stack Svelte/TypeScript developers** understand this Go codebase.
+Welcome to the Tomoshibi documentation! This guide is designed to help **full-stack Svelte/TypeScript developers** understand this Go codebase.
 
 ---
 
@@ -55,7 +55,7 @@ If you're new to Go, read these in order:
 
 ### [SVELTE_DEV_WORKFLOW.md](SVELTE_DEV_WORKFLOW.md)
 
-**Audience**: Svelte/TypeScript developers actively working on this project (cinder or cinder-js)
+**Audience**: Svelte/TypeScript developers actively working on this project (tomoshibi or tomoshibi-js)
 
 **Covers**:
 
@@ -110,7 +110,7 @@ If you're new to Go, read these in order:
 ## Project Architecture
 
 ```
-cinder/
+tomoshibi/
 ├── cmd/                    # Entry points (executables)
 │   ├── api/main.go         # HTTP server + embedded worker
 │   └── worker/main.go      # Standalone worker
@@ -135,7 +135,7 @@ cinder/
 
 ## Key Concepts Map
 
-| SvelteKit Concept              | Go Equivalent              | Cinder Location                |
+| SvelteKit Concept              | Go Equivalent              | Tomoshibi Location                |
 | ------------------------------ | --------------------------- | ------------------------------ |
 | `+page.server.ts`              | Handler function            | `internal/api/handlers/*.go`  |
 | `hooks.server.ts`              | Middleware                  | `internal/api/middleware/`     |
