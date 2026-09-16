@@ -88,3 +88,4 @@ node_modules/
 .superpowers/sdd/
 docs/superpowers
 test_reports
+plan/*
