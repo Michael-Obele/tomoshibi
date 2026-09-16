@@ -1,9 +1,6 @@
 import * as v from "valibot";
 import { query, form, command, getRequestEvent } from "$app/server";
-import {
-  PRIVATE_TOMOSHI_BACKEND_URL,
-  PRIVATE_TOMOSHI_API_KEY,
-} from "$env/static/private";
+import { PRIVATE_TOMOSHI_BACKEND_URL } from "$env/static/private";
 import { env } from "$env/dynamic/private";
 import { error } from "@sveltejs/kit";
 import { dev } from "$app/environment";
@@ -277,12 +274,10 @@ async function fetchTomoshi(endpoint: string, method: string, body?: any) {
     "Content-Type": "application/json",
   };
 
-  // Attach API key when configured (Go backend uses X-API-Key)
-  if (
-    PRIVATE_TOMOSHI_API_KEY &&
-    PRIVATE_TOMOSHI_API_KEY !== "your_secret_key"
-  ) {
-    headers["X-API-Key"] = PRIVATE_TOMOSHI_API_KEY;
+  // Attach API key when configured (Go backend uses X-API-Key) — optional
+  const apiKey = env.PRIVATE_TOMOSHI_API_KEY || env.PRIVATE_CINDER_API_KEY;
+  if (apiKey && apiKey !== "your_secret_key") {
+    headers["X-API-Key"] = apiKey;
   }
 
   const bodyStr = body ? JSON.stringify(body) : undefined;
