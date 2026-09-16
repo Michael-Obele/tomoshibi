@@ -11,6 +11,7 @@ import { getConfig } from "./config.js";
 export interface ScreenshotOpts {
   width?: number;
   height?: number;
+  /** Capture the whole scrollable page. Defaults to true; false = viewport only. */
   full_page?: boolean;
   format?: "jpeg" | "png";
   quality?: number;
@@ -59,6 +60,8 @@ export interface ScreenshotData {
   url?: string;
   format?: string;
   full_page?: boolean;
+  /** True when the page exceeded the server's height cap and was clipped. */
+  truncated?: boolean;
   width?: number;
   height?: number;
   size_bytes?: number;

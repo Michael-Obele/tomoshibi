@@ -46,7 +46,9 @@ const ExtractScrapeShape = v.object({
   screenshot: v.optional(
     v.pipe(
       v.boolean(),
-      v.description("Capture a screenshot (needs dynamic/smart)"),
+      v.description(
+        "Capture a full-page screenshot (waits for the page to finish loading; needs dynamic/smart)",
+      ),
     ),
     false,
   ),
@@ -55,13 +57,18 @@ const ExtractScrapeShape = v.object({
       v.object({
         width: v.optional(v.number()),
         height: v.optional(v.number()),
-        full_page: v.optional(v.boolean()),
+        full_page: v.optional(
+          v.pipe(
+            v.boolean(),
+            v.description("default true; false captures the viewport only"),
+          ),
+        ),
         format: v.optional(v.picklist(["jpeg", "png"])),
         quality: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(100))),
         wait_selector: v.optional(v.string()),
       }),
       v.description(
-        "Screenshot configuration (width, height, full_page, format, quality, wait_selector)",
+        "Screenshot configuration (width, height, full_page — default true, format, quality, wait_selector)",
       ),
     ),
   ),
@@ -215,7 +222,10 @@ const ExtractMultiScrapeShape = v.object({
     "smart",
   ),
   screenshot: v.optional(
-    v.pipe(v.boolean(), v.description("Capture a screenshot")),
+    v.pipe(
+      v.boolean(),
+      v.description("Capture a full-page screenshot (waits for load)"),
+    ),
     false,
   ),
   screenshot_opts: v.optional(
@@ -223,12 +233,14 @@ const ExtractMultiScrapeShape = v.object({
       v.object({
         width: v.optional(v.number()),
         height: v.optional(v.number()),
-        full_page: v.optional(v.boolean()),
+        full_page: v.optional(
+          v.pipe(v.boolean(), v.description("default true")),
+        ),
         format: v.optional(v.picklist(["jpeg", "png"])),
         quality: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(100))),
         wait_selector: v.optional(v.string()),
       }),
-      v.description("Screenshot configuration"),
+      v.description("Screenshot configuration (full_page defaults to true)"),
     ),
   ),
   images: v.optional(
@@ -409,10 +421,17 @@ export function createExtractHandler(client: TomoshiClient) {
           lines.push("", "## Screenshot", "");
           if (result.screenshot.url)
             lines.push(`- [screenshot](${result.screenshot.url})`);
-          else if (result.screenshot.blob)
+          else if (result.screenshot.blob) {
+            const shot = result.screenshot;
+            const dims =
+              shot.width && shot.height ? `, ${shot.width}x${shot.height}` : "";
+            const clipped = shot.truncated
+              ? ", truncated at server height cap"
+              : "";
             lines.push(
-              `- screenshot captured (base64 ${result.screenshot.format ?? ""}${result.screenshot.size_bytes ? `, ${result.screenshot.size_bytes} bytes` : ""})`,
+              `- screenshot captured (base64 ${shot.format ?? ""}${dims}${shot.size_bytes ? `, ${shot.size_bytes} bytes` : ""}${clipped})`,
             );
+          }
         }
         if (result.metadata && Object.keys(result.metadata).length > 0) {
           lines.push("", "## Metadata", "");
@@ -497,10 +516,19 @@ export function createExtractHandler(client: TomoshiClient) {
             lines.push("", "### Screenshot", "");
             if (item.screenshot.url)
               lines.push(`- [screenshot](${item.screenshot.url})`);
-            else if (item.screenshot.blob)
+            else if (item.screenshot.blob) {
+              const shot = item.screenshot;
+              const dims =
+                shot.width && shot.height
+                  ? `, ${shot.width}x${shot.height}`
+                  : "";
+              const clipped = shot.truncated
+                ? ", truncated at server height cap"
+                : "";
               lines.push(
-                `- screenshot captured (base64 ${item.screenshot.format ?? ""}${item.screenshot.size_bytes ? `, ${item.screenshot.size_bytes} bytes` : ""})`,
+                `- screenshot captured (base64 ${shot.format ?? ""}${dims}${shot.size_bytes ? `, ${shot.size_bytes} bytes` : ""}${clipped})`,
               );
+            }
           }
           if (item.metadata && Object.keys(item.metadata).length > 0) {
             lines.push("", "### Metadata", "");
