@@ -14,14 +14,28 @@ func TestResolveScreenshotParams_Defaults(t *testing.T) {
 	if p.width != 1920 || p.height != 1080 {
 		t.Errorf("expected default viewport 1920x1080, got %dx%d", p.width, p.height)
 	}
-	if p.format != "jpeg" || p.quality != 90 || p.fullPage {
+	// Full page is the default: asking for a screenshot asks for the page,
+	// not for whatever happens to fit the viewport.
+	if p.format != "jpeg" || p.quality != 90 || !p.fullPage {
 		t.Errorf("unexpected defaults: format=%s quality=%d fullPage=%v", p.format, p.quality, p.fullPage)
+	}
+}
+
+func TestResolveScreenshotParams_FullPageOptOut(t *testing.T) {
+	if p := resolveScreenshotParams(&domain.ScreenshotOptions{}); !p.fullPage {
+		t.Error("full page should stay the default when full_page is omitted")
+	}
+	if p := resolveScreenshotParams(&domain.ScreenshotOptions{FullPage: boolPtr(false)}); p.fullPage {
+		t.Error("explicit full_page=false should capture the viewport only")
+	}
+	if p := resolveScreenshotParams(&domain.ScreenshotOptions{FullPage: boolPtr(true)}); !p.fullPage {
+		t.Error("explicit full_page=true should stay full page")
 	}
 }
 
 func TestResolveScreenshotParams_AppliesAndClamps(t *testing.T) {
 	opts := &domain.ScreenshotOptions{
-		Width: 800, Height: 600, FullPage: true, Format: "png",
+		Width: 800, Height: 600, FullPage: boolPtr(true), Format: "png",
 		Quality: 150, WaitSelector: "#app",
 	}
 	p := resolveScreenshotParams(opts)
@@ -33,6 +47,83 @@ func TestResolveScreenshotParams_AppliesAndClamps(t *testing.T) {
 	}
 	if p.quality != 90 {
 		t.Errorf("quality 150 should clamp to default 90, got %d", p.quality)
+	}
+}
+
+// boolPtr is defined in content_clean_test.go; screenshots reuse it so
+// options can express "unset" distinctly from "explicitly false" — the
+// full_page default depends on that difference.
+
+func TestClampScreenshotMaxHeight(t *testing.T) {
+	tests := []struct {
+		name string
+		in   int
+		want int
+	}{
+		{"zero uses default", 0, defaultScreenshotMaxHeight},
+		{"negative uses default", -5, defaultScreenshotMaxHeight},
+		{"valid value passes through", 8000, 8000},
+		{"oversized value clamps", maxScreenshotMaxHeight + 1, maxScreenshotMaxHeight},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := clampScreenshotMaxHeight(tt.in); got != tt.want {
+				t.Errorf("clampScreenshotMaxHeight(%d) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestClampScreenshotHeight(t *testing.T) {
+	tests := []struct {
+		name          string
+		height        int
+		max           int
+		wantHeight    int
+		wantTruncated bool
+	}{
+		{"short page passes through", 4000, 16384, 4000, false},
+		{"page at the cap passes through", 16384, 16384, 16384, false},
+		{"tall page clamps and flags", 26000, 16384, 16384, true},
+		{"zero cap disables clamping", 26000, 0, 26000, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotHeight, gotTruncated := clampScreenshotHeight(tt.height, tt.max)
+			if gotHeight != tt.wantHeight || gotTruncated != tt.wantTruncated {
+				t.Errorf("clampScreenshotHeight(%d, %d) = (%d, %v), want (%d, %v)",
+					tt.height, tt.max, gotHeight, gotTruncated, tt.wantHeight, tt.wantTruncated)
+			}
+		})
+	}
+}
+
+func TestRequestTrackerTracksInFlightRequests(t *testing.T) {
+	tracker := newRequestTracker()
+	if tracker.busy() {
+		t.Fatal("new tracker should be idle")
+	}
+
+	tracker.start("req-1")
+	if !tracker.busy() {
+		t.Fatal("tracker should be busy while a request is in flight")
+	}
+
+	// Redirects re-fire RequestWillBeSent for the same request ID; the
+	// tracker must still go idle after the single LoadingFinished.
+	tracker.start("req-1")
+	tracker.finish("req-1")
+	if tracker.busy() {
+		t.Error("duplicate starts must not outlive the single finish")
+	}
+
+	// A failed request releases its slot too.
+	tracker.start("req-2")
+	tracker.finish("req-2")
+	if tracker.busy() {
+		t.Error("failed request should release its slot")
 	}
 }
 

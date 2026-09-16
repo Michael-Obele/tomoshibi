@@ -131,7 +131,7 @@ func run() error {
 	}
 
 	collyScraper := scraper.NewCollyScraper()
-	chromedpScraper := scraper.NewChromedpScraperWithLimit(cfg.App.ChromeRecycleAfter)
+	chromedpScraper := scraper.NewChromedpScraperWithConfig(cfg.App.ChromeRecycleAfter, cfg.App.ScreenshotMaxHeight)
 	defer chromedpScraper.Close()
 	scraperService := scraper.NewService(collyScraper, chromedpScraper, redisClient)
 

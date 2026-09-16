@@ -26,21 +26,26 @@ type ImageData struct {
 
 // ScreenshotData represents a captured page screenshot.
 type ScreenshotData struct {
-	Blob       string    `json:"blob,omitempty"`
-	URL        string    `json:"url,omitempty"`
-	Format     string    `json:"format"`
-	Width      int       `json:"width"`
-	Height     int       `json:"height"`
-	FullPage   bool      `json:"full_page"`
+	Blob     string `json:"blob,omitempty"`
+	URL      string `json:"url,omitempty"`
+	Format   string `json:"format"`
+	Width    int    `json:"width"`
+	Height   int    `json:"height"`
+	FullPage bool   `json:"full_page"`
+	// Truncated reports that the page was taller than the configured
+	// screenshot height cap, so the capture covers the top of the page only.
+	Truncated  bool      `json:"truncated,omitempty"`
 	SizeBytes  int64     `json:"size_bytes"`
 	CapturedAt time.Time `json:"captured_at"`
 }
 
 // ScreenshotOptions configures screenshot capture behavior.
 type ScreenshotOptions struct {
-	Width        int    `json:"width,omitempty"`
-	Height       int    `json:"height,omitempty"`
-	FullPage     bool   `json:"full_page,omitempty"`
+	Width  int `json:"width,omitempty"`
+	Height int `json:"height,omitempty"`
+	// FullPage captures the whole scrollable page. It defaults to true when
+	// omitted; set it to false for a viewport-sized capture.
+	FullPage     *bool  `json:"full_page,omitempty"`
 	Format       string `json:"format,omitempty"` // "jpeg" (default) or "png"
 	Quality      int    `json:"quality,omitempty"`
 	WaitSelector string `json:"wait_selector,omitempty"`

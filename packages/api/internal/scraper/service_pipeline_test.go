@@ -97,8 +97,9 @@ func TestScrape_ActionsForceDynamic(t *testing.T) {
 // waste a static fetch when a screenshot is requested — only a browser can
 // produce one.
 //
-// It also pins the side effect of that early return: the result skips
-// enrichment and is never cached.
+// The pipeline still runs after the browser capture, so enrichment applies to
+// screenshot requests too; only the cache write is skipped, because the blob
+// is large and every capture is time-sensitive.
 func TestScrape_SmartScreenshotGoesStraightToDynamic(t *testing.T) {
 	colly := &countingScraper{result: newMockResult("colly")}
 	chromedp := &countingScraper{result: newMockResult("chromedp")}
@@ -107,6 +108,9 @@ func TestScrape_SmartScreenshotGoesStraightToDynamic(t *testing.T) {
 
 	result, err := svc.Scrape(context.Background(), "https://example.com", "smart", domain.ScrapeOptions{
 		Screenshot: true,
+		ExtractSchema: map[string]domain.ExtractField{
+			"headline": {Selector: "h1"},
+		},
 	})
 	if err != nil {
 		t.Fatalf("Scrape returned an error: %v", err)
@@ -117,8 +121,11 @@ func TestScrape_SmartScreenshotGoesStraightToDynamic(t *testing.T) {
 	if n := colly.calls.Load(); n != 0 {
 		t.Errorf("the static engine ran %d time(s) before the screenshot", n)
 	}
+	if result.Extracted["headline"] != "Example" {
+		t.Errorf("schema extraction did not run for a screenshot request: extracted = %v", result.Extracted)
+	}
 	if cache.sets != 0 {
-		t.Errorf("cache writes = %d; screenshot results take an early return and are not cached", cache.sets)
+		t.Errorf("cache writes = %d; screenshot results are not cached", cache.sets)
 	}
 }
 

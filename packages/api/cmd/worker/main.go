@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hibiken/asynq"
-	"github.com/redis/go-redis/v9"
 	"github.com/Michael-Obele/tomoshibi/internal/config"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
 	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
+	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func run() (int, error) {
 	defer redisClient.Close()
 
 	collyScraper := scraper.NewCollyScraper()
-	chromedpScraper := scraper.NewChromedpScraper()
+	chromedpScraper := scraper.NewChromedpScraperWithConfig(cfg.App.ChromeRecycleAfter, cfg.App.ScreenshotMaxHeight)
 	defer chromedpScraper.Close()
 	scraperService := scraper.NewService(collyScraper, chromedpScraper, redisClient)
 

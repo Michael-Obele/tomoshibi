@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/extract"
 	"github.com/Michael-Obele/tomoshibi/internal/image"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -166,10 +166,12 @@ func (s *Service) Scrape(
 	case "static":
 		result, err = runStatic()
 	case "smart":
-		// Fallthrough to smart logic
-		// If screenshot is requested, we MUST use dynamic.
+		// A screenshot needs a real browser, so skip the static attempt.
+		// The pipeline continues below (enrichment still applies); caching
+		// is skipped for screenshot results at step 4.
 		if opts.Screenshot {
-			return runDynamic()
+			result, err = runDynamic()
+			break
 		}
 
 		// 1. Try static first (fast & cheap)
@@ -332,8 +334,9 @@ func (s *Service) Scrape(
 		}
 	}
 
-	// 4. Save to Cache
-	if s.cache != nil {
+	// 4. Save to Cache (screenshots are excluded: blobs are large and every
+	// capture is time-sensitive, so a cached one is a liability).
+	if s.cache != nil && !opts.Screenshot {
 		data, err := json.Marshal(result)
 		if err == nil {
 			// Compress data

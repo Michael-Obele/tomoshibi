@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"unicode"
 
-	"github.com/gin-gonic/gin"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
+	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -62,9 +62,10 @@ type MultiScrapeResponse struct {
 
 // ScreenshotOpts is the wire format for screenshot configuration.
 type ScreenshotOpts struct {
-	Width        int    `json:"width,omitempty"`
-	Height       int    `json:"height,omitempty"`
-	FullPage     bool   `json:"full_page,omitempty"`
+	Width  int `json:"width,omitempty"`
+	Height int `json:"height,omitempty"`
+	// FullPage defaults to true when omitted; false captures the viewport only.
+	FullPage     *bool  `json:"full_page,omitempty"`
 	Format       string `json:"format,omitempty"`
 	Quality      int    `json:"quality,omitempty"`
 	WaitSelector string `json:"wait_selector,omitempty"`
@@ -170,7 +171,7 @@ func isValidURL(s string) bool {
 // @Param        urls             query     string  false  "JSON array alternative: use POST body {\"urls\": [\"https://a.com\",\"https://b.com\"]} for batch sync (max 10)"
 // @Param        mode             query     string  false  "Scraping mode: smart, static, dynamic"
 // @Param        render           query     bool    false  "Deprecated: use mode=dynamic instead"
-// @Param        screenshot       query     bool    false  "Capture full-page screenshot (requires mode=dynamic or smart)"
+// @Param        screenshot       query     bool    false  "Capture a full-page screenshot (waits for the page to finish loading; requires mode=dynamic or smart)"
 // @Param        images           query     bool    false  "Extract images from the page"
 // @Param        image_format     query     string  false  "Image transport: 'url' (default, metadata only) or 'blob' (base64 data URIs)"
 // @Param        max_images       query     int     false  "Maximum images to extract (default: 10)"

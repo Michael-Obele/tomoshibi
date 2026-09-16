@@ -46,6 +46,11 @@ type AppConfig struct {
 	// scrapes to bound browser memory growth (0 = default 100).
 	ChromeRecycleAfter int `mapstructure:"chrome_recycle_after"`
 
+	// ScreenshotMaxHeight caps full-page screenshot height in CSS pixels.
+	// Taller pages are captured top-anchored and flagged truncated
+	// (0 = default 16384, values above 32768 are clamped).
+	ScreenshotMaxHeight int `mapstructure:"screenshot_max_height"`
+
 	// APIKeys, when non-empty, enables X-API-Key auth on /v1/*.
 	APIKeys []string `mapstructure:"api_keys"`
 
@@ -62,7 +67,7 @@ type RedisConfig struct {
 	// Upstash REST API credentials.
 	// When set (and REDIS_URL is empty), the standard Redis URL is
 	// derived automatically as:
-		//   rediss://default:<RestToken>@<host-from-RestURL>:7434
+	//   rediss://default:<RestToken>@<host-from-RestURL>:7434
 	RestURL   string `mapstructure:"rest_url"`
 	RestToken string `mapstructure:"rest_token"`
 }
@@ -83,6 +88,7 @@ func Load() (*Config, error) {
 	v.SetDefault("server.mode", "debug")
 	v.SetDefault("app.loglevel", "info")
 	v.SetDefault("app.chrome_recycle_after", 100)
+	v.SetDefault("app.screenshot_max_height", 16384)
 	v.SetDefault("app.api_keys", "")
 	v.SetDefault("app.rate_limit_rpm", 0)
 	v.SetDefault("redis.url", "")
