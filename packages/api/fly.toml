@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for tomoshibi on 2026-09-16T12:35:21Z
+# fly.toml app configuration file generated for tomoshibi on 2026-09-16T14:49:39Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
 app = 'tomoshibi'
-primary_region = 'cdg'
+primary_region = 'lhr'
 kill_timeout = '25s'
 
 [build]
@@ -19,17 +19,11 @@ kill_timeout = '25s'
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
   processes = ['app']
-
-  [[http_service.checks]]
-    interval = '30s'
-    timeout = '5s'
-    grace_period = '45s'
-    method = 'GET'
-    path = '/health'
+  checks = [{ grace_period = '45s', interval = '30s', method = 'GET', path = '/health', timeout = '5s' }]
 
 [[vm]]
   cpu_kind = 'shared'
