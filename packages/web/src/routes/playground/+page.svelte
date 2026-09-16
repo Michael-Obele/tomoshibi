@@ -206,6 +206,26 @@
       ? selectedHistoryItem.data
       : searchWeb.result,
   );
+  let displayedMapResult = $derived(
+    selectedHistoryItem?.type === "map" && selectedHistoryItem.data
+      ? selectedHistoryItem.data
+      : null,
+  );
+  let displayedBatchResult = $derived(
+    selectedHistoryItem?.type === "batch" && selectedHistoryItem.data
+      ? selectedHistoryItem.data
+      : null,
+  );
+  let displayedMonitorResult = $derived(
+    selectedHistoryItem?.type === "monitor" && selectedHistoryItem.data
+      ? selectedHistoryItem.data
+      : null,
+  );
+  let displayedCrawlResult = $derived(
+    selectedHistoryItem?.type === "crawl" && selectedHistoryItem.data
+      ? selectedHistoryItem.data
+      : null,
+  );
   let isCurrentlyLoading = $derived(
     !!scrapeUrl.pending ||
       !!crawlUrl.pending ||
@@ -251,6 +271,7 @@
               crawlId = item.data.id;
             }
           }}
+          title="Restore {item.type} result"
         >
           <div class="mb-1.5 flex items-center gap-2">
             {#if item.type === "scrape"}

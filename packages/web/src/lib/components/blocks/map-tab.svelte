@@ -7,6 +7,7 @@
     ExternalLink,
     Search,
     Copy,
+    Clock,
   } from "@lucide/svelte";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -26,8 +27,14 @@
     addToHistory: (item: any) => Promise<void>;
   }>();
 
-  let result = $derived(mapSite.result as any);
-  let pending = $derived(!!mapSite.pending);
+  let liveResult = $derived(mapSite.result as any);
+  let result = $derived(
+    selectedHistoryItem?.type === "map" && selectedHistoryItem?.data
+      ? selectedHistoryItem.data
+      : liveResult,
+  );
+  let isHistoryView = $derived(!!selectedHistoryItem && selectedHistoryItem.type === "map");
+  let pending = $derived(!!mapSite.pending && !isHistoryView);
   let links = $derived(result?.links ?? []);
   let count = $derived(result?.count ?? links.length);
 
@@ -195,6 +202,7 @@
         <Map class="size-4 text-primary" /> Discovered URLs
         <Badge variant="secondary" class="ml-2 text-[10px]">{count} found</Badge
         >
+        {#if isHistoryView}<Badge variant="outline" class="ml-1 gap-1 text-[10px]"><Clock class="size-3" /> History</Badge>{/if}
       </Card.Title>
       <Card.Description class="truncate font-mono text-xs"
         >{result.url}</Card.Description

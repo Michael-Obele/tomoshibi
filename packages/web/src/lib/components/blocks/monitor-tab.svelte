@@ -36,6 +36,8 @@
   let monitorId = $state<string | null>(null);
   let monitorStatus = $state<any>(null);
   let statusQuery = $derived(monitorId ? getMonitorStatus(monitorId) : null);
+  let isHistoryView = $derived(!!selectedHistoryItem && selectedHistoryItem.type === "monitor");
+  let historyMonitor = $derived(isHistoryView ? selectedHistoryItem.data : null);
   let deleting = $state(false);
   let copied = $state(false);
 
@@ -194,7 +196,28 @@
           disabled={!!createMonitor.pending}
           class="h-11 px-8 shadow-md"
         >
-          {#if createMonitor.pending}
+          {#if isHistoryView && historyMonitor}
+  <Card.Root>
+    <Card.Header class="pb-3">
+      <Card.Title class="flex items-center gap-2 text-base">
+        <Monitor class="size-4 text-primary" /> Monitor
+        <span class="max-w-48 truncate font-mono text-xs font-normal text-muted-foreground">{historyMonitor.id?.slice(0, 12) ?? ""}…</span>
+        <Badge variant="outline" class="ml-auto gap-1 text-[10px]"><Clock class="size-3" /> History</Badge>
+      </Card.Title>
+      <Card.Description class="text-xs">Restored from history — {new Date(selectedHistoryItem.timestamp).toLocaleString()}</Card.Description>
+    </Card.Header>
+    <Card.Content>
+      <div class="grid gap-3 rounded-lg border bg-muted/30 p-4 text-xs">
+        <div class="flex justify-between"><span class="text-muted-foreground">URL</span><span class="font-mono text-primary">{historyMonitor.url}</span></div>
+        <div class="flex justify-between"><span class="text-muted-foreground">Interval</span><span class="font-mono">{historyMonitor.interval_seconds}s</span></div>
+        {#if historyMonitor.next_check}<div class="flex justify-between"><span class="text-muted-foreground">Next Check</span><span class="font-mono">{historyMonitor.next_check}</span></div>{/if}
+      </div>
+      <div class="mt-4 flex gap-2">
+        <Button variant="outline" size="sm" class="text-xs" onclick={() => navigator.clipboard.writeText(historyMonitor.id ?? "")}><Copy class="mr-2 size-3" /> Copy ID</Button>
+      </div>
+    </Card.Content>
+  </Card.Root>
+{:else if createMonitor.pending}
             <Loader2 class="mr-2 size-4 animate-spin" /> Creating...
           {:else}
             <Monitor class="mr-2 size-4" /> Create Monitor

@@ -5,9 +5,8 @@
   import { Label } from "$lib/components/ui/label";
   import { Switch } from "$lib/components/ui/switch";
   import { Textarea } from "$lib/components/ui/textarea";
-  import { Settings, SlidersHorizontal, Sparkles } from "@lucide/svelte";
+  import { Settings, SlidersHorizontal } from "@lucide/svelte";
   import { Badge } from "$lib/components/ui/badge";
-  import * as Tooltip from "$lib/components/ui/tooltip";
 
   let {
     options = $bindable(),
@@ -77,38 +76,28 @@
 <Sheet.Root>
   <Sheet.Trigger>
     {#snippet child({ props })}
-      <Tooltip.Root>
-        <Tooltip.Trigger>
-          {#snippet child({ props: tipProps })}
-            <Button
-              variant={activeCount > 0 ? "default" : "outline"}
-              class="relative mt-1 gap-1.5"
-              size={activeCount > 0 ? "default" : "icon"}
-              {...props}
-              {...tipProps}
-              aria-label="Advanced options — {hintLabel} available"
-            >
-              {#if activeCount > 0}
-                <SlidersHorizontal class="size-4" />
-                <span class="hidden text-xs font-medium sm:inline">Advanced</span>
-                <Badge variant="secondary" class="ml-1 h-5 min-w-5 rounded-full px-1.5 font-mono text-[10px]">{activeCount}</Badge>
-              {:else}
-                <Settings class="size-5" />
-              {/if}
-              {#if activeCount === 0}
-                <span class="absolute -right-1 -top-1 flex h-2.5 w-2.5">
-                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-                  <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary"></span>
-                </span>
-              {/if}
-            </Button>
-          {/snippet}
-        </Tooltip.Trigger>
-        <Tooltip.Content side="top" class="max-w-64 text-xs">
-          <p class="font-medium">Advanced — {hintLabel}</p>
-          <p class="text-muted-foreground">Mode, screenshots, images, schema, actions & more. Click to tune.</p>
-        </Tooltip.Content>
-      </Tooltip.Root>
+      <Button
+        variant={activeCount > 0 ? "default" : "outline"}
+        class="relative mt-1 gap-1.5"
+        size={activeCount > 0 ? "default" : "icon"}
+        {...props}
+        aria-label="Advanced options — {hintLabel} available"
+        title="Advanced — {hintLabel}: mode, screenshots, images, schema, actions & more. Click to tune."
+      >
+        {#if activeCount > 0}
+          <SlidersHorizontal class="size-4" />
+          <span class="hidden text-xs font-medium sm:inline">Advanced</span>
+          <Badge variant="secondary" class="ml-1 h-5 min-w-5 rounded-full px-1.5 font-mono text-[10px]">{activeCount}</Badge>
+        {:else}
+          <Settings class="size-5" />
+        {/if}
+        {#if activeCount === 0}
+          <span class="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+            <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+            <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary"></span>
+          </span>
+        {/if}
+      </Button>
     {/snippet}
   </Sheet.Trigger>
   <Sheet.Content class="w-100 overflow-y-auto px-6 sm:w-135">

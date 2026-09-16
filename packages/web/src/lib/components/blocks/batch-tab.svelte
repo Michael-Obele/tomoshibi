@@ -27,6 +27,8 @@
 
   let batchId = $state<string | null>(null);
   let copied = $state(false);
+  let isHistoryView = $derived(!!selectedHistoryItem && selectedHistoryItem.type === "batch");
+  let historyBatch = $derived(isHistoryView ? selectedHistoryItem.data : null);
 
   // Poll batch status when we have an id
   const statusQuery = $derived(batchId ? getBatchStatus(batchId) : null);
@@ -176,6 +178,37 @@
       <p class="text-sm opacity-90">{batchError}</p>
     </div>
   </div>
+{:else if isHistoryView && historyBatch}
+  <Card.Root>
+    <Card.Header class="pb-3">
+      <Card.Title class="flex items-center gap-2 text-base">
+        <Package class="size-4 text-primary" /> Batch
+        <span class="font-mono text-xs font-normal text-muted-foreground">{historyBatch.batch_id?.slice(0, 12) ?? historyBatch.id?.slice(0, 12) ?? ""}…</span>
+        <Badge variant="outline" class="ml-auto gap-1 text-[10px]"><Clock class="size-3" /> History</Badge>
+      </Card.Title>
+      <Card.Description class="text-xs">Restored from history — {new Date(selectedHistoryItem.timestamp).toLocaleString()}</Card.Description>
+    </Card.Header>
+    <Card.Content>
+      <div class="space-y-2">
+        {#each (historyBatch.tasks ?? []) as task (task.id ?? task.url)}
+          <div class="flex items-center justify-between rounded-lg border bg-card p-3">
+            <div class="min-w-0 flex-1">
+              <div class="truncate font-mono text-xs">{task.url}</div>
+              <div class="truncate font-mono text-[10px] text-muted-foreground">{(task.id ?? "").slice(0, 12)}…</div>
+            </div>
+            <Button variant="ghost" size="icon" class="size-7 shrink-0" href={task.url} target="_blank">
+              <ExternalLink class="size-3.5" />
+            </Button>
+          </div>
+        {/each}
+      </div>
+      <div class="mt-4 flex gap-2">
+        <Button variant="outline" size="sm" class="text-xs" onclick={() => navigator.clipboard.writeText((historyBatch.tasks ?? []).map((t:any)=>t.url).join("\n"))}>
+          <Copy class="mr-2 size-3" /> Copy URLs
+        </Button>
+      </div>
+    </Card.Content>
+  </Card.Root>
 {:else if batchId}
   <Card.Root class="overflow-hidden">
     <Card.Header class="pb-3">
