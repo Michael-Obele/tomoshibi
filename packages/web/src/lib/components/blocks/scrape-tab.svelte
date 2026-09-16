@@ -104,13 +104,31 @@
       })}
       class="space-y-4"
     >
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <label
           for="scrape-url"
           class="pl-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
         >
           Target URL
         </label>
+        <span class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span class="hidden sm:inline">14 dials in</span>
+          <span class="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2 py-0.5 font-medium">
+            <span class="size-1.5 rounded-full bg-primary animate-pulse"></span>
+            Advanced
+          </span>
+          <span class="hidden sm:inline">— mode, screenshot, images, schema, actions</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <span class="font-medium">Quick:</span>
+        <span class="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">smart</span>
+        <span class="text-muted-foreground/60">→</span>
+        <span class="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">static</span>
+        <span class="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">dynamic</span>
+        <span class="hidden sm:inline text-[10px]">· tweak in Advanced</span>
+      </div>
+      <div class="flex flex-col gap-2">
         <div class="flex gap-2">
           <div class="relative flex-1">
             <Globe
@@ -247,6 +265,12 @@
           <span class="text-emerald-600">on</span>
         {/if}
       </span>
+      {#if scrapeOptions.current.screenshot && scrapeOptions.current.images}
+        <span class="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400"
+          title="Some sites (e.g. Vercel) show a bot-check to headless browsers when screenshot is on, so images may come back empty. Use static mode or turn off screenshot if you hit this."
+          >Screenshot + Images — may trigger bot-check on some sites</span
+        >
+      {/if}
       {#if scrapeOptions.current.urls}
         <Badge
           variant="secondary"

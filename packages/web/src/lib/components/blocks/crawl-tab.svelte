@@ -133,13 +133,23 @@
       })}
       class="space-y-4"
     >
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-wrap items-center justify-between gap-2">
         <label
           for="crawl-url"
           class="pl-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
         >
           Crawl Boundary (Sitemap/Domain)
         </label>
+        <span class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span class="hidden sm:inline">9 dials in</span>
+          <span class="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2 py-0.5 font-medium">
+            <span class="size-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+            Advanced
+          </span>
+          <span class="hidden sm:inline">— depth, limit, paths, webhooks</span>
+        </span>
+      </div>
+      <div class="flex flex-col gap-2">
         <div class="flex gap-2">
           <div class="relative flex-1">
             <Layers

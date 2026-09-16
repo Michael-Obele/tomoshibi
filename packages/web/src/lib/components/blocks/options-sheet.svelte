@@ -5,7 +5,9 @@
   import { Label } from "$lib/components/ui/label";
   import { Switch } from "$lib/components/ui/switch";
   import { Textarea } from "$lib/components/ui/textarea";
-  import { Settings } from "@lucide/svelte";
+  import { Settings, SlidersHorizontal, Sparkles } from "@lucide/svelte";
+  import { Badge } from "$lib/components/ui/badge";
+  import * as Tooltip from "$lib/components/ui/tooltip";
 
   let {
     options = $bindable(),
@@ -15,6 +17,58 @@
     type?: "scrape" | "crawl" | "search" | "map" | "monitor";
   } = $props();
 
+  // Count non-default dials to hint at depth (progressive disclosure)
+  let activeCount = $derived.by(() => {
+    let n = 0;
+    if (type === "scrape") {
+      if (options.mode && options.mode !== "smart") n++;
+      if (options.screenshot) n++;
+      if (options.images) n++;
+      if (options.summary) n++;
+      if (options.redact_pii) n++;
+      if (!options.block_ads) n++;
+      if (!options.remove_base64_images) n++;
+      if (options.include_links === false) n++;
+      if (options.extract_schema) n++;
+      if (options.actions) n++;
+      if (options.urls) n++;
+    } else if (type === "crawl") {
+      if (options.mode && options.mode !== "smart") n++;
+      if (options.maxDepth && options.maxDepth !== 2) n++;
+      if (options.limit && options.limit !== 10) n++;
+      if (options.screenshot) n++;
+      if (options.images) n++;
+      if (options.include_paths) n++;
+      if (options.exclude_paths) n++;
+      if (options.webhook_url) n++;
+    } else if (type === "search") {
+      if (options.category) n++;
+      if (options.rerank) n++;
+      if (options.limit && options.limit !== 5) n++;
+      if (options.maxAge) n++;
+      if (options.includeDomains) n++;
+      if (options.excludeDomains) n++;
+      if (options.requiredText) n++;
+      if (options.mode && options.mode !== "default") n++;
+    } else if (type === "map") {
+      if (options.search) n++;
+      if (options.limit && options.limit !== 100) n++;
+    } else if (type === "monitor") {
+      if (options.webhook_url) n++;
+      if (options.webhook_secret) n++;
+      if (options.interval_seconds && options.interval_seconds !== 3600) n++;
+    }
+    return n;
+  });
+
+  let hintLabel = $derived(
+    type === "scrape" ? "14 dials" :
+    type === "crawl" ? "9 dials" :
+    type === "search" ? "8 dials" :
+    type === "map" ? "2 dials" :
+    type === "monitor" ? "3 dials" : "options"
+  );
+
   // Options persisted before the full-page default existed treat undefined
   // as "on", matching the backend default.
   if (options.full_page === undefined) options.full_page = true;
@@ -23,17 +77,62 @@
 <Sheet.Root>
   <Sheet.Trigger>
     {#snippet child({ props })}
-      <Button variant="outline" class="mt-1" size="icon" {...props}>
-        <Settings class="size-5" />
-      </Button>
+      <Tooltip.Root>
+        <Tooltip.Trigger>
+          {#snippet child({ props: tipProps })}
+            <Button
+              variant={activeCount > 0 ? "default" : "outline"}
+              class="relative mt-1 gap-1.5"
+              size={activeCount > 0 ? "default" : "icon"}
+              {...props}
+              {...tipProps}
+              aria-label="Advanced options — {hintLabel} available"
+            >
+              {#if activeCount > 0}
+                <SlidersHorizontal class="size-4" />
+                <span class="hidden text-xs font-medium sm:inline">Advanced</span>
+                <Badge variant="secondary" class="ml-1 h-5 min-w-5 rounded-full px-1.5 font-mono text-[10px]">{activeCount}</Badge>
+              {:else}
+                <Settings class="size-5" />
+              {/if}
+              {#if activeCount === 0}
+                <span class="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+                  <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary"></span>
+                </span>
+              {/if}
+            </Button>
+          {/snippet}
+        </Tooltip.Trigger>
+        <Tooltip.Content side="top" class="max-w-64 text-xs">
+          <p class="font-medium">Advanced — {hintLabel}</p>
+          <p class="text-muted-foreground">Mode, screenshots, images, schema, actions & more. Click to tune.</p>
+        </Tooltip.Content>
+      </Tooltip.Root>
     {/snippet}
   </Sheet.Trigger>
   <Sheet.Content class="w-100 overflow-y-auto px-6 sm:w-135">
     <Sheet.Header>
-      <Sheet.Title>Advanced Options</Sheet.Title>
-      <Sheet.Description
-        >Configure advanced {type} parameters.</Sheet.Description
-      >
+      <Sheet.Title class="flex items-center gap-2">
+        <SlidersHorizontal class="size-4 text-primary" />
+        Advanced Options
+        <Badge variant="outline" class="ml-1 font-mono text-[10px]">{hintLabel}</Badge>
+      </Sheet.Title>
+      <Sheet.Description>
+        {#if type === "scrape"}
+          14 dials — mode, screenshots, images, summary, PII, schema, actions, multi-URL & more.
+        {:else if type === "crawl"}
+          9 dials — depth, limit, paths, webhooks & rendering.
+        {:else if type === "search"}
+          8 dials — category, rerank, domains, age & limits.
+        {:else if type === "map"}
+          Filter + limit — sitemap → robots → link fallback.
+        {:else if type === "monitor"}
+          Interval + webhook — hash & notify on change.
+        {:else}
+          Configure advanced {type} parameters.
+        {/if}
+      </Sheet.Description>
     </Sheet.Header>
     <div class="grid gap-6 py-6">
       {#if type === "scrape"}

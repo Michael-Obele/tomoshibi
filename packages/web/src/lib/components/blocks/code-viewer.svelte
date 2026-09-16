@@ -17,7 +17,12 @@
   let hasScreenshot = $derived(
     !!result?.screenshot?.blob || !!result?.screenshot?.url,
   );
-  let tabCount = $derived(4 + (hasImages ? 1 : 0) + (hasScreenshot ? 1 : 0));
+  // Detect when images were requested but came back empty (e.g. Vercel checkpoint on screenshot+blob)
+  // result.images is [] when extraction found nothing; undefined when not requested
+  let imagesRequestedButEmpty = $derived(
+    Array.isArray(result?.images) && result.images.length === 0 && hasScreenshot
+  );
+  let tabCount = $derived(4 + (hasImages || imagesRequestedButEmpty ? 1 : 0) + (hasScreenshot ? 1 : 0));
 
   // Default to images when available, then screenshot, else markdown
   // Writable $derived: assigning to it temporarily overrides the computed value
@@ -96,9 +101,9 @@
         <Tabs.Trigger value="html">HTML</Tabs.Trigger>
         <Tabs.Trigger value="json">JSON</Tabs.Trigger>
         <Tabs.Trigger value="links">Links</Tabs.Trigger>
-        {#if hasImages}
+        {#if hasImages || imagesRequestedButEmpty}
           <Tabs.Trigger value="images" class="gap-1.5"
-            ><Image class="size-3.5" /> Images</Tabs.Trigger
+            ><Image class="size-3.5" /> Images{#if imagesRequestedButEmpty}<span class="ml-1 rounded bg-amber-500/20 px-1 py-0.5 text-[9px] font-bold text-amber-600">0</span>{/if}</Tabs.Trigger
           >
         {/if}
         {#if hasScreenshot}
@@ -222,6 +227,24 @@
         {#if hasImages}
           <Tabs.Content value="images" class="mt-0">
             <ImageGallery images={result.images} className="p-0" />
+          </Tabs.Content>
+        {:else if imagesRequestedButEmpty}
+          <Tabs.Content value="images" class="mt-0">
+            <div class="flex flex-col items-center justify-center rounded-xl border border-dashed bg-amber-500/5 p-12 text-center">
+              <div class="mb-3 rounded-full bg-amber-500/10 p-3">
+                <Image class="size-6 text-amber-600" />
+              </div>
+              <h4 class="text-sm font-semibold">No images found</h4>
+              <p class="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
+                Images were requested with screenshot, but the page returned no extractable images.
+                This can happen when the site shows a bot-check/interstitial to headless browsers (e.g. Vercel Security Checkpoint).
+                Try <span class="font-mono font-medium">mode: static</span> or without screenshot for this URL.
+              </p>
+              <div class="mt-3 flex flex-wrap justify-center gap-2">
+                <span class="rounded-full border bg-background px-2.5 py-1 text-[10px] font-mono">mode: static</span>
+                <span class="rounded-full border bg-background px-2.5 py-1 text-[10px] font-mono">screenshot: off</span>
+              </div>
+            </div>
           </Tabs.Content>
         {/if}
         {#if hasScreenshot}

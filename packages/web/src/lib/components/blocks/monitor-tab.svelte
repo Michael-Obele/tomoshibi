@@ -104,6 +104,16 @@
       })}
       class="space-y-4"
     >
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Monitor</span>
+        <span class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span class="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2 py-0.5 font-medium">
+            <span class="size-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+            Advanced
+          </span>
+          <span class="hidden sm:inline">— interval & webhook</span>
+        </span>
+      </div>
       <div class="grid gap-4 md:grid-cols-[1fr_180px]">
         <div class="flex flex-col gap-2">
           <Label
