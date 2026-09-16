@@ -160,11 +160,11 @@ Handler tests use mock implementations to avoid hitting real services:
 
 ### 4. Integration Tests
 
-Located in `test/integration_test.go`. These test the full HTTP flow:
+Located in `packages/api/test/integration_test.go`. These test the full HTTP flow:
 
 ```bash
 # Run integration tests (requires mock server, no external deps)
-go test ./test/... -v
+go -C packages/api test ./test/... -v
 ```
 
 > **Note**: Integration tests use `httptest.NewServer` with mock services. They do NOT require a running Redis or Brave API key.
