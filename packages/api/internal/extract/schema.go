@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/PuerkitoBio/goquery"
 )
 
 // Apply evaluates an extraction schema against raw HTML using goquery.

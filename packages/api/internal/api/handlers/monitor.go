@@ -9,9 +9,9 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"github.com/Michael-Obele/tomoshibi/internal/worker"
 )
 
 // minMonitorInterval is the minimum allowed monitor interval in seconds.

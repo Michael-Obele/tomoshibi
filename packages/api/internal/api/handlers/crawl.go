@@ -9,11 +9,11 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
-	"github.com/Michael-Obele/tomoshibi/internal/domain"
-	"github.com/Michael-Obele/tomoshibi/internal/worker"
 )
 
 type CrawlRequest struct {

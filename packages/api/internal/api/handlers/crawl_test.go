@@ -3,8 +3,8 @@ package handlers
 import (
 	"testing"
 
-	"github.com/hibiken/asynq"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/hibiken/asynq"
 )
 
 func TestExtractTitle_FallbackChain(t *testing.T) {

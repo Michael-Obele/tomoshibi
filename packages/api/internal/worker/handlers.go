@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hibiken/asynq"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
+	"github.com/hibiken/asynq"
 )
 
 type ScrapeTaskHandler struct {

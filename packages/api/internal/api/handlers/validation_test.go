@@ -4,19 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Michael-Obele/tomoshibi/internal/search"
+	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
-	"github.com/Michael-Obele/tomoshibi/internal/search"
-	"github.com/Michael-Obele/tomoshibi/internal/worker"
 )
 
 // deadRedisAddr has nothing listening: port 1 is privileged and never bound,

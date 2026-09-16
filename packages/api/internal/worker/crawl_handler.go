@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/Michael-Obele/tomoshibi/internal/scraper"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gobwas/glob"
 	"github.com/hibiken/asynq"
-	"github.com/Michael-Obele/tomoshibi/internal/domain"
-	"github.com/Michael-Obele/tomoshibi/internal/scraper"
 )
 
 // CrawlResult is the aggregated output of a multi-page crawl.

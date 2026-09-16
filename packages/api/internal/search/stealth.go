@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Michael-Obele/tomoshibi/internal/safeurl"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/Michael-Obele/tomoshibi/internal/safeurl"
 )
 
 // BrowserFetcher fetches HTML for a URL in a stealth browser tab.

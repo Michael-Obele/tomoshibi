@@ -11,10 +11,10 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
-	"github.com/Michael-Obele/tomoshibi/internal/worker"
 )
 
 // maxBatchURLs caps how many URLs a single batch may contain.

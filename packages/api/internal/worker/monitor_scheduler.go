@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
+	"github.com/redis/go-redis/v9"
 )
 
 // RedisKV adapts *redis.Client to the KV interface, translating redis.Nil

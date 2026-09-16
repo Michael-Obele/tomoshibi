@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/Michael-Obele/tomoshibi/internal/safeurl"
+	"github.com/PuerkitoBio/goquery"
 )
 
 // DefaultMaxURLs caps total discovered URLs.

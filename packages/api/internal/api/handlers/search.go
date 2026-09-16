@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"github.com/Michael-Obele/tomoshibi/internal/search"
+	"github.com/gin-gonic/gin"
 )
 
 type SearchRequest struct {

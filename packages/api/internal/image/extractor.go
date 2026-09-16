@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/PuerkitoBio/goquery"
 )
 
 // Source type labels recorded on extracted images.

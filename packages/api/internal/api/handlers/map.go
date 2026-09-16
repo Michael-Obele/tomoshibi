@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/Michael-Obele/tomoshibi/internal/sitemap"
+	"github.com/gin-gonic/gin"
 )
 
 // MapRequest is the request body for POST /v1/map.

@@ -8,8 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/Michael-Obele/tomoshibi/internal/config"
+	"github.com/gin-gonic/gin"
 )
 
 func TestRouter_HealthEndpoints(t *testing.T) {

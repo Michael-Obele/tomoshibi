@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/hibiken/asynq"
 	"github.com/Michael-Obele/tomoshibi/internal/config"
+	"github.com/hibiken/asynq"
 )
 
 func main() {

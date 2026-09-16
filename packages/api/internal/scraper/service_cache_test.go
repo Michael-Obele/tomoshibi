@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/redis/go-redis/v9"
 )
 
 // fakeCache is an in-memory stand-in for the Redis scrape cache.

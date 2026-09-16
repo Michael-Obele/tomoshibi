@@ -9,9 +9,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hibiken/asynq"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
+	"github.com/hibiken/asynq"
 )
 
 // TypeMonitorCheck is the task type for scheduled monitor checks.

@@ -4,11 +4,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-	"github.com/redis/go-redis/v9"
 	"github.com/Michael-Obele/tomoshibi/internal/api/handlers"
 	"github.com/Michael-Obele/tomoshibi/internal/api/middleware"
 	"github.com/Michael-Obele/tomoshibi/internal/config"
+	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"

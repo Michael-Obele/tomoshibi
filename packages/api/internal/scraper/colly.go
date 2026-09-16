@@ -6,11 +6,11 @@ import (
 	"time"
 
 	md "github.com/JohannesKaufmann/html-to-markdown/v2"
-	"github.com/brianvoe/gofakeit/v6"
-	"github.com/gocolly/colly/v2"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/safeurl"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
+	"github.com/brianvoe/gofakeit/v6"
+	"github.com/gocolly/colly/v2"
 )
 
 type CollyScraper struct {
