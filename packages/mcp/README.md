@@ -58,7 +58,7 @@ Then add the MCP:
       "command": "npx",
       "args": ["-y", "tomoshi"],
       "env": {
-        "TOMOSHIBI_API_URL": "http://localhost:7431"
+        "TOMOSHI_API_URL": "http://localhost:7431"
       }
     }
   }
