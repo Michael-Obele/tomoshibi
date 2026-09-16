@@ -94,7 +94,7 @@ func NewChromedpScraperWithConfig(recycleAfter, screenshotMaxHeight int) *Chrome
 		newAllocator:        buildAllocator,
 	}
 	s.allocCtx, s.cancel = s.newAllocator()
-	warmUp(s.allocCtx)
+	go warmUp(s.allocCtx)
 	return s
 }
 
