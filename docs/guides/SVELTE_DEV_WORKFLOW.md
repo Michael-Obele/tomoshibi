@@ -58,9 +58,9 @@ export const load: PageServerLoad = async ({ fetch }) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       url: "https://example.com",
-      mode: "smart",            // 'static', 'dynamic', or 'smart'
-      screenshot: false,        // Set true to get a base64 screenshot blob
-      images: false,            // Set true to extract page images as base64
+      mode: "smart", // 'static', 'dynamic', or 'smart'
+      screenshot: false, // Set true to get a base64 screenshot blob
+      images: false, // Set true to extract page images as base64
     }),
   });
 
@@ -76,8 +76,8 @@ export const load: PageServerLoad = async ({ fetch }) => {
   return {
     markdown: data.markdown,
     metadata: data.metadata,
-    screenshot: data.screenshot, // { blob, format, width, height, full_page }
-    images: data.images,         // [{ url, blob, alt, width, height, source }]
+    screenshot: data.screenshot, // { blob, format, width, height, full_page, truncated }
+    images: data.images, // [{ url, blob, alt, width, height, source }]
   };
 };
 ```
@@ -91,7 +91,9 @@ import type { PageServerLoad } from "./$types";
 export const load: PageServerLoad = async ({ fetch, url }) => {
   const query = url.searchParams.get("q") || "svelte 5 runes";
 
-  const response = await fetch(`http://localhost:8080/v1/search?q=${encodeURIComponent(query)}&limit=10`);
+  const response = await fetch(
+    `http://localhost:8080/v1/search?q=${encodeURIComponent(query)}&limit=10`,
+  );
 
   if (!response.ok) {
     return { error: "Search failed", results: [] };
@@ -101,9 +103,9 @@ export const load: PageServerLoad = async ({ fetch, url }) => {
 
   return {
     query: data.query,
-    results: data.results,       // [{ title, url, description, domain, relevance }]
+    results: data.results, // [{ title, url, description, domain, relevance }]
     hasMore: data.hasMore,
-    nextOffset: data.nextOffset,  // Pass this back for "load more"
+    nextOffset: data.nextOffset, // Pass this back for "load more"
   };
 };
 ```
