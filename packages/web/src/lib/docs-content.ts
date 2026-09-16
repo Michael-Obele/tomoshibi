@@ -1,32 +1,24 @@
 import {
   Play,
   Zap,
-  Map,
-  Code,
-  Cpu,
-  Grid,
-  Lock,
-  BookOpen,
-  Palette,
-  ArrowRight,
-  CheckCircle,
-  Download,
+  Container,
   Terminal,
-  FileText,
-  Database,
   Globe,
   Layers,
   Shield,
   Search,
-  Eye,
-  Settings,
+  FileText,
+  Database,
   Copy,
-  BarChart3,
   Clock,
-  RefreshCw,
-  Moon,
+  BookOpen,
+  HeartHandshake,
+  Box,
+  Cpu,
+  Map,
 } from "@lucide/svelte";
 import type { Component } from "svelte";
+
 export type DocSection =
   | { type: "hero"; title: string; description: string }
   | { type: "text"; content: string }
@@ -97,1193 +89,351 @@ export type DocPage = {
 };
 
 export const hero = {
-  title: "Tomoshibi Frontend Documentation",
+  title: "Tomoshibi Documentation",
   description:
-    "Welcome to the official documentation for the Tomoshibi Frontend. A modern, type-safe web interface for the Tomoshibi Scraper backend built with SvelteKit 5, Svelte 5 Runes, and Tailwind CSS v4. Formerly Cinder.",
+    "Self-hosted scraping API — one binary, $5/mo infra. This hosted playground is rate-limited and ephemeral. For unlimited use, run it locally with Docker.",
 };
 
 export const quickStart = [
   {
-    title: "Try Playground",
-    description:
-      "Test scraping, crawling, and search interactively with your backend.",
-    href: "/playground",
-    icon: Play,
+    title: "Run with Docker",
+    description: "One command. All 5 services on 7431–7435. Recommended.",
+    href: "/docs/setup",
+    icon: Container,
     iconColor: "text-primary",
   },
   {
-    title: "Setup Guide",
-    description: "Get the frontend up and running in minutes.",
-    href: "/docs/setup",
-    icon: Zap,
+    title: "Try Playground",
+    description: "Test scrape / crawl / search in the browser (limited).",
+    href: "/playground",
+    icon: Play,
     iconColor: "text-amber-500",
   },
   {
-    title: "Architecture",
-    description: "Understand the technical design and data flow.",
-    href: "/docs/architecture",
-    icon: Map,
+    title: "API Reference",
+    description: "POST /v1/scrape, /v1/crawl, /v1/search — with examples.",
+    href: "/docs/api",
+    icon: FileText,
     iconColor: "text-blue-500",
   },
 ];
 
 export const techStack = [
   {
-    title: "Frontend",
-    icon: Code,
-    items: [
-      { name: "SvelteKit 5", badge: "Framework", variant: "default" },
-      { name: "Svelte 5 Runes", badge: "Reactivity", variant: "secondary" },
-      { name: "Tailwind CSS v4", badge: "Styling", variant: "secondary" },
-    ],
-  },
-  {
-    title: "Backend Communication",
+    title: "API",
     icon: Cpu,
     items: [
-      { name: "Remote Functions", badge: "RPC", variant: "default" },
-      { name: "Valibot", badge: "Validation", variant: "secondary" },
-      { name: "TypeScript", badge: "Type Safe", variant: "secondary" },
+      { name: "Go 1.25+ · Gin", badge: "Runtime", variant: "default" },
+      { name: "Chromedp + Colly", badge: "Engines", variant: "secondary" },
+      { name: "SearXNG + Redis", badge: "Search & Queue", variant: "secondary" },
     ],
   },
   {
-    title: "UI Components",
-    icon: Grid,
+    title: "Web Playground",
+    icon: Globe,
     items: [
-      { name: "shadcn-svelte", badge: "Primitives", variant: "default" },
-      { name: "Bits UI", badge: "Headless", variant: "secondary" },
-      { name: "Lucide Icons", badge: "Icons", variant: "secondary" },
+      { name: "SvelteKit 5", badge: "Framework", variant: "default" },
+      { name: "shadcn-svelte", badge: "UI", variant: "secondary" },
+      { name: "Tailwind v4", badge: "Styling", variant: "secondary" },
     ],
   },
   {
-    title: "Security",
-    icon: Lock,
+    title: "MCP",
+    icon: Terminal,
     items: [
-      { name: "Private API Keys", badge: "Server-side", variant: "default" },
-      { name: "No Trackers", badge: "Privacy", variant: "secondary" },
-      { name: "Type Safety", badge: "Validation", variant: "secondary" },
+      { name: "tomoshi CLI", badge: "npm", variant: "default" },
+      { name: "3 tools", badge: "scrape · crawl · search", variant: "secondary" },
+      { name: "MCP SDK", badge: "Protocol", variant: "secondary" },
+    ],
+  },
+  {
+    title: "Self-host",
+    icon: Box,
+    items: [
+      { name: "Docker Compose", badge: "Recommended", variant: "default" },
+      { name: "Fly / Render", badge: "Hobby tier", variant: "secondary" },
+      { name: "MIT · No telemetry", badge: "License", variant: "secondary" },
     ],
   },
 ];
 
 export const principles = [
   {
-    title: "Modern Development",
+    title: "Self-hosted by default",
     description:
-      "Built with Svelte 5 runes, Remote Functions, and type-safe patterns for a delightful developer experience.",
-    icon: Zap,
+      "Your data never leaves your VPC. One binary + Redis + SearXNG. No per-token billing.",
+    icon: Shield,
     highlight: true,
   },
   {
-    title: "Open Source First",
+    title: "Fast by design",
     description:
-      "Easy to self-host with minimal configuration. Deploy anywhere with zero lock-in.",
+      "Shared Chromedp allocator, recycled tabs, smart static→dynamic fallback. ~200ms static, parallel pools.",
     highlight: false,
   },
   {
-    title: "Privacy Focused",
+    title: "LLM-ready output",
     description:
-      "No external trackers. Direct communication with your backend. Your data stays yours.",
+      "Readability main-content + ad block → clean markdown, metadata, links, optional screenshot.",
     highlight: false,
   },
   {
-    title: "Lightning Fast",
+    title: "Open & funded by you",
     description:
-      "Optimized bundle size, lazy loading, and efficient state management for snappy performance.",
-    highlight: false,
-  },
-  {
-    title: "Developer Friendly",
-    description:
-      "Clean code with TypeScript, well-documented, and following modern Svelte 5 patterns.",
+      "MIT licensed. Stars drive discovery, sponsors fund Chromedp & SearXNG upkeep. See FUNDING.yml.",
     highlight: false,
   },
 ];
 
 export const documentationSections = [
   {
-    title: "Getting Started",
-    description: "Introduction and setup guide",
+    title: "Quick Start (Docker)",
+    description: "Clone and docker compose up -d — 30 seconds to markdown.",
     href: "/docs/setup",
-    icon: BookOpen,
+    icon: Container,
   },
   {
-    title: "Architecture Design",
-    description: "Technical design, data flow, and patterns",
-    href: "/docs/architecture",
-    icon: Map,
+    title: "API Reference",
+    description: "Scrape, crawl, batch, search, map — request & response shapes.",
+    href: "/docs/api",
+    icon: FileText,
   },
   {
-    title: "Features Overview",
-    description: "Scrape, Crawl, and Search capabilities",
-    href: "/docs/features",
-    icon: Grid,
-  },
-  {
-    title: "User Flows",
-    description: "How users interact with the app",
-    href: "/docs/user-flow",
-    icon: Play,
-  },
-  {
-    title: "Theme & Styling",
-    description: "Customize colors and design tokens",
-    href: "/docs/theme",
-    icon: Palette,
+    title: "Self-hosting & Deploy",
+    description: "Fly, Render, Docker Hub / GHCR, env vars, and health checks.",
+    href: "/docs/deployment",
+    icon: Box,
   },
 ];
 
 export const pages: Record<string, DocPage> = {
   setup: {
-    title: "Setup Guide",
+    title: "Quick Start — Docker",
     description:
-      "Get Tomoshibi up and running in minutes with this comprehensive setup guide.",
+      "Run Tomoshibi locally in 30 seconds. This is the recommended way — the hosted playground is rate-limited and ephemeral.",
     sections: [
       {
         type: "alert",
-        title: "Prerequisites",
+        title: "Hosted playground is a preview",
         description:
-          "Node.js 18+ or higher, Bun 1.0+, and a running Tomoshibi Go backend instance.",
+          "Rate-limited, shared, no persistence. For crawl/batch/monitor and unlimited use, self-host with Docker.",
         icon: Zap,
       },
       {
         type: "heading",
         level: 2,
-        text: "Installation",
+        text: "Full stack — Docker Compose (recommended)",
       },
       {
         type: "steps",
         items: [
           {
-            title: "Clone the Repository",
-            description: "Get the latest source code from GitHub.",
-            code: "git clone https://github.com/Michael-Obele/tomoshibi.git\ncd tomoshibi",
+            title: "Clone",
+            description: "Get the source and compose file.",
+            code: "git clone https://github.com/Michael-Obele/tomoshibi.git && cd tomoshibi",
           },
           {
-            title: "Install Dependencies",
-            description:
-              "Use Bun for faster installation and better performance.",
-            code: "bun install",
-            note: "Note: If using npm or pnpm, adjust the commands accordingly.",
+            title: "Up",
+            description: "Starts api (7431) + web (7432) + mcp (7433) + redis (7434) + searxng (7435).",
+            code: "docker compose up -d\ncurl http://localhost:7431/health  # → {\"status\":\"ok\"}",
           },
           {
-            title: "Configure Environment Variables",
-            description:
-              "Copy the example environment file and update it with your backend details.",
-            code: "cp .env.example .env.local\n\n# Edit .env.local with:\nPRIVATE_TOMOSHI_BACKEND_URL=http://localhost:8000\nPRIVATE_TOMOSHI_API_KEY=your-api-key-here",
-          },
-          {
-            title: "Run Development Server",
-            description:
-              "Start the local development server with hot-reloading.",
-            code: "bun run dev",
+            title: "Scrape",
+            description: "Smart mode is default — no config needed.",
+            code: "curl -X POST http://localhost:7431/v1/scrape \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"url\": \"https://example.com\"}'",
           },
         ],
       },
       {
         type: "heading",
         level: 2,
-        text: "Next Steps",
+        text: "Single image",
+      },
+      {
+        type: "code",
+        title: "Docker Hub / GHCR",
+        code: "docker pull michaelobele/tomoshibi-api:latest\ndocker run --rm -p 7431:7431 michaelobele/tomoshibi-api\n# or GHCR\ndocker pull ghcr.io/michael-obele/tomoshibi-api:latest",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "From source (Go 1.25+)",
+      },
+      {
+        type: "code",
+        code: "go run ./packages/api/cmd/api\n# with async (crawl/batch/monitor)\nREDIS_URL=redis://localhost:7434 go run ./packages/api/cmd/api",
+      },
+      {
+        type: "heading",
+        level: 2,
+        text: "Next steps",
       },
       {
         type: "cards",
         columns: 2,
         items: [
           {
-            title: "Try the Playground",
-            description:
-              "Test your connection by scraping a URL in the playground.",
+            title: "API Reference",
+            description: "All endpoints with curl examples.",
+            icon: FileText,
+          },
+          {
+            title: "Try Playground",
+            description: "Test without Docker (limited).",
             icon: Play,
           },
-          {
-            title: "Read Architecture",
-            description:
-              "Learn how the frontend communicates with the backend.",
-            icon: Map,
-          },
         ],
       },
     ],
   },
-  architecture: {
-    title: "Architecture Design",
+  api: {
+    title: "API Reference",
     description:
-      "Understanding the Tomoshibi Frontend's technical foundation and data flow.",
+      "All endpoints are POST under /v1. Smart mode is default. No API key needed for self-host (set API_KEYS to enable auth).",
     sections: [
       {
         type: "heading",
         level: 2,
-        text: "High-Level Overview",
+        text: "Scrape — POST /v1/scrape",
+        icon: Globe,
+        iconColor: "text-amber-500",
       },
       {
         type: "text",
         content:
-          "The Tomoshibi Frontend is a SvelteKit application that interacts with the Tomoshibi Go backend through a secure, type-safe RPC-like interface powered by Remote Functions.",
+          "Convert any URL to LLM-ready markdown. Smart mode tries static (Colly) first, falls back to dynamic (Chromedp) for SPAs.",
+      },
+      {
+        type: "code",
+        title: "Request",
+        code: "curl -X POST http://localhost:7431/v1/scrape \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"url\": \"https://example.com\",\n    \"mode\": \"smart\",\n    \"onlyMainContent\": true,\n    \"blockAds\": true\n  }'",
+      },
+      {
+        type: "code",
+        title: "Response",
+        code: "{\n  \"url\": \"https://example.com\",\n  \"markdown\": \"# Example Domain\\n\\n...\",\n  \"html\": \"<h1>...</h1>\",\n  \"metadata\": { \"title\": \"Example Domain\", \"description\": \"...\" },\n  \"links\": [\"https://example.com/more\"]\n}",
+      },
+      {
+        type: "key-value",
+        items: [
+          { key: "mode", value: "smart | static | dynamic (default: smart)" },
+          { key: "onlyMainContent", value: "Readability extraction (default: true)" },
+          { key: "blockAds", value: "Remove ads/trackers" },
+          { key: "screenshot", value: "Return base64 screenshot" },
+          { key: "extract_schema", value: "CSS-selector JSON extraction" },
+        ],
       },
       {
         type: "heading",
-        level: 3,
-        text: "Data Flow Pipeline",
+        level: 2,
+        text: "Crawl — POST /v1/crawl",
         icon: Layers,
-      },
-      {
-        type: "flow",
-        items: [
-          {
-            title: "User Interaction",
-            description: "User enters a URL or query in a Svelte 5 component.",
-          },
-          {
-            title: "Remote Function Call",
-            description:
-              "Component calls a function imported from src/remote/tomoshibi.remote.ts",
-          },
-          {
-            title: "Server-Side Execution",
-            description:
-              "SvelteKit executes the function on the server, retrieving private environment variables for secure API communication.",
-          },
-          {
-            title: "Backend Request",
-            description:
-              "The server makes a fetch call to the Go backend with the API key attached.",
-          },
-          {
-            title: "Response Serialization",
-            description:
-              "SvelteKit serializes the response and returns it directly to the browser.",
-          },
-          {
-            title: "Reactive UI Update",
-            description:
-              "The UI reactively updates using Svelte 5 runes ($state, $derived, $effect).",
-          },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Technology Stack",
-      },
-      {
-        type: "cards",
-        columns: 2,
-        items: [
-          {
-            title: "Frontend Framework",
-            description:
-              "Full-stack meta-framework with remote functions support.",
-            icon: Code,
-            badge: "SvelteKit 5",
-          },
-          {
-            title: "Reactivity",
-            description:
-              "$state, $derived, $effect, $props for fine-grained reactivity.",
-            icon: Zap,
-            badge: "Svelte 5 Runes",
-          },
-          {
-            title: "Styling",
-            description:
-              "Utility-first CSS with OKLCH color space & Tomoshibi Glow theme.",
-            icon: Globe,
-            badge: "Tailwind CSS v4",
-          },
-          {
-            title: "Components",
-            description: "Headless component primitives with Tailwind styling.",
-            icon: Database,
-            badge: "shadcn-svelte",
-          },
-          {
-            title: "Validation",
-            description:
-              "Type-safe schema validation for all remote function inputs.",
-            icon: Lock,
-            badge: "Valibot",
-          },
-          {
-            title: "API Communication",
-            description:
-              "Type-safe server-side RPC calls with automatic serialization.",
-            icon: Shield,
-            badge: "Remote Functions",
-          },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Svelte 5 Runes & Remote Functions",
-      },
-      {
-        type: "alert",
-        title: "Modern Reactivity",
-        description:
-          "All components use Svelte 5 runes for fine-grained reactivity. Legacy patterns like let, $:, and export let are not used.",
-        icon: Zap,
-      },
-      {
-        type: "code",
-        title: "$state - Component State",
-        code: "let url = $state('');\nlet isLoading = $state(false);",
-      },
-      {
-        type: "code",
-        title: "$derived - Computed Values",
-        code: "let isValid = $derived(url.startsWith('http'));\nlet errorCount = $derived(errors.length);",
-      },
-      {
-        type: "code",
-        title: "$effect - Side Effects",
-        code: "$effect(() => {\n  if (crawlForm.result?.id) {\n    const interval = setInterval(() => {\n      statusQuery.refetch(crawlForm.result.id);\n    }, 2000);\n    return () => clearInterval(interval);\n  }\n});",
-      },
-      {
-        type: "code",
-        title: "Remote Functions - API Calls",
-        code: "// Query pattern - for reading data\nlet statusQuery = getCrawlStatus();\n\n// Form pattern - for mutations\nlet scrapeForm = scrapeUrl();\n<form method=\"POST\" use:scrapeForm.enhance>\n  <input {...scrapeForm.fields.url.as('text')} />\n</form>",
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Directory Structure",
-      },
-      {
-        type: "tree",
-        content:
-          "/src\n├── lib/\n│   ├── components/        # Reusable UI components\n│   │   ├── ui/           # shadcn-svelte primitives\n│   │   └── blocks/       # Composed feature blocks\n│   └── utils.ts          # Helper functions\n├── remote/\n│   └── tomoshibi.remote.ts  # Server-side RPC functions\n└── routes/\n    ├── +layout.svelte    # Global layout\n    ├── playground/       # Main feature page\n    └── docs/            # Documentation pages",
-        note: "All backend communication flows through src/remote/tomoshibi.remote.ts, which handles API calls, validation, and type safety.",
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Security & Environment Variables",
-      },
-      {
-        type: "alert",
-        title: "Secrets Protection",
-        description:
-          "API keys and authentication credentials are stored in private environment variables and never exposed to the browser.",
-        icon: Shield,
-        variant: "destructive",
-      },
-      {
-        type: "key-value",
-        items: [
-          {
-            key: "PRIVATE_TOMOSHI_BACKEND_URL",
-            value: "Backend service endpoint (server-side only)",
-          },
-          {
-            key: "PRIVATE_TOMOSHI_API_KEY",
-            value: "Authentication key for backend (server-side only)",
-          },
-        ],
-      },
-      {
-        type: "list",
-        title: "Data Flow Security",
-        items: [
-          "API keys remain on the server, never sent to the client",
-          "All backend communication happens server-side",
-          "Results are serialized and returned to the browser",
-          "No direct client-to-backend communication",
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Design Principles",
-      },
-      {
-        type: "cards",
-        columns: 2,
-        items: [
-          {
-            title: "Simplicity",
-            description:
-              "Minimal abstraction layers. Direct communication between UI and backend through type-safe remote functions.",
-          },
-          {
-            title: "Type Safety",
-            description:
-              "Full TypeScript support with Valibot schemas for validation. Compile-time and runtime checking.",
-          },
-          {
-            title: "Reactivity",
-            description:
-              "Fine-grained reactive state using Svelte 5 runes. Only what changes triggers updates.",
-          },
-          {
-            title: "Privacy First",
-            description:
-              "All sensitive operations stay server-side. No external trackers or analytics.",
-          },
-        ],
-      },
-    ],
-  },
-  features: {
-    title: "Features",
-    description: "Explore the powerful capabilities of the Tomoshibi Frontend.",
-    sections: [
-      {
-        type: "heading",
-        level: 2,
-        text: "Universal Playground",
-      },
-      {
-        type: "text",
-        content:
-          "The core feature of Tomoshibi is a unified interface where users can test all scraping capabilities in one place. Switch between Scrape, Crawl, and Search operations with a single interface.",
-      },
-      {
-        type: "alert",
-        title: "Unified Experience",
-        description:
-          "All operations share the same core interface for options, output rendering, and results management. Learn once, use everywhere.",
-        icon: Zap,
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Scrape Feature",
-        icon: Globe,
-        iconColor: "text-amber-500",
-      },
-      {
-        type: "text",
-        content:
-          "Instantly convert any URL into clean Markdown, HTML, or JSON. Perfect for quick content extraction and one-off website analysis.",
-      },
-      {
-        type: "features",
-        items: [
-          {
-            title: "Input & Validation",
-            description: "",
-            icon: Zap,
-            features: [
-              "URL input field with client-side validation",
-              "Valibot schema for type safety",
-              "Real-time validation feedback",
-              "Support for HTTP and HTTPS protocols",
-            ],
-          },
-          {
-            title: "Advanced Options",
-            description: "",
-            icon: Settings,
-            features: [
-              "Custom headers configuration",
-              "Cookie management",
-              "Exclude specific tags",
-              "JavaScript rendering toggle (static vs dynamic)",
-            ],
-          },
-          {
-            title: "Output Formats",
-            description: "",
-            icon: Eye,
-            features: [
-              "Markdown format (human-readable)",
-              "HTML output (preserves structure)",
-              "Raw JSON response",
-              "Status code and metadata",
-            ],
-          },
-          {
-            title: "Result Handling",
-            description: "",
-            icon: Copy,
-            features: [
-              "One-click copy to clipboard",
-              "Download as file (Markdown or JSON)",
-              "Badge indicators for status",
-              "Syntax highlighting for code",
-            ],
-          },
-        ],
-      },
-      {
-        type: "list",
-        title: "Perfect for:",
-        items: [
-          "Quick content extraction",
-          "SEO analysis",
-          "Article downloading",
-          "Data collection for analysis",
-          "Testing website structure",
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Crawl Feature",
-        icon: BarChart3,
         iconColor: "text-blue-500",
       },
       {
         type: "text",
         content:
-          "Deep domain crawling with automatic link discovery, progress tracking, and comprehensive results. Ideal for mapping entire websites and batch processing.",
+          "Async BFS crawl with Redis. Requires REDIS_URL. Returns job ID — poll GET /v1/crawl/{id}.",
       },
       {
-        type: "features",
-        items: [
-          {
-            title: "Job Control",
-            description: "",
-            icon: BookOpen,
-            features: [
-              "Start crawl with base URL",
-              "Pause/resume operations",
-              "Depth configuration",
-              "URL filtering options",
-            ],
-          },
-          {
-            title: "Real-Time Monitoring",
-            description: "",
-            icon: Clock,
-            features: [
-              "Progress bar with percentage",
-              "Live link discovery log",
-              "Status badges (Success/Running/Failed)",
-              "Auto-refresh with polling",
-            ],
-          },
-          {
-            title: "Results Export",
-            description: "",
-            icon: Download,
-            features: [
-              "All crawled links in structured format",
-              "Metadata for each page",
-              "CSV/JSON export options",
-              "Downloadable report",
-            ],
-          },
-          {
-            title: "Polling System",
-            description: "",
-            icon: RefreshCw,
-            features: [
-              "Automatic status updates every 2s",
-              "Efficient network usage",
-              "Graceful cleanup on completion",
-              "Smart error recovery",
-            ],
-          },
-        ],
-      },
-      {
-        type: "list",
-        title: "Perfect for:",
-        items: [
-          "Website mapping and analysis",
-          "Competitive intelligence",
-          "Automated content discovery",
-          "Link verification",
-          "Large-scale data collection",
-        ],
+        type: "code",
+        code: "curl -X POST http://localhost:7431/v1/crawl \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"url\": \"https://example.com\", \"limit\": 20, \"maxDepth\": 2}'\n\n# poll\ncurl http://localhost:7431/v1/crawl/<id>",
       },
       {
         type: "heading",
         level: 2,
-        text: "Search Feature",
+        text: "Search — POST /v1/search",
         icon: Search,
         iconColor: "text-green-500",
       },
       {
         type: "text",
-        content:
-          "Combine web search with automatic content scraping. Enter a query, get ranked results, and automatically extract content from matching websites.",
-      },
-      {
-        type: "features",
-        items: [
-          {
-            title: "Query Input",
-            description: "",
-            icon: Search,
-            features: [
-              "Natural language search queries",
-              "Advanced search operators",
-              "Result limit configuration",
-              "Real-time search suggestions",
-            ],
-          },
-          {
-            title: "Results Display",
-            description: "",
-            icon: BarChart3,
-            features: [
-              "Ranked search results",
-              "Card layout for each result",
-              "Title, URL, and snippet",
-              "Metadata and relevance score",
-            ],
-          },
-          {
-            title: "Loading States",
-            description: "",
-            icon: Eye,
-            features: [
-              "Skeleton loaders while fetching",
-              "Progressive content loading",
-              "Error recovery",
-              "Empty state handling",
-            ],
-          },
-          {
-            title: "Auto-Scraping",
-            description: "",
-            icon: CheckCircle,
-            features: [
-              "Click to scrape any result",
-              "Background extraction",
-              "Content preview toggle",
-              "Multiple format support",
-            ],
-          },
-        ],
-      },
-      {
-        type: "list",
-        title: "Perfect for:",
-        items: [
-          "Research and market analysis",
-          "Competitor monitoring",
-          "News aggregation",
-          "Knowledge base building",
-          "Content curation",
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Cross-Feature Capabilities",
-      },
-      {
-        type: "cards",
-        columns: 3,
-        items: [
-          {
-            title: "History Management",
-            description:
-              "Store and re-run previous requests from localStorage without database overhead.",
-          },
-          {
-            title: "Dark/Light Themes",
-            description:
-              "Auto-detect system preference or manual toggle with persistent selection.",
-          },
-          {
-            title: "Responsive Design",
-            description:
-              "Optimized for mobile, tablet, and desktop with touch-friendly controls.",
-          },
-          {
-            title: "Error Handling",
-            description:
-              "Comprehensive error messages with recovery suggestions and retry options.",
-          },
-          {
-            title: "Accessibility",
-            description:
-              "WCAG 2.1 AA compliant with keyboard navigation and screen reader support.",
-          },
-          {
-            title: "Performance",
-            description:
-              "Optimized bundle size, lazy loading, and efficient state management.",
-          },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Roadmap",
-      },
-      {
-        type: "alert",
-        title: "Coming Soon",
-        description:
-          "Advanced features like batch processing, scheduled crawls, API key management, and custom workflows are planned for future releases.",
-        icon: Zap,
-      },
-    ],
-  },
-  theme: {
-    title: "Theme & Styling",
-    description: "Customize the look and feel of the Tomoshibi Frontend.",
-    sections: [
-      {
-        type: "heading",
-        level: 2,
-        text: "Tomoshibi Glow Color Palette",
-      },
-      {
-        type: "text",
-        content:
-          'The "Tomoshibi Glow" theme combines neutral Slate grays with warm Amber and Orange accents, creating a modern, accessible color scheme.',
-      },
-      {
-        type: "colors",
-        items: [
-          {
-            name: "--primary",
-            value: "Amber 500",
-            description: "Main accent",
-            class: "bg-amber-500",
-          },
-          {
-            name: "--primary-foreground",
-            value: "Amber 100/950",
-            description: "Primary text",
-            class: "bg-amber-100 dark:bg-amber-950",
-          },
-          {
-            name: "--background",
-            value: "Slate 950/50",
-            description: "Page background",
-            class: "bg-slate-950 dark:bg-slate-50",
-          },
-          {
-            name: "--border",
-            value: "Slate 200/800",
-            description: "Border lines",
-            class:
-              "border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950",
-          },
-        ],
-      },
-      {
-        type: "key-value",
-        items: [
-          { key: "--primary", value: "Main accent", badge: "default" },
-          { key: "--secondary", value: "Alternative action", badge: "outline" },
-          {
-            key: "--muted-foreground",
-            value: "Subtle text",
-            badge: "secondary",
-          },
-          { key: "--destructive", value: "Errors", badge: "destructive" },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Dark & Light Modes",
-        icon: Moon,
-      },
-      {
-        type: "cards",
-        columns: 2,
-        items: [
-          {
-            title: "Dark Mode (Default)",
-            description:
-              "✓ Primary dark theme with high contrast\n✓ Reduced eye strain for extended use\n✓ Professional appearance aligned with Firecrawl\n✓ Better for accessibility (WCAG AA compliant)",
-          },
-          {
-            title: "Light Mode",
-            description:
-              "✓ Clean, minimal aesthetic\n✓ Bright, readable colors\n✓ Perfect for daylight use\n✓ User can toggle based on preference",
-          },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Configuration File",
-      },
-      {
-        type: "text",
-        content:
-          "All theme configuration is centralized in src/routes/layout.css. This file defines CSS custom properties, color variables, and utility classes.",
+        content: "SearXNG-backed search. No Brave key needed when self-hosting with compose.",
       },
       {
         type: "code",
-        language: "css",
-        code: "@import 'tailwindcss/theme';\n\n@layer theme {\n  --color-primary: oklch(55% 0.12 45);\n  --color-primary-foreground: white;\n  \n  --color-background: oklch(98% 0 0);\n  --color-foreground: oklch(2% 0 0);\n  \n  --color-muted: oklch(96% 0 0);\n  --color-muted-foreground: oklch(45% 0 0);\n  \n  --radius-sm: 4px;\n  --radius-md: 8px;\n  --radius-lg: 12px;\n}\n\n/* Dark mode */\n@media (prefers-color-scheme: dark) {\n  @layer theme {\n    --color-background: oklch(12% 0 0);\n    --color-foreground: oklch(98% 0 0);\n    --color-muted: oklch(16% 0 0);\n    --color-muted-foreground: oklch(64% 0 0);\n  }\n}",
+        code: "curl -X POST http://localhost:7431/v1/search \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"query\": \"self-hosted scraping\", \"limit\": 5}'",
       },
       {
         type: "heading",
         level: 2,
-        text: "Customization Guide",
-      },
-      {
-        type: "cards",
-        columns: 1,
-        items: [
-          {
-            title: "Changing Colors",
-            description:
-              "1. Open src/routes/layout.css\n2. Modify the OKLCH values in the @layer theme section\n3. Update both light and dark mode variants\n4. Rebuild and test in browser",
-            icon: Code,
-          },
-          {
-            title: "Preview Changes",
-            description:
-              "Use the dev server with hot reload to instantly see theme changes. No build required.",
-            icon: Eye,
-          },
-          {
-            title: "OKLCH Color Space",
-            description:
-              "OKLCH provides:\n✓ Perceptually uniform colors\n✓ Better color interpolation\n✓ More accessible contrast ratios\n✓ Modern browser support",
-            icon: CheckCircle,
-          },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Semantic CSS Classes",
-      },
-      {
-        type: "text",
-        content:
-          "Use these semantic Tailwind classes instead of hardcoded colors for consistency:",
+        text: "Other endpoints",
       },
       {
         type: "key-value",
         items: [
-          { key: "bg-primary", value: "Primary action backgrounds" },
-          { key: "text-primary", value: "Primary text (accents)" },
-          { key: "bg-background", value: "Page/component backgrounds" },
-          { key: "text-foreground", value: "Main body text" },
-          { key: "bg-muted", value: "Secondary backgrounds" },
-          { key: "text-muted-foreground", value: "Secondary text" },
-          { key: "border-border", value: "Border lines" },
+          { key: "POST /v1/batch", value: "Batch scrape (async, Redis)" },
+          { key: "POST /v1/map", value: "Sitemap discovery" },
+          { key: "POST /v1/monitor", value: "Change tracking (webhook)" },
+          { key: "GET /health", value: "Health check (no auth)" },
         ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Responsive Design Tokens",
-      },
-      {
-        type: "key-value",
-        items: [
-          { key: "sm", value: "640px" },
-          { key: "md", value: "768px" },
-          { key: "lg", value: "1024px" },
-          { key: "xl", value: "1280px" },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Best Practices",
       },
       {
         type: "alert",
-        title: "Theme Consistency",
+        title: "Need full spec?",
         description:
-          "Always use semantic color tokens instead of hardcoding HSL/Hex values. This ensures consistency across light/dark modes.",
-        icon: Settings,
-      },
-      {
-        type: "list",
-        items: [
-          "Use Tailwind utility classes for styling",
-          "Leverage semantic color variables for theming",
-          "Keep hardcoded colors to a minimum",
-          "Test color contrast for accessibility (WCAG AA)",
-          "Preview changes in both light and dark modes",
-          "Use cn() utility for conditional class merging",
-          "Prefer motion-safe utilities for animations",
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Tools & Resources",
-      },
-      {
-        type: "cards",
-        columns: 2,
-        items: [
-          {
-            title: "OKLCH Color Picker",
-            description:
-              "Use online tools to convert RGB/Hex colors to OKLCH format for use in CSS.",
-          },
-          {
-            title: "Contrast Checker",
-            description:
-              "Verify color combinations meet WCAG AA accessibility standards.",
-          },
-          {
-            title: "Tailwind Docs",
-            description:
-              "Reference official Tailwind CSS v4 documentation for the latest features.",
-          },
-          {
-            title: "Browser DevTools",
-            description:
-              "Use browser inspector to debug CSS variables and view computed styles.",
-          },
-        ],
+          "See README.md and docs/guides/API_REFERENCE.md in the repo. Swagger UI is available at /swagger in debug mode.",
+        icon: BookOpen,
       },
     ],
   },
-  "user-flow": {
-    title: "User Flow & Interaction Patterns",
+  deployment: {
+    title: "Self-hosting & Deployment",
     description:
-      "Understanding how users interact with the Tomoshibi Frontend to accomplish their goals.",
+      "Deploy to Fly, Render, or any Docker host. Hobby-tier friendly (512MB–1GB).",
     sections: [
       {
         type: "heading",
         level: 2,
-        text: "Scrape Flow",
-        icon: Globe,
-        iconColor: "text-amber-500",
+        text: "Environment",
       },
       {
-        type: "text",
-        content: "The typical user journey when scraping a single URL.",
-      },
-      {
-        type: "flow",
+        type: "key-value",
         items: [
-          {
-            title: "Enter URL",
-            description: "User enters a URL in the input field.",
-          },
-          {
-            title: "Optional: Configure Options",
-            description:
-              "Click the Options button to open Sheet with headers, cookies, exclude tags, and rendering mode.",
-          },
-          {
-            title: "Click Scrape Button",
-            description: "Submits the form to the backend via remote function.",
-          },
-          {
-            title: "View Results",
-            description:
-              "Results appear in tabbed interface: Markdown, HTML, JSON.",
-          },
-          {
-            title: "Copy or Download",
-            description: "User can copy to clipboard or download as file.",
-          },
-        ],
-      },
-      {
-        type: "list",
-        title: "Key Interactions",
-        items: [
-          "Real-time URL validation",
-          "Form progressive enhancement",
-          "Instant result tabs",
-          "Copy feedback (toast notification)",
+          { key: "PORT", value: "Default 7431 (api), 7432 (web)" },
+          { key: "REDIS_URL", value: "Required for /v1/crawl, /v1/batch, /v1/monitor" },
+          { key: "SEARXNG_URL", value: "Default http://searxng:8080 (compose)" },
+          { key: "API_KEYS", value: "Comma-separated keys to enable auth" },
+          { key: "RATE_LIMIT_RPM", value: "Requests per minute (optional)" },
         ],
       },
       {
         type: "heading",
         level: 2,
-        text: "Crawl Flow",
-        icon: BarChart3,
-        iconColor: "text-blue-500",
+        text: "Fly.io",
       },
       {
-        type: "text",
-        content:
-          "The user journey for deep domain crawling with job management.",
-      },
-      {
-        type: "flow",
-        items: [
-          {
-            title: "Enter Base URL",
-            description:
-              "User enters the domain to crawl (e.g., https://example.com).",
-          },
-          {
-            title: "Configure Crawl Depth",
-            description:
-              "Optional: Set depth limit, URL patterns to include/exclude, and max pages.",
-          },
-          {
-            title: "Click Start Crawl",
-            description: "Initiates the crawl job. Backend returns a job ID.",
-          },
-          {
-            title: "Monitor Progress",
-            description:
-              "Live progress bar and scrollable log of discovered links. Auto-polls every 2 seconds.",
-          },
-          {
-            title: "Pause or Stop",
-            description:
-              "User can pause the crawl to examine partial results or stop completely.",
-          },
-          {
-            title: "Download Results",
-            description:
-              "Once complete, download the full crawl report as CSV or JSON.",
-          },
-        ],
-      },
-      {
-        type: "list",
-        title: "Key Interactions",
-        items: [
-          "Async job management with polling",
-          "Real-time progress visualization",
-          "Live log with auto-scroll",
-          "Status badges for each link",
-        ],
+        type: "code",
+        code: "fly launch --dockerfile packages/api/Dockerfile\nfly secrets set REDIS_URL=redis://...\nfly deploy",
       },
       {
         type: "heading",
         level: 2,
-        text: "Search Flow",
-        icon: Search,
-        iconColor: "text-green-500",
+        text: "Docker Hub / GHCR",
       },
       {
-        type: "text",
-        content:
-          "Combine web search with automatic content scraping. Enter a query, get ranked results, and automatically extract content from matching websites.",
-      },
-      {
-        type: "flow",
-        items: [
-          {
-            title: "Enter Search Query",
-            description:
-              "User enters natural language search query or advanced search operators.",
-          },
-          {
-            title: "Configure Search Options",
-            description:
-              "Optional: Set result limit, language, region, time range.",
-          },
-          {
-            title: "Click Search",
-            description: "Submits search query to backend web search API.",
-          },
-          {
-            title: "Browse Results",
-            description:
-              "Search results appear as cards with title, URL, snippet, and metadata.",
-          },
-          {
-            title: "Scrape Individual Result",
-            description:
-              'Click "Scrape" button on any result to extract full content.',
-          },
-          {
-            title: "View Extracted Content",
-            description:
-              "Content appears in modal/drawer for review and export.",
-          },
-        ],
-      },
-      {
-        type: "list",
-        title: "Key Interactions",
-        items: [
-          "Search suggestions and autocomplete",
-          "Skeleton loaders while fetching",
-          "Inline scrape without navigation",
-          "Multiple result export formats",
-        ],
+        type: "code",
+        code: "docker pull michaelobele/tomoshibi:latest\ndocker pull ghcr.io/michael-obele/tomoshibi:latest",
       },
       {
         type: "heading",
         level: 2,
-        text: "History & Quick Access",
-      },
-      {
-        type: "text",
-        content: "Users can store and replay previous requests for efficiency.",
+        text: "Support the project",
       },
       {
         type: "alert",
-        title: "Local Storage",
+        title: "Sponsor & Star",
         description:
-          "History is stored in localStorage (not a database) for quick access without server overhead. Users can clear history anytime.",
-        icon: Zap,
+          "Tomoshibi is MIT and free. Sponsors fund browser upkeep and SearXNG tuning. Stars drive discovery. Both keep the free tier alive.",
+        icon: HeartHandshake,
       },
       {
-        type: "cards",
-        columns: 2,
+        type: "list",
+        title: "How to help",
         items: [
-          {
-            title: "History Sidebar",
-            description:
-              "Quick-access list of last 10-20 requests with one-click re-run capability.",
-          },
-          {
-            title: "Persistent State",
-            description:
-              "Forms remember last input values for faster repeated queries.",
-          },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Error Handling & Recovery",
-      },
-      {
-        type: "text",
-        content:
-          "The UI gracefully handles errors and provides users with actionable recovery steps.",
-      },
-      {
-        type: "cards",
-        columns: 1,
-        items: [
-          {
-            title: "Network Errors",
-            description:
-              "User sees error message with retry button. Form state is preserved.",
-          },
-          {
-            title: "Validation Errors",
-            description:
-              "Client-side validation shows errors below the input field. User can fix and resubmit.",
-          },
-          {
-            title: "Backend Errors",
-            description:
-              "Specific error messages with HTTP status codes help debugging.",
-          },
-          {
-            title: "Timeout Recovery",
-            description:
-              "For long-running operations, timeout errors suggest increasing limits or retrying.",
-          },
-        ],
-      },
-      {
-        type: "heading",
-        level: 2,
-        text: "Accessibility & Navigation",
-      },
-      {
-        type: "cards",
-        columns: 2,
-        items: [
-          {
-            title: "Keyboard Navigation",
-            description:
-              "✓ Tab to navigate through all controls\n✓ Enter to submit forms\n✓ Escape to close modals\n✓ Arrow keys for menus",
-          },
-          {
-            title: "Screen Reader Support",
-            description:
-              "✓ ARIA labels on all inputs\n✓ Semantic HTML structure\n✓ Alt text for icons\n✓ Form error announcements",
-          },
+          "Star on GitHub — https://github.com/Michael-Obele/tomoshibi",
+          "Sponsor — https://github.com/sponsors/Michael-Obele (see FUNDING.yml)",
+          "Share your self-hosting setup in Discussions",
         ],
       },
     ],
@@ -1295,19 +445,14 @@ export const documentationGroups = [
     title: "Getting Started",
     items: [
       { title: "Introduction", url: "/docs", icon: BookOpen },
-      { title: "Setup Guide", url: "/docs/setup", icon: Zap },
-    ],
-  },
-  {
-    title: "Core Concepts",
-    items: [
-      { title: "Architecture", url: "/docs/architecture", icon: Map },
-      { title: "Features", url: "/docs/features", icon: Grid },
-      { title: "User Flow", url: "/docs/user-flow", icon: Terminal },
+      { title: "Quick Start", url: "/docs/setup", icon: Zap },
     ],
   },
   {
     title: "Reference",
-    items: [{ title: "Theme Config", url: "/docs/theme", icon: Shield }],
+    items: [
+      { title: "API Reference", url: "/docs/api", icon: FileText },
+      { title: "Self-hosting", url: "/docs/deployment", icon: Box },
+    ],
   },
 ];

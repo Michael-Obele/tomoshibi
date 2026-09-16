@@ -9,6 +9,9 @@
     Play,
     Crown,
     LogIn,
+    Container,
+    Star,
+    HeartHandshake,
   } from "@lucide/svelte";
   import { Button } from "$lib/components/ui/button";
   import ModeToggle from "./mode-toggle.svelte";
@@ -80,9 +83,28 @@
 
       <!-- Desktop Actions -->
       <div class="hidden items-center gap-2 md:flex">
+        <Button
+          href="https://github.com/Michael-Obele/tomoshibi#quick-start"
+          variant="default"
+          size="sm"
+          class="gap-1.5"
+        >
+          <Container class="h-3.5 w-3.5" />
+          Docker
+        </Button>
+        <Button
+          href="https://github.com/sponsors/Michael-Obele"
+          target="_blank"
+          variant="ghost"
+          size="sm"
+          class="gap-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <HeartHandshake class="h-3.5 w-3.5" />
+          Sponsor
+        </Button>
         {#if user}
           <div
-            class="mr-2 flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pl-2 pr-3 text-xs font-bold text-amber-500 shadow-[0_0_15px_-3px_rgba(245,158,11,0.2)] animate-in fade-in zoom-in"
+            class="ml-1 flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 py-1.5 pl-2 pr-3 text-xs font-bold text-amber-500 shadow-[0_0_15px_-3px_rgba(245,158,11,0.2)] animate-in fade-in zoom-in"
           >
             <Crown class="h-3.5 w-3.5 fill-amber-500/20" />
             <span>MASTER ACCESS</span>
@@ -92,9 +114,9 @@
             href="/login"
             variant="ghost"
             size="sm"
-            class="gap-2 text-muted-foreground hover:text-foreground hover:bg-accent mr-2"
+            class="gap-1.5 text-muted-foreground hover:text-foreground hover:bg-accent"
           >
-            <LogIn class="h-4 w-4" />
+            <LogIn class="h-3.5 w-3.5" />
             <span>Elevate</span>
           </Button>
         {/if}
@@ -108,10 +130,10 @@
             href="https://github.com/Michael-Obele/tomoshibi"
             target="_blank"
             rel="noopener noreferrer"
-            title="GitHub"
+            title="Star on GitHub"
             class="inline-flex"
           >
-            <Code2 class="h-5 w-5" />
+            <Star class="h-5 w-5" />
           </a>
         </Button>
         <ModeToggle />
@@ -173,6 +195,27 @@
             </Button>
           {/each}
 
+          <div class="mt-2 grid grid-cols-2 gap-2 px-1">
+            <Button
+              href="https://github.com/Michael-Obele/tomoshibi#quick-start"
+              variant="default"
+              size="sm"
+              class="justify-center gap-1.5"
+              onclick={closeMenu}
+            >
+              <Container class="h-4 w-4" /> Docker
+            </Button>
+            <Button
+              href="https://github.com/sponsors/Michael-Obele"
+              target="_blank"
+              variant="outline"
+              size="sm"
+              class="justify-center gap-1.5"
+              onclick={closeMenu}
+            >
+              <HeartHandshake class="h-4 w-4" /> Sponsor
+            </Button>
+          </div>
           <!-- Mobile Auth Action -->
           <div class="mt-2 px-1">
             {#if user}
