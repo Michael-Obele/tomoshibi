@@ -108,6 +108,11 @@ func Load() (*Config, error) {
 	v.BindEnv("redis.rest_url", "UPSTASH_REDIS_REST_URL")
 	v.BindEnv("redis.rest_token", "UPSTASH_REDIS_REST_TOKEN")
 
+	// Aliases for app.* — canonical is APP_*, but accept legacy names too
+	v.BindEnv("app.loglevel", "APP_LOGLEVEL", "LOG_LEVEL")
+	v.BindEnv("app.api_keys", "APP_API_KEYS", "API_KEYS")
+	v.BindEnv("app.rate_limit_rpm", "APP_RATE_LIMIT_RPM", "RATE_LIMIT_RPM")
+
 	// Render injects PORT; Tomoshibi reads SERVER_PORT — accept either.
 	v.BindEnv("server.port", "SERVER_PORT", "PORT")
 
