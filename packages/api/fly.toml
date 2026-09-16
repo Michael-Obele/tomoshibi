@@ -1,55 +1,37 @@
-# fly.toml app configuration for tomoshibi-api (formerly cinder9630)
+# fly.toml app configuration file generated for tomoshibi on 2026-09-16T12:35:21Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'tomoshibi-api'
-primary_region = 'lhr'
-
-# Fly sends SIGTERM then SIGKILLs after this. It must exceed SHUTDOWN_TIMEOUT
-# (20s) or the drain gets cut off mid-flight; the default of 5s is far too
-# short for a crawl task to finish handing back its work.
+app = 'tomoshibi'
+primary_region = 'cdg'
 kill_timeout = '25s'
 
 [build]
-dockerfile = 'Dockerfile'
+  dockerfile = 'Dockerfile'
 
 [env]
-GIN_MODE = 'release'
-LOG_LEVEL = 'info'
-SERVER_PORT = '8080'
-# GIN_MODE only configures Gin. Tomoshibi reads its own SERVER_MODE, which
-# defaults to debug — and debug shells out to `go run swag@latest init` on
-# every startup and serves Swagger UI publicly. Neither belongs in a deploy.
-SERVER_MODE = 'release'
-# Search backend: /v1/search uses self-hosted SearXNG when SEARXNG_ENDPOINT
-# is set, falling back to Brave (BRAVE_SEARCH_API_KEY secret) otherwise.
-# SearXNG aggregates Google/Bing/DDG/Brave/Mojeek/Wikipedia and is free.
-#
-# Deployed as a SIDE CAR machine in this same app (Option A) — see
-# docs/guides/SEARXNG_FLY.md and scripts/fly-searxng.sh. It is reached over
-# the private network only (no public port), so the endpoint is set as a
-# secret (fly secrets set SEARXNG_ENDPOINT=http://searxng.internal:8080)
-# rather than committed here. Uncomment only if you prefer config-in-repo:
-# SEARXNG_ENDPOINT = 'http://searxng.internal:8080'
+  GIN_MODE = 'release'
+  LOG_LEVEL = 'info'
+  SERVER_MODE = 'release'
+  SERVER_PORT = '8080'
 
 [http_service]
-internal_port = 8080
-force_https = true
-auto_stop_machines = 'stop'
-auto_start_machines = true
-min_machines_running = 0
-processes = ['app']
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
 
-[[http_service.checks]]
-interval = '30s'
-timeout = '5s'
-grace_period = '45s'
-method = 'GET'
-path = '/health'
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '45s'
+    method = 'GET'
+    path = '/health'
 
 [[vm]]
-cpu_kind = 'shared'
-cpus = 1
-memory_mb = 512
-swap_size_mb = 512
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512
