@@ -51,6 +51,7 @@
   const scrapeOptions = new PersistedState("tomoshibi-scrape-options", {
     mode: "smart",
     screenshot: false,
+    full_page: true,
     images: false,
     image_format: "url",
     max_images: 10,

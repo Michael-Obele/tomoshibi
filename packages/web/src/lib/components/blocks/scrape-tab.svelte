@@ -128,6 +128,11 @@
 
           {#if scrapeOptions.current.screenshot}
             <input type="hidden" name="screenshot" value="on" />
+            <input
+              type="hidden"
+              name="full_page"
+              value={String(scrapeOptions.current.full_page !== false)}
+            />
           {/if}
           {#if scrapeOptions.current.images}
             <input type="hidden" name="images" value="on" />

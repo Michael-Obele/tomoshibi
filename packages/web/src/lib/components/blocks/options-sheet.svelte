@@ -14,6 +14,10 @@
     options: Record<string, any>;
     type?: "scrape" | "crawl" | "search" | "map" | "monitor";
   } = $props();
+
+  // Options persisted before the full-page default existed treat undefined
+  // as "on", matching the backend default.
+  if (options.full_page === undefined) options.full_page = true;
 </script>
 
 <Sheet.Root>
@@ -63,6 +67,17 @@
               <Switch bind:checked={options.screenshot} />
             </div>
           </div>
+          {#if options.screenshot}
+            <div class="grid grid-cols-4 items-center gap-4">
+              <Label class="text-right text-xs">Full page</Label>
+              <div class="col-span-3 flex items-center gap-2">
+                <Switch bind:checked={options.full_page} />
+                <span class="text-xs text-muted-foreground"
+                  >Capture the entire page, not just the viewport</span
+                >
+              </div>
+            </div>
+          {/if}
           <div class="grid grid-cols-4 items-center gap-4">
             <Label class="text-right text-xs">Extract Images</Label>
             <div class="col-span-3">

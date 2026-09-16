@@ -50,6 +50,17 @@ const ScrapeOptionsSchema = v.object({
     ]),
     false,
   ),
+  full_page: v.optional(
+    v.union([
+      v.pipe(
+        v.string(),
+        v.transform((v) => v === "on" || v === "true"),
+        v.boolean(),
+      ),
+      v.boolean(),
+    ]),
+    true,
+  ),
   images: v.optional(
     v.union([
       v.pipe(
@@ -411,6 +422,17 @@ export const scrapeUrl = form(ScrapeOptionsSchema, async (data) => {
   if (payload.remove_base64_images === undefined)
     payload.remove_base64_images = true;
   if (payload.include_links === undefined) payload.include_links = true;
+
+  // Screenshot options are nested on the wire; full_page defaults to true on
+  // the backend, so an explicit value only matters when the user opts out.
+  const wantsFullPage = payload.full_page !== false;
+  delete payload.full_page;
+  if (payload.screenshot) {
+    payload.screenshot_opts = {
+      ...(payload.screenshot_opts || {}),
+      full_page: wantsFullPage,
+    };
+  }
 
   const result = await fetchTomoshi("/v1/scrape", "POST", payload);
   return result;
