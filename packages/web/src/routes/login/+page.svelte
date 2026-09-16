@@ -5,12 +5,25 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
 	import { Label } from '$lib/components/ui/label';
-	import { Crown, Lock, Eye, EyeOff } from '@lucide/svelte';
+	import { Crown, Lock, Eye, EyeOff, TriangleAlert } from '@lucide/svelte';
 
 	let form = loginUser;
 	let isSubmitting = $state(false);
 	let submitError = $state<string | null>(null);
 	let showPassword = $state(false);
+
+	// Derived field-level and form-level validation issues (SvelteKit remote form)
+	// `issues()` returns ` { message: string }[] | undefined` — cast for strict TS
+	let passwordIssues = $derived(
+		(form.fields.password.issues() as { message: string }[] | undefined) ?? []
+	);
+	let allIssues = $derived((form.fields.allIssues() as { message: string }[] | undefined) ?? []);
+	// Only show form-level issues that are not already shown as field issues
+	let formLevelIssues = $derived(
+		allIssues.filter(
+			(i: { message: string }) => !passwordIssues.some((p: { message: string }) => p.message === i.message)
+		)
+	);
 
 	$effect(() => {
 		if (form.result?.success) {
@@ -50,11 +63,14 @@
 
 		<Card.Content>
 			<form
-				{...form.enhance(async (formInstance) => {
+				{...form.enhance(async ({ submit }) => {
 					isSubmitting = true;
 					submitError = null;
 					try {
-						await formInstance.submit();
+						const ok = await submit();
+						if (!ok) {
+							// Validation failed — issues are now available via form.fields.*.issues()
+						}
 					} catch (error) {
 						submitError = error instanceof Error ? error.message : 'An error occurred';
 					} finally {
@@ -90,12 +106,27 @@
 						</button>
 					</div>
 
+					{#if passwordIssues.length > 0}
+						<div
+							role="alert"
+							aria-live="polite"
+							class="animate-in rounded-md border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400 slide-in-from-top-2"
+						>
+							{#each passwordIssues as issue (issue.message)}
+								<p class="flex items-center justify-center gap-1.5">
+									<TriangleAlert class="h-3.5 w-3.5 shrink-0" />
+									<span>{issue.message}</span>
+								</p>
+							{/each}
+						</div>
+					{/if}
+
 					<Button
 						type="submit"
 						class="w-full bg-linear-to-r from-amber-600 to-orange-600 font-bold text-white shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)] transition-all hover:scale-[1.02] hover:from-amber-500 hover:to-orange-500 hover:shadow-[0_0_30px_-5px_rgba(245,158,11,0.6)] active:scale-[0.98]"
-						disabled={isSubmitting}
+						disabled={isSubmitting || form.pending > 0}
 					>
-						{#if isSubmitting}
+						{#if isSubmitting || form.pending > 0}
 							<div class="flex items-center gap-2">
 								<div
 									class="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"
@@ -107,8 +138,22 @@
 						{/if}
 					</Button>
 
+					{#if formLevelIssues.length > 0}
+						<div
+							role="alert"
+							aria-live="polite"
+							class="animate-in rounded-md border border-red-500/20 bg-red-500/10 p-3 text-center text-sm text-red-400 slide-in-from-top-2"
+						>
+							{#each formLevelIssues as issue (issue.message)}
+								<p>{issue.message}</p>
+							{/each}
+						</div>
+					{/if}
+
 					{#if submitError}
 						<div
+							role="alert"
+							aria-live="polite"
 							class="group animate-in rounded-md border border-red-500/20 bg-red-500/10 p-4 text-center text-sm text-red-400 slide-in-from-top-2"
 						>
 							<span class="font-bold group-hover:underline">Error:</span>

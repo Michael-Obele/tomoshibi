@@ -117,19 +117,42 @@
         <ModeToggle />
       </div>
 
-      <!-- Mobile Menu Button -->
-      <Button
-        variant="ghost"
-        size="icon"
-        onclick={toggleMenu}
-        class="md:hidden"
-      >
-        {#if isOpen}
-          <X class="h-6 w-6" />
+      <!-- Mobile Actions: small login + menu button -->
+      <div class="flex items-center gap-1 md:hidden">
+        {#if user}
+          <div
+            class="hidden items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-amber-500 xs:flex"
+            aria-label="Master access"
+          >
+            <Crown class="h-3 w-3 fill-amber-500/20" />
+            <span>MASTER</span>
+          </div>
         {:else}
-          <Menu class="h-6 w-6" />
+          <Button
+            href="/login"
+            variant="ghost"
+            size="sm"
+            class="gap-1.5 px-2.5 text-muted-foreground hover:text-foreground hover:bg-accent"
+            aria-label="Login to elevate"
+          >
+            <LogIn class="h-4 w-4" />
+            <span class="hidden xs:inline text-xs font-medium">Elevate</span>
+          </Button>
         {/if}
-      </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onclick={toggleMenu}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isOpen}
+        >
+          {#if isOpen}
+            <X class="h-6 w-6" />
+          {:else}
+            <Menu class="h-6 w-6" />
+          {/if}
+        </Button>
+      </div>
     </div>
 
     <!-- Mobile Navigation -->
@@ -149,6 +172,29 @@
               <span class="text-sm font-medium">{item.label}</span>
             </Button>
           {/each}
+
+          <!-- Mobile Auth Action -->
+          <div class="mt-2 px-1">
+            {#if user}
+              <div
+                class="flex w-full items-center justify-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 py-2.5 text-xs font-bold tracking-wide text-amber-500"
+              >
+                <Crown class="h-4 w-4 fill-amber-500/20" />
+                <span>MASTER ACCESS</span>
+              </div>
+            {:else}
+              <Button
+                href="/login"
+                variant="default"
+                size="sm"
+                class="w-full justify-center gap-2 bg-linear-to-r from-amber-600 to-orange-600 font-semibold text-white shadow-sm hover:from-amber-500 hover:to-orange-500"
+                onclick={closeMenu}
+              >
+                <LogIn class="h-4 w-4" />
+                Elevate to Master
+              </Button>
+            {/if}
+          </div>
 
           <div class="my-2 border-t border-border"></div>
           <div class="flex items-center justify-between px-2">

@@ -2,7 +2,7 @@ import { form, query } from "$app/server";
 import { env } from "$env/dynamic/private";
 import { dev } from "$app/environment";
 import { getRequestEvent } from "$app/server";
-import { redirect } from "@sveltejs/kit";
+import { invalid } from "@sveltejs/kit";
 import * as v from "valibot";
 
 export const loginUser = form(
@@ -12,17 +12,18 @@ export const loginUser = form(
       v.nonEmpty("Password is required to elevate."),
     ),
   }),
-  async ({ password }) => {
-    const configuredPassword = env.MASTRA_PASSWORD || "tomoshibi"; // Fallback for demo
+  async ({ password }, issue) => {
+    const configuredPassword = env.MASTRA_PASSWORD;
 
     const event = getRequestEvent();
     if (!event) throw new Error("Request event not found");
 
-    // Fake delay
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     if (password !== configuredPassword) {
-      throw new Error("Incorrect credentials. You remain among the others.");
+      invalid(
+        issue.password("Incorrect credentials. You remain among the others."),
+      );
     }
 
     event.cookies.set("mastra_auth", password, {
