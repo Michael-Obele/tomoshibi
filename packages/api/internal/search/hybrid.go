@@ -18,20 +18,6 @@ type HybridService struct {
 	services []Service
 }
 
-// buildHybridChain constructs the SearXNG → Brave backend chain from
-// configuration. Extracted to avoid duplication between NewHybridService and
-// NewHybridServiceWithStealth.
-func buildHybridChain(braveAPIKey, searxngEndpoint string) []Service {
-	chain := []Service{}
-	if searxngEndpoint != "" {
-		chain = append(chain, NewSearXNGService(searxngEndpoint))
-	}
-	if braveAPIKey != "" {
-		chain = append(chain, NewBraveService(braveAPIKey))
-	}
-	return chain
-}
-
 // NewHybridService builds the search backend chain from configuration without
 // stealth. It delegates to NewHybridServiceWithStealth with a nil fetcher, so
 // stealth is disabled by default. See NewHybridServiceWithStealth for the
