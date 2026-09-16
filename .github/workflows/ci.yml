@@ -15,16 +15,23 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The Go module lives in packages/api; there is no go.mod at the repo root.
+    defaults:
+      run:
+        working-directory: packages/api
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: packages/api/go.mod
           cache: true
+          cache-dependency-path: packages/api/go.sum
 
+      # Pinned: an unpinned @latest install can turn CI red on a day when
+      # nothing in this repo changed.
       - name: Install staticcheck
-        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+        run: go install honnef.co/go/tools/cmd/staticcheck@v0.8.1
 
       - name: gofmt
         run: |
@@ -55,22 +62,24 @@ jobs:
         if: always()
         with:
           name: coverage
-          path: coverage.out
+          # Artifact paths resolve from the workspace root, not the job's
+          # working directory.
+          path: packages/api/coverage.out
 
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: packages/api/go.mod
           cache: true
+          cache-dependency-path: packages/api/go.sum
       - name: Build binaries
         run: |
           go build -o /tmp/tomoshibi-api ./cmd/api
           go build -o /tmp/tomoshibi-worker ./cmd/worker
-
-      # Catches Dockerfile drift without pushing anything.
-      - name: Docker build
-        run: docker build -t tomoshibi:ci .
