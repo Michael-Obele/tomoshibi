@@ -22,7 +22,7 @@ Tomoshibi is a Go-based distributed scraper (a lightweight alternative to Firecr
 
 ## 🔄 The "JS to Go" Rosetta Stone
 
-| Concept           | JS/SvelteKit Equivalent        | How it works in Tomoshibi                                              |
+| Concept           | JS/SvelteKit Equivalent        | How it works in Tomoshibi                                           |
 | :---------------- | :----------------------------- | :------------------------------------------------------------------ |
 | **Interfaces**    | TypeScript `interface` or Type | Decouples code. Any struct with a `Scrape()` method is a `Scraper`. |
 | **Gin**           | Express / Hono                 | The web framework used for routing and middleware.                  |
@@ -91,6 +91,7 @@ Because of this, we can easily swap Colly for Chromedp, or add a third "AI Scrap
 ### Smart Heuristics (`internal/scraper/heuristics.go`)
 
 The "smart" mode isn't magic — it's a plain function that analyzes HTML. Think of it like SvelteKit's `server-side rendering check`: if the static HTML we got back looks like an empty SPA shell (just `<div id="root">` with `<script>` tags), we know we need the headless browser. It checks:
+
 - `<noscript>` "enable JavaScript" messages
 - Framework-specific root elements (`id="__next"`, `data-reactroot`, `<app-root>`, etc.)
 - Tiny HTML + lots of `<script>` tags (likely JS-only shell)
@@ -128,14 +129,14 @@ Before you start, you'll need:
 3. **Create environment file** (copy from example):
 
    ```bash
-   cp .env.example .env
+   cp packages/api/.env.example .env   # root .env for `docker compose` (also works as packages/api/.env for `go run`)
    ```
 
-   Edit `.env` with your values:
+   Edit `.env` with your values (see `packages/api/.env.example` for all options):
 
    ```bash
-   REDIS_URL=redis://localhost:6379  # or rediss:// for TLS
-   API_KEY=your-secret-key           # for API authentication
+   REDIS_URL=redis://localhost:7434
+   SEARXNG_ENDPOINT=http://localhost:7435
    ```
 
 4. **Start Redis** (if running locally):
