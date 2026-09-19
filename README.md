@@ -191,6 +191,64 @@ Remote Functions proxy to the Go backend; API keys stay server-side.
 
 ---
 
+## Agent Skills
+
+Reusable instructions for AI coding agents — discoverable via [skills.sh](https://skills.sh) and the [`skills` CLI](https://github.com/vercel-labs/skills) (supports 75+ agents: Claude Code, Cursor, OpenCode, Codex, etc.).
+
+This repo exposes skills from `skills/` (canonical, indexed by `skills.sh`) — mirrored to `.agents/skills/` and `.agent/skills/` for OpenCode/Cursor compatibility.
+
+| Skill         | Path                                   | What it does                                                                                                    |
+| ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **tomoshibi** | [`skills/tomoshibi`](skills/tomoshibi) | Use Tomoshibi MCP (`tomoshi`) — `tomoshi_extract` / `tomoshi_discover` / `tomoshi_monitor` → LLM-ready markdown |
+
+Verify discovery locally:
+
+```bash
+npx skills add ./ --list   # → tomoshibi
+```
+
+### Install globally (all projects)
+
+```bash
+# from GitHub (recommended) — installs to ~/<agent>/skills/ (e.g. ~/.claude/skills/, ~/.agents/skills/)
+npx skills add Michael-Obele/tomoshibi -g
+
+# only this skill (same when repo has one skill)
+npx skills add Michael-Obele/tomoshibi --skill tomoshibi -g
+
+# all skills, all detected agents, no prompts (CI-friendly)
+npx skills add Michael-Obele/tomoshibi --all -g -y
+
+# verify
+npx skills list -g
+```
+
+### Install to this project only (team-shared)
+
+```bash
+# installs to ./.claude/skills/, ./.agents/skills/, etc. — commit to share with team
+npx skills add Michael-Obele/tomoshibi
+
+# specific agents
+npx skills add Michael-Obele/tomoshibi -a claude-code -a opencode -a cursor
+
+# from local checkout
+npx skills add ./ --skill tomoshibi
+```
+
+### Use without installing
+
+```bash
+npx skills use Michael-Obele/tomoshibi --skill tomoshibi | claude
+npx skills use Michael-Obele/tomoshibi --skill tomoshibi --agent claude-code
+```
+
+Browse on the web: [`skills.sh/Michael-Obele/tomoshibi`](https://skills.sh/Michael-Obele/tomoshibi) (after first push/index).
+
+> **Adding a new skill:** create `skills/<name>/SKILL.md` with `name` + `description` frontmatter (see [`tomoshibi/SKILL.md`](skills/tomoshibi/SKILL.md)), then `npx skills add ./ --list` to verify. Keep `skills/` canonical — mirror to `.agents/skills/` / `.agent/skills/` if you need OpenCode compat.
+
+---
+
 ## Benchmarks
 
 | Stack         | Pull size | Running RAM | Containers |

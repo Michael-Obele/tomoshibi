@@ -18,8 +18,8 @@ dist/
 # Vendor directory (if vendored dependencies are used)
 vendor/
 
-# Compiled repository binary
-tomoshibi
+# Compiled repository binary (root binary only — not skills/tomoshibi/)
+/tomoshibi
 
 # Compiled binaries built at the repo root. These were tracked historically;
 # they are build outputs and must not be committed.
