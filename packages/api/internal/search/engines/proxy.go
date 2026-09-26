@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Michael-Obele/tomoshibi/pkg/logger"
 )
 
 // ProxyPool resolves proxy groups to proxy URLs and rotates through them.
@@ -30,6 +32,9 @@ type ProxyPool struct {
 	webshareKey  string
 	webshareOnce sync.Once
 	budget       *budgetMeter
+	// budgetWarnOnce keeps the degraded-to-direct warning at one log line per
+	// process instead of one per proxied request (BudgetExhausted's promise).
+	budgetWarnOnce sync.Once
 
 	// webshareAPIBase is a field so tests can point at a stub server.
 	webshareAPIBase string
@@ -103,6 +108,11 @@ func (p *ProxyPool) Next(group string) string {
 		return ""
 	}
 	if p.budget != nil && !p.budget.allow() {
+		p.budgetWarnOnce.Do(func() {
+			if logger.Log != nil {
+				logger.Log.Warn("proxy budget exhausted — engines degraded to direct egress", "group", group)
+			}
+		})
 		return "" // exhausted: degrade to direct
 	}
 	u := g.urls[g.rr%len(g.urls)]
