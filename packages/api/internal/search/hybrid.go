@@ -55,7 +55,19 @@ func NewHybridService(braveAPIKey, searxngEndpoint string) Service {
 // When no backends are configured, a Service is returned that fails with a
 // clear configuration error.
 func NewHybridServiceWithStealth(braveAPIKey, searxngEndpoint string, fetcher BrowserFetcher) Service {
-	chain := make([]Service, 0, 3)
+	return NewHybridServiceWithNative(nil, braveAPIKey, searxngEndpoint, fetcher)
+}
+
+// NewHybridServiceWithNative builds the full chain with the in-house
+// native engine layer first: Native → SearXNG → Stealth → Brave API.
+// The native layer is cheapest and has no sidecar dependency, so it leads;
+// a nil native restores the legacy ordering exactly. Plan M5 later removes
+// SearXNG from this chain after the parity gate.
+func NewHybridServiceWithNative(native Service, braveAPIKey, searxngEndpoint string, fetcher BrowserFetcher) Service {
+	chain := make([]Service, 0, 4)
+	if native != nil {
+		chain = append(chain, native)
+	}
 	if searxngEndpoint != "" {
 		chain = append(chain, NewSearXNGService(searxngEndpoint))
 	}

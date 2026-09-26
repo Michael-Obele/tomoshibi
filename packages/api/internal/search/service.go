@@ -35,6 +35,14 @@ type Result struct {
 	Domain      string   `json:"domain"`
 	Relevance   float64  `json:"relevance"`
 	Highlights  []string `json:"highlights,omitempty"`
+	// Engine names the backend that produced the result (empty for
+	// aggregated/fallback paths). Mirrors SearXNG's per-result engine
+	// string; omitempty keeps legacy responses unchanged.
+	Engine string `json:"engine,omitempty"`
+	// PublishedAt is the upstream publication time when the backend knows
+	// it (RSS engines); nil otherwise. Feeds MaxAge filtering and the
+	// compat listener's publishedDate.
+	PublishedAt *time.Time `json:"published_at,omitempty"`
 }
 
 // SearchOptions contains options for the search

@@ -32,6 +32,27 @@ type SearchConfig struct {
 	// reuses the shared ChromedpScraper as a BrowserFetcher. Bound to
 	// STEALTH_ENABLED via Viper; see Load().
 	StealthEnabled bool `mapstructure:"stealth_enabled"`
+	// NativeEnabled (default true) builds the in-house engine layer from
+	// the YAML registry (SEARCH_NATIVE_ENABLED).
+	NativeEnabled bool `mapstructure:"native_enabled"`
+	// CompatAddr, when set, starts the SearXNG JSON API listener
+	// (SEARCH_COMPAT_ADDR, e.g. ":7435"). Empty = off.
+	CompatAddr string `mapstructure:"compat_addr"`
+	// EnginesPath overrides the bundled engine registry (SEARCH_ENGINES_PATH).
+	EnginesPath string `mapstructure:"engines_path"`
+	// WebshareAPIKey fetches the Webshare proxy list via their API
+	// (WEBSHARE_API_KEY). Dummy values in .env.example.
+	WebshareAPIKey string `mapstructure:"webshare_api_key"`
+	// WebshareProxyURL is an explicit proxy endpoint list (comma-separated),
+	// e.g. a backbone rotating URL — wins over API discovery
+	// (WEBSHARE_PROXY_URL).
+	WebshareProxyURL string `mapstructure:"webshare_proxy_url"`
+	// ProxyTier1/ProxyTier2 are escalation groups (SEARCH_PROXY_TIER1/2).
+	ProxyTier1 string `mapstructure:"proxy_tier1"`
+	ProxyTier2 string `mapstructure:"proxy_tier2"`
+	// ProxyBudgetGB hard-caps monthly proxy egress per process
+	// (SEARCH_PROXY_BUDGET_GB, default 1, 0 = unlimited — plan R3).
+	ProxyBudgetGB string `mapstructure:"proxy_budget_gb"`
 }
 
 type ServerConfig struct {
@@ -100,11 +121,27 @@ func Load() (*Config, error) {
 	v.SetDefault("brave.api_key", "")
 	v.SetDefault("search.searxng_endpoint", "")
 	v.SetDefault("search.stealth_enabled", false)
+	v.SetDefault("search.native_enabled", true)
+	v.SetDefault("search.compat_addr", "")
+	v.SetDefault("search.engines_path", "")
+	v.SetDefault("search.webshare_api_key", "")
+	v.SetDefault("search.webshare_proxy_url", "")
+	v.SetDefault("search.proxy_tier1", "")
+	v.SetDefault("search.proxy_tier2", "")
+	v.SetDefault("search.proxy_budget_gb", "1")
 
 	// Custom bindings
 	v.BindEnv("brave.api_key", "BRAVE_SEARCH_API_KEY")
 	v.BindEnv("search.searxng_endpoint", "SEARXNG_ENDPOINT")
 	v.BindEnv("search.stealth_enabled", "STEALTH_ENABLED")
+	v.BindEnv("search.native_enabled", "SEARCH_NATIVE_ENABLED")
+	v.BindEnv("search.compat_addr", "SEARCH_COMPAT_ADDR")
+	v.BindEnv("search.engines_path", "SEARCH_ENGINES_PATH")
+	v.BindEnv("search.webshare_api_key", "WEBSHARE_API_KEY")
+	v.BindEnv("search.webshare_proxy_url", "WEBSHARE_PROXY_URL")
+	v.BindEnv("search.proxy_tier1", "SEARCH_PROXY_TIER1")
+	v.BindEnv("search.proxy_tier2", "SEARCH_PROXY_TIER2")
+	v.BindEnv("search.proxy_budget_gb", "SEARCH_PROXY_BUDGET_GB")
 	v.BindEnv("redis.rest_url", "UPSTASH_REDIS_REST_URL")
 	v.BindEnv("redis.rest_token", "UPSTASH_REDIS_REST_TOKEN")
 

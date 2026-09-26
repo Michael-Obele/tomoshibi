@@ -23,6 +23,8 @@ import (
 	"github.com/Michael-Obele/tomoshibi/internal/config"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
 	"github.com/Michael-Obele/tomoshibi/internal/search"
+	"github.com/Michael-Obele/tomoshibi/internal/search/compat"
+	"github.com/Michael-Obele/tomoshibi/internal/search/engines"
 	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
 
@@ -151,9 +153,48 @@ func run() error {
 		stealthFetcher = chromedpScraper
 		logger.Log.Info("Stealth search enabled (reusing chromedp allocator)")
 	}
-	searchSvc := search.NewHybridServiceWithStealth(cfg.Brave.APIKey, cfg.Search.SearXNGEndpoint, stealthFetcher)
+
+	// In-house native engine layer (plan/tomoshi-search M1): declarative
+	// YAML roster + browser-grade TLS + Webshare proxy groups. A registry
+	// load failure degrades to the legacy chain instead of killing startup.
+	var nativeSvc *search.NativeService
+	if cfg.Search.NativeEnabled {
+		reg, err := engines.LoadRegistry(cfg.Search.EnginesPath)
+		if err != nil {
+			logger.Log.Warn("Engine registry failed to load; native search disabled", "error", err)
+		} else {
+			pool := engines.NewProxyPool(engines.ProxyOptions{
+				WebshareAPIKey:   cfg.Search.WebshareAPIKey,
+				WebshareProxyURL: cfg.Search.WebshareProxyURL,
+				Tier1:            cfg.Search.ProxyTier1,
+				Tier2:            cfg.Search.ProxyTier2,
+				BudgetGB:         cfg.Search.ProxyBudgetGB,
+			})
+			nativeSvc = search.NewNativeService(engines.NewEngines(reg, pool))
+			logger.Log.Info("Native search engines loaded", "count", len(nativeSvc.Engines()))
+		}
+	}
+	searchSvc := search.NewHybridServiceWithNative(nativeSvc, cfg.Brave.APIKey, cfg.Search.SearXNGEndpoint, stealthFetcher)
 	searchSvc = search.NewCachedService(searchSvc, redisClient)
 	searchHandler := handlers.NewSearchHandler(searchSvc)
+
+	// SearXNG-compat listener: same JSON contract on its own port so the
+	// service can replace a SearXNG container (and so shadow diffing can
+	// reuse the same URL surface). Off unless SEARCH_COMPAT_ADDR is set.
+	var compatSrv *http.Server
+	if cfg.Search.CompatAddr != "" && nativeSvc != nil {
+		compatSrv = &http.Server{
+			Addr:              cfg.Search.CompatAddr,
+			Handler:           compat.NewHandler(nativeSvc),
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		go func() {
+			if err := compatSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				logger.Log.Warn("Compat listener failed", "addr", compatSrv.Addr, "error", err)
+			}
+		}()
+		logger.Log.Info("SearXNG-compat listener started", "addr", compatSrv.Addr)
+	}
 
 	// Try to initialize crawl handler (requires Redis)
 	var crawlHandler *handlers.CrawlHandler
@@ -269,6 +310,16 @@ func run() error {
 		logger.Log.Warn("HTTP shutdown did not complete cleanly", "error", err)
 	} else {
 		logger.Log.Info("HTTP server stopped")
+	}
+
+	// The compat listener serves quick JSON lookups only — same drain
+	// context is plenty.
+	if compatSrv != nil {
+		if err := compatSrv.Shutdown(shutdownCtx); err != nil {
+			logger.Log.Warn("Compat listener shutdown did not complete cleanly", "error", err)
+		} else {
+			logger.Log.Info("Compat listener stopped")
+		}
 	}
 
 	// Then give the worker a short grace period on top. Shutdown has already

@@ -1,0 +1,345 @@
+# Tomoshibi Search — bundled engine roster (registry v1).
+#
+# Roster is DATA (plan README R5): replace wholesale via SEARCH_ENGINES_PATH.
+# Every entry below was verified live from this machine on 2026-09-26
+# (evidence: plan/tomoshi-search/research.md §3b). Engines marked
+# `enabled: false` are kept as documented opt-ins (proxy experiments).
+#
+# Field cheat-sheet:
+#   profile: "" = plain net/http | "chrome" = browser TLS fingerprint
+#   proxy:   proxy group name (webshare | tier1 | tier2); "" = direct
+#   parse.type: css | rss | json
+#   field: sel/attr (css) | path (json/rss) | template+encode | urlparam
+#           (uddg=ddg redirector | bing_u=bing ck/a | url=news apiclick)
+#           | join (segment arrays) | or_template | strip_html
+version: 1
+engines:
+  # ---------------------------------------------------------------- general
+  - name: ddg
+    categories: [general]
+    weight: 70
+    timeout_ms: 5000
+    min_interval_ms: 4000 # anomaly page fires on fast repeats (T0 2026-09-26)
+    profile: chrome
+    block_markers: ["detected unusual traffic", "anomaly-modal"]
+    request:
+      url: "https://html.duckduckgo.com/html/?q={{query}}&kl=us-en"
+      headers:
+        Accept-Language: "en-US,en;q=0.9"
+    parse:
+      type: css
+      item: "div.results_links"
+      fields:
+        title: { sel: "a.result__a", attr: text }
+        url: { sel: "a.result__a", attr: href, urlparam: uddg }
+        content: { sel: "div.result__snippet", attr: text }
+
+  - name: bing
+    categories: [general]
+    weight: 65
+    timeout_ms: 5000
+    profile: chrome
+    block_markers: ["challenge-form", "captcha"]
+    request:
+      url: "https://www.bing.com/search?q={{query}}&setlang=en&cc=US&count=20"
+      headers:
+        Accept-Language: "en-US,en;q=0.9"
+    parse:
+      type: css
+      item: "li.b_algo"
+      fields:
+        title: { sel: "h2 a", attr: text }
+        url: { sel: "h2 a", attr: href, urlparam: bing_u }
+        content:
+          { sel: ".b_caption p", attr: text, exclude: "a.b_algoReadMore" }
+
+  - name: wikipedia
+    categories: [general]
+    weight: 85
+    timeout_ms: 4000
+    request:
+      url: "https://en.wikipedia.org/w/api.php?action=query&list=search&srlimit=20&srsearch={{query}}&format=json&utf8=1"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: query.search
+      fields:
+        title: { path: title }
+        url:
+          { template: "https://en.wikipedia.org/wiki/{{title}}", encode: true }
+        content: { path: snippet, strip_html: true }
+
+  - name: wikidata
+    categories: [general]
+    weight: 55
+    timeout_ms: 4000
+    request:
+      url: "https://www.wikidata.org/w/api.php?action=wbsearchentities&search={{query}}&language=en&format=json&limit=20"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: search
+      fields:
+        title: { path: display.label.value, or_template: "{{label}}" }
+        url: { template: "https://www.wikidata.org/wiki/{{id}}" }
+        content:
+          { path: display.description.value, or_template: "{{description}}" }
+
+  - name: marginalia
+    categories: [general]
+    weight: 50
+    timeout_ms: 6000
+    block_markers: ["barraged by queries", "Wait For A Moment"] # 200-but-throttled interstitial
+    request:
+      url: "https://old-search.marginalia.nu/search?query={{query}}"
+    parse:
+      type: css
+      item: "section.card.search-result"
+      fields:
+        title: { sel: "h2 a.title", attr: text }
+        url: { sel: "h2 a.title", attr: href }
+        content: { sel: "p.description", attr: text }
+
+  - name: mwmbl
+    categories: [general]
+    weight: 45
+    timeout_ms: 5000
+    request:
+      url: "https://api.mwmbl.org/search/?s={{query}}"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: ""
+      fields:
+        title: { path: title, join: value }
+        url: { path: url }
+        content: { path: extract, join: value }
+
+  - name: brave
+    categories: [general]
+    weight: 75
+    timeout_ms: 5000
+    requires_env: BRAVE_SEARCH_API_KEY
+    request:
+      url: "https://api.search.brave.com/res/v1/web/search?q={{query}}&count=20"
+      headers:
+        Accept: "application/json"
+        X-Subscription-Token: "${BRAVE_SEARCH_API_KEY}"
+    parse:
+      type: json
+      item: web.results
+      fields:
+        title: { path: title }
+        url: { path: url }
+        content: { path: description }
+
+  # Opt-in experiments: both need a proxy group (Webshare) before they have
+  # a chance from a datacenter/WARP egress — see research.md §3b.
+  - name: mojeek
+    categories: [general]
+    weight: 60
+    timeout_ms: 5000
+    profile: chrome
+    proxy: webshare
+    enabled: true
+    # direct egress → 403; Webshare datacenter proxy → 200 with <title>Captcha
+    block_markers: ["403 - forbidden", "<title>captcha"]
+    request:
+      url: "https://www.mojeek.com/search?q={{query}}"
+    parse:
+      type: css
+      item: "ul.results-standard li"
+      fields:
+        title: { sel: "a.title", attr: text }
+        url: { sel: "a.title", attr: href }
+        content: { sel: "p.s", attr: text }
+
+  - name: google
+    categories: [general]
+    weight: 90
+    timeout_ms: 5000
+    profile: chrome
+    proxy: webshare
+    enabled: false # R2: Google HTML disabled by default (ToS + JS wall)
+    block_markers: ["unusual traffic", "/sorry/"]
+    request:
+      url: "https://www.google.com/search?q={{query}}&num=20&hl=en"
+      headers:
+        Accept-Language: "en-US,en;q=0.9"
+    parse:
+      type: css
+      item: "div.g"
+      fields:
+        title: { sel: "h3", attr: text }
+        url: { sel: "a", attr: href, urlparam: uddg }
+        content: { sel: "div.VwiC3b", attr: text }
+
+  - name: startpage
+    categories: [general]
+    weight: 40
+    timeout_ms: 6000
+    profile: chrome
+    proxy: webshare
+    enabled: false # M3: consent/cookie dance still required (captcha today)
+    block_markers: ["captcha-block", "captcha"]
+    request:
+      url: "https://www.startpage.com/sp/search?query={{query}}"
+    parse:
+      type: css
+      item: "div.w-gl__result"
+      fields:
+        title: { sel: "a.result-title", attr: text }
+        url: { sel: "a.result-title", attr: href }
+        content: { sel: "div.result-description", attr: text }
+
+  # ------------------------------------------------------------------- news
+  - name: bingnews
+    categories: [news]
+    weight: 80
+    timeout_ms: 5000
+    request:
+      url: "https://www.bing.com/news/search?q={{query}}&format=rss&count=20"
+    parse:
+      type: rss
+      fields:
+        title: { path: title }
+        url: { path: link, urlparam: url }
+        content: { path: description, strip_html: true }
+        published: { path: pubDate }
+
+  - name: wikinews
+    categories: [news]
+    weight: 60
+    timeout_ms: 4000
+    request:
+      url: "https://en.wikinews.org/w/api.php?action=query&list=search&srlimit=20&srsearch={{query}}&format=json&utf8=1"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: query.search
+      fields:
+        title: { path: title }
+        url:
+          { template: "https://en.wikinews.org/wiki/{{title}}", encode: true }
+        content: { path: snippet, strip_html: true }
+
+  - name: hn
+    categories: [news, it]
+    weight: 65
+    timeout_ms: 5000
+    request:
+      url: "https://hn.algolia.com/api/v1/search?query={{query}}&tags=story&hitsPerPage=20"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: hits
+      fields:
+        title: { path: title }
+        url:
+          {
+            path: url,
+            or_template: "https://news.ycombinator.com/item?id={{objectID}}",
+          }
+        content: { path: story_text }
+
+  # --------------------------------------------------------------------- it
+  - name: github
+    categories: [it]
+    weight: 90
+    timeout_ms: 5000
+    request:
+      url: "https://api.github.com/search/repositories?q={{query}}&per_page=20"
+      headers:
+        Accept: "application/vnd.github+json"
+    parse:
+      type: json
+      item: items
+      fields:
+        title: { path: full_name }
+        url: { path: html_url }
+        content: { path: description }
+
+  - name: stackexchange
+    categories: [it]
+    weight: 85
+    timeout_ms: 5000
+    request:
+      url: "https://api.stackexchange.com/2.2/search/advanced?order=desc&sort=relevance&q={{query}}&site=stackoverflow&pagesize=20"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: items
+      fields:
+        title: { path: title, strip_html: true }
+        url: { path: link }
+        content: { path: body, strip_html: true }
+
+  - name: mdn
+    categories: [it]
+    weight: 70
+    timeout_ms: 4000
+    request:
+      url: "https://developer.mozilla.org/api/v1/search?q={{query}}&locale=en-us"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: documents
+      fields:
+        title: { path: title }
+        url: { template: "https://developer.mozilla.org{{mdn_url}}" }
+        content: { path: summary }
+
+  - name: npm
+    categories: [it]
+    weight: 60
+    timeout_ms: 4000
+    request:
+      url: "https://registry.npmjs.org/-/v1/search?text={{query}}&size=20"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: objects
+      fields:
+        title: { path: package.name }
+        url: { template: "https://www.npmjs.com/package/{{package.name}}" }
+        content: { path: package.description }
+
+  - name: crates
+    categories: [it]
+    weight: 55
+    timeout_ms: 4000
+    request:
+      url: "https://crates.io/api/v1/crates?q={{query}}&per_page=20"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: crates
+      fields:
+        title: { path: id }
+        url: { template: "https://crates.io/crates/{{id}}" }
+        content: { path: description }
+
+  - name: packagist
+    categories: [it]
+    weight: 45
+    timeout_ms: 4000
+    request:
+      url: "https://packagist.org/search.json?q={{query}}&per_page=20"
+      headers:
+        Accept: "application/json"
+    parse:
+      type: json
+      item: results
+      fields:
+        title: { path: name }
+        url: { path: url }
+        content: { path: description }
