@@ -82,9 +82,8 @@ and PII redaction out of the box.
 Tomoshibi is now the **fastest free search+scrape stack of the three** on this
 machine: search at 560 req/s with 11 ms p50, scrape with a Redis cache that
 makes repeat requests near-instant, and JS rendering that matches Firecrawl.
-Exa's remaining moat is semantic search — tracked in `docs/EXA_PARITY.md`
-with a concrete roadmap (highlights, category filters, optional embedding
-re-rank).
+Exa's remaining moat is semantic search — on the roadmap (highlights, category
+filters, optional embedding re-rank).
 
 ## Reproduce
 

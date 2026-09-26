@@ -82,4 +82,4 @@ Support package: `internal/extract` (deterministic CSS-selector schema extractio
 
 ## Docs
 
-`README.md` = API reference for endpoint, parameter, env var. `docs/guides/` hold deeper guide (`ARCHITECTURE.md`, `API_REFERENCE.md`, `TESTING.md`, `CODE_WALKTHROUGH.md`, plus Go-for-Svelte-devs onboarding). `docs/features/` document each v2 feature. `plan/architecture.md` carry original design rationale. `cinder-tmcp/` (TMCP, not Mastra) is the MCP server — see `cinder-tmcp/README.md`. `test_reports/` are historical.
+`README.md` = API reference for endpoint, parameter, env var. Only three deeper docs stay tracked: `docs/guides/API_REFERENCE.md` (linked from the published skill), `docs/guides/SEARXNG_FLY.md` (linked from `packages/api/.env.example`), `docs/SEARCH_COMPARISON.md` (linked from README + web homepage). The rest of `docs/` (guides, features, design plans) and all of `plan/` are LOCAL-ONLY — gitignored; they still exist on disk but are not part of the public repo. `test_reports/` are historical and gitignored.

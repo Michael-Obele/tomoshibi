@@ -86,6 +86,17 @@ node_modules/
 .scratch/
 .superpowers/*
 .superpowers/sdd/
-docs/superpowers
 test_reports
-plan/*
+
+# Internal design docs, guides and plans — local-only, NOT part of the public
+# repo. Only the docs that public assets actually link to stay tracked:
+#   docs/SEARCH_COMPARISON.md  — linked from README.md + web homepage
+#   docs/guides/API_REFERENCE.md — linked from the published skills.sh skill
+#   docs/guides/SEARXNG_FLY.md — referenced from packages/api/.env.example
+/docs/*
+!/docs/SEARCH_COMPARISON.md
+!/docs/guides/
+/docs/guides/*
+!/docs/guides/API_REFERENCE.md
+!/docs/guides/SEARXNG_FLY.md
+/plan/*

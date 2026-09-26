@@ -44,7 +44,7 @@ To ensure code quality, common Go analysis tools are unified in the `Makefile`. 
 ## 🛠️ Developer Workflows
 
 - **Swagger Generation**: Swagger docs are auto-generated. Update handlers/structs and run `swag init`.
-- **Configuration**: Use `internal/config` (Viper). Add environment variables to `config.go` and `plan/env.example`.
+- **Configuration**: Use `internal/config` (Viper). Add environment variables to `config.go` and `packages/api/.env.example`.
 - **Logging**: Use the `slog` wrapper in `pkg/logger`. Avoid `fmt.Println` or raw `log`.
 
 ## 🧪 Testing Patterns

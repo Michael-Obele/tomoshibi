@@ -20,7 +20,7 @@ Tomoshibi is a high-performance, self-hosted web scraping API built with Go, des
 - `internal/domain/`: Core data structures and interfaces.
 - `internal/config/`: Configuration management using Viper/Godotenv.
 - `pkg/logger/`: Centralized structured logging (slog).
-- `docs/`: Extensive project documentation and feature specs.
+- `docs/`: Local-only project documentation (gitignored except `SEARCH_COMPARISON.md`, `guides/API_REFERENCE.md`, `guides/SEARXNG_FLY.md`).
   Previously `cinder-js/` & `cinder-js-gpt/` — archived.
 
 ## 🚀 Building and Running
