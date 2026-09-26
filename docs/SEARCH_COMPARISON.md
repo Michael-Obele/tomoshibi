@@ -18,7 +18,7 @@ instances; Exa numbers are from its published free-tier limits and docs
 
 ## Search — measured
 
-| Metric       | **Tomoshibi (SearXNG)**                                        | **Firecrawl (self-hosted)** | Exa (cloud)                |
+| Metric       | **Tomoshibi (SearXNG)**                                     | **Firecrawl (self-hosted)** | Exa (cloud)                |
 | ------------ | ----------------------------------------------------------- | --------------------------- | -------------------------- |
 | Throughput   | **560 req/s**                                               | 1.9 req/s                   | rate-limited free tier     |
 | p50 latency  | **11 ms**                                                   | 5.4 s                       | n/a (paid)                 |
@@ -45,7 +45,7 @@ result metadata.
 
 ## Scrape — measured (5× go.dev/blog)
 
-| Metric                                         | **Tomoshibi**                         | **Firecrawl (self-hosted)**           |
+| Metric                                         | **Tomoshibi**                      | **Firecrawl (self-hosted)**           |
 | ---------------------------------------------- | ---------------------------------- | ------------------------------------- |
 | Success                                        | **5/5**                            | 5/5                                   |
 | Latency                                        | **7–14 ms** (Redis-cached)         | ~17 s each (no cache)                 |
@@ -60,7 +60,7 @@ and PII redaction out of the box.
 
 ## Feature matrix
 
-| Capability                              | **Tomoshibi**    | Exa       | Firecrawl (self-hosted) |
+| Capability                              | **Tomoshibi** | Exa       | Firecrawl (self-hosted) |
 | --------------------------------------- | ------------- | --------- | ----------------------- |
 | Clean markdown fetch                    | ✅            | ✅        | ✅                      |
 | JS rendering (SPAs)                     | ✅ Chromedp   | ❌ static | ✅ Playwright           |
