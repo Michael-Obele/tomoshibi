@@ -88,12 +88,31 @@ func NewHybridServiceWithNative(native Service, braveAPIKey, searxngEndpoint str
 	}
 }
 
+// Search walks the chain and returns the first strong result set. A set that
+// is merely non-empty but concentrated on a single domain (see isWeak) does
+// not end the walk: it is remembered and returned only when every following
+// backend fails or answers empty, so concentrated junk never masks a better
+// fallback while a weak-but-usable set is never discarded for nothing.
 func (h *HybridService) Search(ctx context.Context, opts SearchOptions) ([]Result, int, error) {
 	var lastErr error
-	for _, s := range h.services {
+	var weakResults []Result
+	weakTotal := 0
+	for i, s := range h.services {
 		results, total, err := s.Search(ctx, opts)
 		if err == nil && len(results) > 0 {
-			return results, total, nil
+			if !isWeak(results) {
+				return results, total, nil
+			}
+			if weakResults == nil {
+				weakResults, weakTotal = results, total
+				if logger.Log != nil {
+					logger.Log.Info("search: results concentrated on one domain, trying next",
+						"backend", fmt.Sprintf("%T", s),
+						"results", len(results),
+						"last_backend", i == len(h.services)-1)
+				}
+			}
+			continue
 		}
 		if err != nil {
 			lastErr = err
@@ -103,6 +122,9 @@ func (h *HybridService) Search(ctx context.Context, opts SearchOptions) ([]Resul
 		} else if logger.Log != nil {
 			logger.Log.Info("search: backend returned empty, trying next", "backend", fmt.Sprintf("%T", s))
 		}
+	}
+	if weakResults != nil {
+		return weakResults, weakTotal, nil // nothing stronger answered
 	}
 	if lastErr != nil {
 		return nil, 0, lastErr
