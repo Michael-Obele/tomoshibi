@@ -1,14 +1,6 @@
 import { McpServer } from "tmcp";
-import { ValibotJsonSchemaAdapter } from "@tmcp/adapter-valibot";
+import { TomoshiJsonSchemaAdapter } from "./adapter.js";
 import { getConfig } from "./config.js";
-
-class FixedValibotAdapter extends ValibotJsonSchemaAdapter {
-  async toJsonSchema(schema: any) {
-    const s: any = await super.toJsonSchema(schema);
-    if (!s.type && (s.oneOf || s.anyOf)) s.type = "object";
-    return s;
-  }
-}
 import { TomoshiClient } from "./client.js";
 import { ExtractSchema, createExtractHandler } from "./tools/extract.js";
 import { DiscoverSchema, createDiscoverHandler } from "./tools/discover.js";
@@ -30,7 +22,7 @@ export function createServer(): McpServer {
         "Tomoshibi MCP — web scraping, crawling, and search powered by Tomoshibi API (formerly Cinder)",
     },
     {
-      adapter: new FixedValibotAdapter(),
+      adapter: new TomoshiJsonSchemaAdapter(),
       capabilities: {
         tools: { listChanged: false },
       },
@@ -57,7 +49,7 @@ export function createServer(): McpServer {
     {
       name: "tomoshi_extract",
       description:
-        "Extraction resource (5 actions): `scrape` (single page → markdown, screenshots/images/summary/schema), `scrape_multi` (sync multi-URL max 10, no Redis, mirrors web_fetch_exa), `links` (hyperlinks only, no markdown), `batch` (enqueue 20 URLs async, Redis), `batch_status` (poll batch). Replaces cinder_scrape/cinder_links/cinder_batch_scrape.",
+        "Extraction resource (5 actions): `scrape` (single page → markdown, screenshots/images/summary/schema), `scrape_multi` (sync multi-URL max 10, no Redis, mirrors web_fetch_exa), `links` (hyperlinks only, no markdown), `batch` (enqueue 20 URLs async, Redis), `batch_status` (poll batch). Replaces cinder_scrape/cinder_links/cinder_batch_scrape. Requires `action` + per-action params: scrape→url, scrape_multi→urls, links→url, batch→urls, batch_status→batch_id.",
       schema: ExtractSchema,
       annotations: {
         readOnlyHint: false,
@@ -75,7 +67,7 @@ export function createServer(): McpServer {
     {
       name: "tomoshi_discover",
       description:
-        "Discovery resource (4 actions): `search` (SearXNG/Brave, domain filters/pagination), `map` (sitemap/traversal), `crawl` (enqueue BFS async, Redis), `crawl_status` (poll crawl). Replaces cinder_search/cinder_map/cinder_crawl.",
+        "Discovery resource (4 actions): `search` (SearXNG/Brave, domain filters/pagination), `map` (sitemap/traversal), `crawl` (enqueue BFS async, Redis), `crawl_status` (poll crawl). Replaces cinder_search/cinder_map/cinder_crawl. Requires `action` + per-action params: search→query, map→url, crawl→url, crawl_status→id.",
       schema: DiscoverSchema,
       annotations: {
         readOnlyHint: false,
@@ -92,7 +84,7 @@ export function createServer(): McpServer {
     {
       name: "tomoshi_monitor",
       description:
-        "Change-tracking resource (3 actions): `create` (hashes markdown, fires signed webhook on change), `status` (config/last hash/next check), `delete` (stop & remove). Requires Redis.",
+        "Change-tracking resource (3 actions): `create` (hashes markdown, fires signed webhook on change), `status` (config/last hash/next check), `delete` (stop & remove). Requires Redis. Requires `action` + per-action params: create→url, status→id, delete→id.",
       schema: MonitorSchema,
       annotations: {
         readOnlyHint: false,

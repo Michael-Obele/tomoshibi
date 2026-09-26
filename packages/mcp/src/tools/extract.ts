@@ -4,6 +4,14 @@ import type {
   ScrapeParams,
   MultiScrapeParams,
 } from "../client.js";
+import {
+  composite,
+  flattenShapes,
+  guardAction,
+  normalize,
+  toolError,
+  type ActionSpec,
+} from "./schema.js";
 
 /**
  * Resource-oriented multiplexed extraction tool.
@@ -370,21 +378,148 @@ const ExtractBatchStatusShape = v.object({
   ),
 });
 
-export const ExtractSchema = v.variant("action", [
-  ExtractScrapeShape,
-  ExtractMultiScrapeShape,
-  ExtractLinksShape,
-  ExtractBatchShape,
-  ExtractBatchStatusShape,
-]);
+/**
+ * Flat extraction schema: ONE object, with `action` forced into the required
+ * list of the emitted JSON Schema (see `discover.ts` for the why — a root-level
+ * `v.variant` makes clients hand models an empty `properties: {}` schema).
+ * Per-action required fields are enforced by EXTRACT_ACTIONS in the handler.
+ */
+export const ExtractSchema = v.object(
+  flattenShapes(
+    [
+      // scrape_multi first so scrape's richer shared-option descriptions win
+      ExtractMultiScrapeShape,
+      ExtractScrapeShape,
+      ExtractLinksShape,
+      ExtractBatchShape,
+      ExtractBatchStatusShape,
+    ],
+    {
+      action: v.optional(
+        v.pipe(
+          v.picklist([
+            "scrape",
+            "scrape_multi",
+            "links",
+            "batch",
+            "batch_status",
+          ]),
+          v.description(
+            "Extraction action — required. scrape needs `url`; scrape_multi needs `urls` (max 10); links needs `url`; batch needs `urls` (max 20, Redis); batch_status needs `batch_id`",
+          ),
+        ),
+      ),
+      // fields that may arrive stringified from untyped MCP clients
+      lenient: [
+        "max_images",
+        "max_image_size_kb",
+        "summary_sentences",
+        "screenshot",
+        "images",
+        "summary",
+        "redact_pii",
+        "block_ads",
+        "remove_base64_images",
+        "include_links",
+        "render",
+        "screenshot_opts",
+        "image_process",
+        "actions",
+        "extract_schema",
+        "urls",
+      ],
+      overrides: {
+        // per-action required fields — enforced by EXTRACT_ACTIONS below
+        url: v.optional(
+          v.pipe(
+            v.string(),
+            v.description("URL to fetch (action=scrape|links)"),
+            v.url("Must be a valid URL"),
+          ),
+        ),
+        urls: v.optional(
+          composite(
+            v.pipe(
+              v.array(v.pipe(v.string(), v.url("Must be a valid URL"))),
+              v.minLength(1, "At least one URL is required"),
+              v.maxLength(20, "Maximum 20 URLs (scrape_multi ≤10, batch ≤20)"),
+            ),
+            "URLs to scrape — scrape_multi: max 10 (sync, no Redis); batch: max 20 (async, Redis)",
+          ),
+        ),
+      },
+    },
+  ),
+  'tomoshi_extract requires "action": scrape | scrape_multi | links | batch | batch_status — e.g. {"action":"scrape","url":"https://example.com"}',
+);
 export type ExtractInput = v.InferOutput<typeof ExtractSchema>;
+
+/** Per-action required parameters, quoted verbatim in handler errors. */
+const EXTRACT_ACTIONS: Record<string, ActionSpec> = {
+  scrape: {
+    required: ["url"],
+    example: { action: "scrape", url: "https://example.com" },
+  },
+  scrape_multi: {
+    required: ["urls"],
+    example: {
+      action: "scrape_multi",
+      urls: ["https://a.com", "https://b.com"],
+    },
+  },
+  links: {
+    required: ["url"],
+    example: { action: "links", url: "https://example.com" },
+  },
+  batch: {
+    required: ["urls"],
+    example: { action: "batch", urls: ["https://a.com"] },
+  },
+  batch_status: {
+    required: ["batch_id"],
+    example: { action: "batch_status", batch_id: "batch_01H…" },
+  },
+};
+const EXTRACT_USAGE =
+  "scrape → url, scrape_multi → urls, links → url, batch → urls, batch_status → batch_id";
+
+/** Fields that may arrive as strings from untyped MCP clients. */
+const EXTRACT_SHAPE = {
+  numbers: ["max_images", "max_image_size_kb", "summary_sentences"],
+  booleans: [
+    "screenshot",
+    "images",
+    "summary",
+    "redact_pii",
+    "block_ads",
+    "remove_base64_images",
+    "include_links",
+    "render",
+  ],
+  json: [
+    "urls",
+    "screenshot_opts",
+    "image_process",
+    "actions",
+    "extract_schema",
+  ],
+};
 
 export function createExtractHandler(client: TomoshiClient) {
   return async (input: Record<string, unknown>) => {
-    const { action } = input as { action: string };
+    const { value: args, error } = normalize(input, EXTRACT_SHAPE);
+    if (error) return toolError(error);
+    const invalid = guardAction(
+      "tomoshi_extract",
+      args,
+      EXTRACT_ACTIONS,
+      EXTRACT_USAGE,
+    );
+    if (invalid) return invalid;
+    const { action } = args as { action: string };
     try {
       if (action === "scrape") {
-        const params = input as unknown as ScrapeParams & { action: string };
+        const params = args as unknown as ScrapeParams & { action: string };
         const result = await client.scrape(params);
         const titleMatch = result.markdown.match(/^#\s+(.+)/m);
         const title = titleMatch ? titleMatch[1].trim() : result.url;
@@ -458,7 +593,7 @@ export function createExtractHandler(client: TomoshiClient) {
       }
 
       if (action === "scrape_multi") {
-        const params = input as unknown as MultiScrapeParams & {
+        const params = args as unknown as MultiScrapeParams & {
           action: string;
         };
         const result = await client.scrapeMulti(params);
@@ -552,7 +687,7 @@ export function createExtractHandler(client: TomoshiClient) {
       }
 
       if (action === "links") {
-        const { url } = input as { url: string };
+        const { url } = args as { url: string };
         const result = await client.links(url);
         const links = result.links ?? [];
         const lines: string[] = [
@@ -590,7 +725,7 @@ export function createExtractHandler(client: TomoshiClient) {
       }
 
       if (action === "batch") {
-        const { urls } = input as { urls: string[] };
+        const { urls } = args as { urls: string[] };
         const result = await client.batchScrape({ urls });
         const lines: string[] = [
           "# Batch Scrape Enqueued",
@@ -613,7 +748,7 @@ export function createExtractHandler(client: TomoshiClient) {
       }
 
       // batch_status
-      const { batch_id } = input as { batch_id: string };
+      const { batch_id } = args as { batch_id: string };
       const result = await client.getBatchStatus(batch_id);
       const lines: string[] = [
         "# Batch Status",

@@ -5,6 +5,14 @@ import type {
   MapParams,
   CrawlParams,
 } from "../client.js";
+import {
+  flattenShapes,
+  guardAction,
+  normalize,
+  num,
+  toolError,
+  type ActionSpec,
+} from "./schema.js";
 
 /**
  * Resource-oriented multiplexed discovery tool.
@@ -230,13 +238,137 @@ const DiscoverCrawlStatusShape = v.object({
   ),
 });
 
-export const DiscoverSchema = v.variant("action", [
-  DiscoverSearchShape,
-  DiscoverMapShape,
-  DiscoverCrawlShape,
-  DiscoverCrawlStatusShape,
-]);
+/**
+ * Flat discovery schema: ONE object, with `action` forced into the required
+ * list of the emitted JSON Schema. A root-level `v.variant` made
+ * @valibot/to-json-schema emit `oneOf` with no top-level `properties`, which
+ * MCP clients handed to models as an empty schema — so models called the tool
+ * with `{}`.
+ *
+ * `action` is optional at runtime on purpose: tmcp validates arguments before
+ * the handler runs and dumps raw Valibot issues, so `{}` is routed to
+ * guardAction instead, which returns a readable usage error.
+ */
+export const DiscoverSchema = v.object(
+  flattenShapes(
+    [
+      DiscoverSearchShape,
+      DiscoverMapShape,
+      DiscoverCrawlShape,
+      DiscoverCrawlStatusShape,
+    ],
+    {
+      action: v.optional(
+        v.pipe(
+          v.picklist(["search", "map", "crawl", "crawl_status"]),
+          v.description(
+            "Discovery action — required. search needs `query`; map needs `url`; crawl needs `url`; crawl_status needs `id` (returned by crawl)",
+          ),
+        ),
+      ),
+      // fields that may arrive stringified from untyped MCP clients
+      lenient: [
+        "limit",
+        "offset",
+        "maxDepth",
+        "maxAge",
+        "rerank",
+        "render",
+        "screenshot",
+        "images",
+        "include_paths",
+        "exclude_paths",
+        "includeDomains",
+        "excludeDomains",
+        "requiredText",
+      ],
+      // Conflicting per-branch bounds/defaults are resolved here. The Go API
+      // applies its own defaults (search 10, map 100, crawl 10) and caps, so
+      // the schema carries no default for these.
+      overrides: {
+        limit: v.optional(
+          num(
+            "Max results — search/crawl 1-100 (default 10), map 1-5000 (default 100)",
+            1,
+            5000,
+          ),
+        ),
+        mode: v.optional(
+          v.pipe(
+            v.picklist(["fast", "smart", "static", "dynamic"]),
+            v.description(
+              "search: 'fast' restricts to recent results; crawl: smart|static|dynamic (API default smart)",
+            ),
+          ),
+        ),
+        // Per-action required fields — enforced by DISCOVER_ACTIONS below.
+        query: v.optional(
+          v.pipe(
+            v.string(),
+            v.description("Search query (action=search)"),
+            v.minLength(1, "Search query cannot be empty"),
+          ),
+        ),
+        url: v.optional(
+          v.pipe(
+            v.string(),
+            v.description("Site URL to map, or crawl root (action=map|crawl)"),
+            v.url("Must be a valid URL"),
+          ),
+        ),
+        id: v.optional(
+          v.pipe(
+            v.string(),
+            v.description("Task ID returned by action=crawl (action=crawl_status)"),
+            v.minLength(1, "Task ID is required"),
+          ),
+        ),
+      },
+    },
+  ),
+  'tomoshi_discover requires "action": search | map | crawl | crawl_status — e.g. {"action":"search","query":"svelte 5 runes"}',
+);
 export type DiscoverInput = v.InferOutput<typeof DiscoverSchema>;
+
+/** Per-action required parameters, quoted verbatim in handler errors. */
+const DISCOVER_ACTIONS: Record<string, ActionSpec> = {
+  search: {
+    required: ["query"],
+    example: { action: "search", query: "svelte 5 runes" },
+  },
+  map: {
+    required: ["url"],
+    example: { action: "map", url: "https://example.com" },
+  },
+  crawl: {
+    required: ["url"],
+    example: {
+      action: "crawl",
+      url: "https://example.com/docs",
+      maxDepth: 2,
+      limit: 10,
+    },
+  },
+  crawl_status: {
+    required: ["id"],
+    example: { action: "crawl_status", id: "crawl_01H…" },
+  },
+};
+const DISCOVER_USAGE =
+  "search → query, map → url, crawl → url, crawl_status → id";
+
+/** Fields that may arrive as strings from untyped MCP clients. */
+const DISCOVER_SHAPE = {
+  numbers: ["limit", "offset", "maxDepth", "maxAge"],
+  booleans: ["rerank", "render", "screenshot", "images"],
+  json: [
+    "include_paths",
+    "exclude_paths",
+    "includeDomains",
+    "excludeDomains",
+    "requiredText",
+  ],
+};
 
 function pageTitle(page: { title?: string; url: string }): string {
   const title = page.title?.trim();
@@ -253,10 +385,19 @@ function pageTitle(page: { title?: string; url: string }): string {
 
 export function createDiscoverHandler(client: TomoshiClient) {
   return async (input: Record<string, unknown>) => {
-    const { action } = input as { action: string };
+    const { value: args, error } = normalize(input, DISCOVER_SHAPE);
+    if (error) return toolError(error);
+    const invalid = guardAction(
+      "tomoshi_discover",
+      args,
+      DISCOVER_ACTIONS,
+      DISCOVER_USAGE,
+    );
+    if (invalid) return invalid;
+    const { action } = args as { action: string };
     try {
       if (action === "search") {
-        const params = input as unknown as SearchParams & { action: string };
+        const params = args as unknown as SearchParams & { action: string };
         const result = await client.search(params);
         const lines: string[] = [
           `# Search Results: "${result.query}"`,
@@ -287,7 +428,7 @@ export function createDiscoverHandler(client: TomoshiClient) {
       }
 
       if (action === "map") {
-        const params = input as unknown as MapParams & { action: string };
+        const params = args as unknown as MapParams & { action: string };
         const result = await client.map(params);
         const lines: string[] = [
           `# Map Result: ${result.url}`,
@@ -311,7 +452,7 @@ export function createDiscoverHandler(client: TomoshiClient) {
       }
 
       if (action === "crawl") {
-        const params = input as unknown as CrawlParams & { action: string };
+        const params = args as unknown as CrawlParams & { action: string };
         const result = await client.crawl(params);
         const lines: string[] = [
           "# Crawl Job Enqueued",
@@ -338,7 +479,7 @@ export function createDiscoverHandler(client: TomoshiClient) {
       }
 
       // crawl_status
-      const { id } = input as { id: string };
+      const { id } = args as { id: string };
       const result = await client.getCrawlStatus(id);
       const lines: string[] = [
         "# Crawl Status",
