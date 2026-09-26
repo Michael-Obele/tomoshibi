@@ -23,6 +23,7 @@
     "start": "bun run src/index.ts",
     "dev": "bun run --watch src/index.ts",
     "typecheck": "tsc --noEmit",
+    "test": "bun test",
     "check": "bun run typecheck",
     "build": "tsc -p tsconfig.build.json && chmod +x dist/stdio.js && chmod +x dist/index.js",
     "prepublishOnly": "npm run build",
