@@ -100,3 +100,4 @@ test_reports
 !/docs/guides/API_REFERENCE.md
 !/docs/guides/SEARXNG_FLY.md
 /plan/*
+/plan/
