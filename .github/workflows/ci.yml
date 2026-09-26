@@ -83,3 +83,23 @@ jobs:
         run: |
           go build -o /tmp/tomoshibi-api ./cmd/api
           go build -o /tmp/tomoshibi-worker ./cmd/worker
+
+  # The MCP package is TypeScript: typecheck plus the bun test suite (schema
+  # helpers, JSON Schema adapter, per-tool handler tests). Runs on every
+  # push/PR so a schema regression — e.g. a root-level union sneaking back in
+  # and handing models an empty `properties: {}` — is caught before npm.
+  mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: packages/mcp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install
+        run: bun install
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Test
+        run: bun test
