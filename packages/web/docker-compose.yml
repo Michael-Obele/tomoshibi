@@ -1,15 +1,24 @@
 # Tomoshibi Web — standalone
 # Run just the SvelteKit playground on 7432 (needs a running API on 7431)
 # Usage: docker compose -f packages/web/docker-compose.yml up -d
-# Or with local API: TOMOSHIBI_API_URL=http://host.docker.internal:7431 docker compose -f packages/web/docker-compose.yml up -d
+# The backend URL is a BUILD arg ($env/static/private) — re-run with --build after
+# changing PRIVATE_TOMOSHI_BACKEND_URL. host-gateway makes host.docker.internal
+# resolve on Linux docker too.
+# Or with a remote API: PRIVATE_TOMOSHI_BACKEND_URL=http://1.2.3.4:7431 docker compose -f packages/web/docker-compose.yml up -d --build
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        PRIVATE_TOMOSHI_BACKEND_URL: ${PRIVATE_TOMOSHI_BACKEND_URL:-http://host.docker.internal:7431}
+        PRIVATE_TOMOSHI_API_KEY: ${PRIVATE_TOMOSHI_API_KEY:-dummy}
     ports:
       - "7432:7432"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - PORT=7432
-      - TOMOSHIBI_API_URL=${TOMOSHIBI_API_URL:-http://host.docker.internal:7431}
+      - MASTRA_PASSWORD=${MASTRA_PASSWORD:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:7432/"]

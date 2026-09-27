@@ -25,5 +25,5 @@ USER bun
 
 EXPOSE 7433
 
-# Start the MCP server (PORT and TOMOSHIBI_API_URL set via docker-compose env)
+# Start the MCP server (PORT and TOMOSHI_API_URL set via docker-compose env)
 ENTRYPOINT ["bun", "run", "src/index.ts"]
