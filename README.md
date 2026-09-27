@@ -172,12 +172,12 @@ data/telemetry/engine-2026-09-27.jsonl   # one line per engine attempt
 
 ## Updating Docker
 
-| You changed | Do this locally | What CI does on push to `main` |
-|---|---|---|
-| Go code (`packages/api`) | `docker compose up -d --build api` | Docker workflow builds & pushes `ghcr.io/michael-obele/tomoshibi-*` (+ Docker Hub) |
-| MCP (`packages/mcp`) | `docker compose -f packages/mcp/docker-compose.yml up -d --build` | npm workflow publishes `tomoshi` (auto-bump, e.g. 1.1.6 → 1.1.7) |
-| Web (`packages/web`) | `docker compose -f packages/web/docker-compose.yml up -d --build` — the backend URL is a **build** arg | same Docker workflow |
-| compose / `.env` only | `docker compose up -d` (no `--build`) | — |
+| You changed              | Do this locally                                                                                        | What CI does on push to `main`                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Go code (`packages/api`) | `docker compose up -d --build api`                                                                     | Docker workflow builds & pushes `ghcr.io/michael-obele/tomoshibi-*` (+ Docker Hub) |
+| MCP (`packages/mcp`)     | `docker compose -f packages/mcp/docker-compose.yml up -d --build`                                      | npm workflow publishes `tomoshi` (auto-bump, e.g. 1.1.6 → 1.1.7)                   |
+| Web (`packages/web`)     | `docker compose -f packages/web/docker-compose.yml up -d --build` — the backend URL is a **build** arg | same Docker workflow                                                               |
+| compose / `.env` only    | `docker compose up -d` (no `--build`)                                                                  | —                                                                                  |
 
 Release checklist: `make check` in `packages/api` (or `bun run check` in `packages/mcp`) → commit → push → watch `gh run list` → rebuild locally → verify:
 
