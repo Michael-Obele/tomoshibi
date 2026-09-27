@@ -155,6 +155,52 @@ Each package has its own README with its own tree: [api](packages/api/README.md)
 
 ---
 
+## Local telemetry
+
+Every search records one event (who answered, fallbacks, latency, trace id) and every native engine attempt one more (ok/empty/blocked/timeout + reason) into **daily JSONL files that never leave the machine**:
+
+```text
+data/telemetry/search-2026-09-27.jsonl   # one line per search
+data/telemetry/engine-2026-09-27.jsonl   # one line per engine attempt
+```
+
+- **View it:** `curl -s 'http://localhost:7431/v1/insights?hours=24' | jq` → per-engine scorecard (attempts, ok/empty/blocked, `last_error`, latency), chain stats (fallbacks, weak-result gates), p50/p95 latency, and `recent_errors` carrying `trace_id`s you can grep in `docker logs tomoshibi-api-1`.
+- **Raw:** `cat data/telemetry/engine-*.jsonl | jq -s 'group_by(.engine) | map({engine: .[0].engine, n: length})'`
+- **Config** (defaults): `TELEMETRY_ENABLED` (`true`) · `TELEMETRY_DIR` (`data/telemetry`) · `TELEMETRY_RETAIN_DAYS` (`14`, `0` = keep forever) — documented in `packages/api/.env.example`.
+- **Docker:** compose bind-mounts `./data:/app/data`, so files survive recreation; `/data/` is gitignored.
+- Off is instant: `TELEMETRY_ENABLED=false` → `/v1/insights` returns `{"enabled": false}`.
+
+## Updating Docker
+
+| You changed | Do this locally | What CI does on push to `main` |
+|---|---|---|
+| Go code (`packages/api`) | `docker compose up -d --build api` | Docker workflow builds & pushes `ghcr.io/michael-obele/tomoshibi-*` (+ Docker Hub) |
+| MCP (`packages/mcp`) | `docker compose -f packages/mcp/docker-compose.yml up -d --build` | npm workflow publishes `tomoshi` (auto-bump, e.g. 1.1.6 → 1.1.7) |
+| Web (`packages/web`) | `docker compose -f packages/web/docker-compose.yml up -d --build` — the backend URL is a **build** arg | same Docker workflow |
+| compose / `.env` only | `docker compose up -d` (no `--build`) | — |
+
+Release checklist: `make check` in `packages/api` (or `bun run check` in `packages/mcp`) → commit → push → watch `gh run list` → rebuild locally → verify:
+
+```bash
+docker logs tomoshibi-api-1 2>&1 | grep -E "Native search engines loaded|Telemetry recording"
+curl -s localhost:7431/health
+```
+
+Self-hosters pull the same images CI pushed: `docker pull ghcr.io/michael-obele/tomoshibi-api:latest`.
+
+## FAQ / troubleshooting
+
+- **An engine stopped returning results.** Read the scorecard first: `curl -s 'localhost:7431/v1/insights?hours=24' | jq '.insights.engines'` → `blocked` / `last_error`. Confirm with a live probe (`CANARY_ENGINES=ddg go test -tags=canary ./internal/search/engines/ -run TestCanary -v` from `packages/api`), log the verdict in `plan/tomoshi-search/research.md` §3b, then fix `internal/search/engines/registry.default.yaml` (better `block_markers`, `proxy: webshare`, or `enabled: false`) and rebuild. **Roster rule: no edit without a live probe.**
+- **A new error string shows up in logs.** Start from `recent_errors[].trace_id` in `/v1/insights` and grep that id in `docker logs`. The chain explains itself: `search: backend failed, trying next`, `search: results concentrated on one domain` (weak-result gate firing), `proxy budget exhausted — engines degraded to direct egress`.
+- **My env var is ignored.** The api container takes an explicit `environment:` list (no `env_file`), and compose interpolation reads only the repo-root `.env` (gitignored). Add the var in **both** places, then `docker compose up -d` — use `--build` only when the code changed.
+- **401 on `/v1/*`.** New builds honor `APP_API_KEYS`/`API_KEYS`; Docker passes neither, so auth is off there. If you enable it, also set `TOMOSHI_API_KEY` in your MCP config — otherwise every MCP call 401s.
+- **Port 7431 already in use.** An older container or process holds it (`docker ps`). Experiments use `SERVER_PORT=7452`.
+- **`/v1/crawl`, `/v1/batch`, `/v1/monitor` return 503.** Redis is optional by design — scrape/search keep working; `docker compose up -d redis`.
+- **MCP tools fail with `{}` or a raw `Invalid arguments …` dump.** You're on `tomoshi` < 1.1.6, which published a root-level `oneOf` schema clients rendered as empty properties. Upgrade/restart the MCP — 1.1.6+ ships flat schemas and readable usage errors.
+- **Search results look thin or off-topic.** Check `backends` (who answered), `weak_gates` (how often native was single-domain and got handed to SearXNG/Brave), and `engines.<name>.empty` (corpus mismatches) in `/v1/insights`.
+
+---
+
 ## API
 
 Base: `http://localhost:7431` — every endpoint under `/v1`.
