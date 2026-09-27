@@ -15,6 +15,19 @@ type Config struct {
 	Redis  RedisConfig  `mapstructure:"redis"`
 	Brave  BraveConfig  `mapstructure:"brave"`
 	Search SearchConfig `mapstructure:"search"`
+	// Telemetry is local-only search observability (JSONL + /v1/insights).
+	Telemetry TelemetryConfig `mapstructure:"telemetry"`
+}
+
+// TelemetryConfig controls local-only search telemetry: daily JSONL event
+// files under Dir (never leave the machine) aggregated by GET /v1/insights.
+type TelemetryConfig struct {
+	// Enabled (default true) records one event per search and per engine attempt.
+	Enabled bool `mapstructure:"enabled"`
+	// Dir is the event directory (default data/telemetry, gitignored).
+	Dir string `mapstructure:"dir"`
+	// RetainDays prunes files older than this on startup (0 = keep forever).
+	RetainDays int `mapstructure:"retain_days"`
 }
 
 type BraveConfig struct {
@@ -123,6 +136,9 @@ func Load() (*Config, error) {
 	v.SetDefault("search.stealth_enabled", false)
 	v.SetDefault("search.native_enabled", true)
 	v.SetDefault("search.compat_addr", "")
+	v.SetDefault("telemetry.enabled", true)
+	v.SetDefault("telemetry.dir", "data/telemetry")
+	v.SetDefault("telemetry.retain_days", 14)
 	v.SetDefault("search.engines_path", "")
 	v.SetDefault("search.webshare_api_key", "")
 	v.SetDefault("search.webshare_proxy_url", "")
@@ -142,6 +158,9 @@ func Load() (*Config, error) {
 	v.BindEnv("search.proxy_tier1", "SEARCH_PROXY_TIER1")
 	v.BindEnv("search.proxy_tier2", "SEARCH_PROXY_TIER2")
 	v.BindEnv("search.proxy_budget_gb", "SEARCH_PROXY_BUDGET_GB")
+	v.BindEnv("telemetry.enabled", "TELEMETRY_ENABLED")
+	v.BindEnv("telemetry.dir", "TELEMETRY_DIR")
+	v.BindEnv("telemetry.retain_days", "TELEMETRY_RETAIN_DAYS")
 	v.BindEnv("redis.rest_url", "UPSTASH_REDIS_REST_URL")
 	v.BindEnv("redis.rest_token", "UPSTASH_REDIS_REST_TOKEN")
 

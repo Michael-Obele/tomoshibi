@@ -44,6 +44,9 @@ services:
       # ddg/marginalia/mojeek answer with block pages instead of results.
       - WEBSHARE_API_KEY=${WEBSHARE_API_KEY:-}
       - SEARCH_PROXY_BUDGET_GB=${SEARCH_PROXY_BUDGET_GB:-1}
+    volumes:
+      # Local-only search telemetry (JSONL) survives container recreation.
+      - ./data:/app/data
     depends_on:
       redis:
         condition: service_healthy

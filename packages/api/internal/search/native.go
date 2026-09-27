@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Michael-Obele/tomoshibi/internal/search/engines"
+	"github.com/Michael-Obele/tomoshibi/internal/telemetry"
 )
 
 // EngineOutcome records what one engine did during a query — the data
@@ -67,6 +68,8 @@ func stripErrPrefix(err, target error) string {
 type NativeService struct {
 	all   []engines.Engine
 	byCat map[string][]engines.Engine
+	// rec records per-engine outcomes for telemetry (nil = recording off).
+	rec telemetry.Recorder
 }
 
 // NewNativeService builds a NativeService from ready-made engines (order
@@ -87,6 +90,66 @@ func NewNativeService(engs []engines.Engine) *NativeService {
 
 // Engines returns every engine in the service (for wiring/inspection).
 func (n *NativeService) Engines() []engines.Engine { return n.all }
+
+// SetRecorder installs the telemetry recorder for per-engine outcomes.
+// Passing nil switches recording off.
+func (n *NativeService) SetRecorder(r telemetry.Recorder) {
+	if r == nil {
+		r = telemetry.Nop{}
+	}
+	n.rec = r
+}
+
+// recordOutcomes writes one engine event per outcome, joining the search's
+// trace id (set by HybridService on the context).
+func (n *NativeService) recordOutcomes(ctx context.Context, report Report) {
+	if n.rec == nil {
+		return
+	}
+	trace := telemetry.TraceID(ctx)
+	for _, o := range report.Outcomes {
+		n.rec.RecordEngine(telemetry.EngineEvent{
+			TraceID:   trace,
+			Engine:    o.Engine,
+			Status:    engineStatus(o),
+			Detail:    engineDetail(o),
+			Results:   o.Results,
+			LatencyMS: o.Duration.Milliseconds(),
+		})
+	}
+}
+
+// engineStatus classifies an outcome for the telemetry scorecard.
+func engineStatus(o EngineOutcome) string {
+	switch {
+	case o.Err == nil:
+		if o.Results == 0 {
+			return "empty"
+		}
+		return "ok"
+	case errors.Is(o.Err, engines.ErrBlocked):
+		return "blocked"
+	case errors.Is(o.Err, engines.ErrNotConfigured):
+		return "not_configured"
+	case errors.Is(o.Err, context.Canceled), errors.Is(o.Err, context.DeadlineExceeded):
+		return "timeout"
+	case strings.Contains(o.Err.Error(), "timeout"):
+		return "timeout"
+	default:
+		return "error"
+	}
+}
+
+// engineDetail carries the block marker / error text for non-ok outcomes.
+func engineDetail(o EngineOutcome) string {
+	if o.Err == nil {
+		return ""
+	}
+	if errors.Is(o.Err, engines.ErrBlocked) {
+		return stripErrPrefix(o.Err, engines.ErrBlocked)
+	}
+	return o.Err.Error()
+}
 
 // Search implements Service (see SearchWithReport for the full report).
 func (n *NativeService) Search(ctx context.Context, opts SearchOptions) ([]Result, int, error) {
@@ -162,6 +225,7 @@ func (n *NativeService) SearchWithReport(ctx context.Context, opts SearchOptions
 			failures++
 		}
 	}
+	n.recordOutcomes(ctx, report)
 	if failures == len(list) {
 		var first error
 		for _, o := range raw {

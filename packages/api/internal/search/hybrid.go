@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/Michael-Obele/tomoshibi/internal/telemetry"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
 )
 
@@ -16,6 +18,8 @@ import (
 // through to the next, so a single engine outage never kills search.
 type HybridService struct {
 	services []Service
+	// rec records one telemetry event per search (nil = recording off).
+	rec telemetry.Recorder
 }
 
 // NewHybridService builds the search backend chain from configuration without
@@ -55,7 +59,7 @@ func NewHybridService(braveAPIKey, searxngEndpoint string) Service {
 // When no backends are configured, a Service is returned that fails with a
 // clear configuration error.
 func NewHybridServiceWithStealth(braveAPIKey, searxngEndpoint string, fetcher BrowserFetcher) Service {
-	return NewHybridServiceWithNative(nil, braveAPIKey, searxngEndpoint, fetcher)
+	return NewHybridServiceWithNative(nil, nil, braveAPIKey, searxngEndpoint, fetcher)
 }
 
 // NewHybridServiceWithNative builds the full chain with the in-house
@@ -63,7 +67,10 @@ func NewHybridServiceWithStealth(braveAPIKey, searxngEndpoint string, fetcher Br
 // The native layer is cheapest and has no sidecar dependency, so it leads;
 // a nil native restores the legacy ordering exactly. Plan M5 later removes
 // SearXNG from this chain after the parity gate.
-func NewHybridServiceWithNative(native Service, braveAPIKey, searxngEndpoint string, fetcher BrowserFetcher) Service {
+func NewHybridServiceWithNative(rec telemetry.Recorder, native Service, braveAPIKey, searxngEndpoint string, fetcher BrowserFetcher) Service {
+	if rec == nil {
+		rec = telemetry.Nop{}
+	}
 	chain := make([]Service, 0, 4)
 	if native != nil {
 		chain = append(chain, native)
@@ -84,7 +91,7 @@ func NewHybridServiceWithNative(native Service, braveAPIKey, searxngEndpoint str
 	case 1:
 		return chain[0]
 	default:
-		return &HybridService{services: chain}
+		return &HybridService{services: chain, rec: rec}
 	}
 }
 
@@ -93,43 +100,116 @@ func NewHybridServiceWithNative(native Service, braveAPIKey, searxngEndpoint str
 // not end the walk: it is remembered and returned only when every following
 // backend fails or answers empty, so concentrated junk never masks a better
 // fallback while a weak-but-usable set is never discarded for nothing.
-func (h *HybridService) Search(ctx context.Context, opts SearchOptions) ([]Result, int, error) {
-	var lastErr error
-	var weakResults []Result
-	weakTotal := 0
+// Every call emits one telemetry.SearchEvent (trace id joins the native
+// layer's per-engine events).
+func (h *HybridService) Search(ctx context.Context, opts SearchOptions) (results []Result, total int, err error) {
+	start := time.Now()
+	ctx = telemetry.WithTraceID(ctx, telemetry.NewTraceID())
+
+	var (
+		lastErr     error
+		weakResults []Result
+		weakTotal   int
+		weakFrom    string
+		fallbacks   []string
+	)
+	answered := "none"
+	defer func() {
+		if h.rec == nil {
+			return
+		}
+		h.rec.RecordSearch(telemetry.SearchEvent{
+			TraceID:   telemetry.TraceID(ctx),
+			Query:     opts.Query,
+			Category:  opts.Category,
+			Backend:   answered,
+			Fallbacks: fallbacks,
+			Engines:   engineNames(results),
+			Results:   len(results),
+			LatencyMS: time.Since(start).Milliseconds(),
+			Weak:      weakFrom != "",
+			Error:     errText(err),
+		})
+	}()
+
 	for i, s := range h.services {
-		results, total, err := s.Search(ctx, opts)
-		if err == nil && len(results) > 0 {
-			if !isWeak(results) {
-				return results, total, nil
+		res, tot, e := s.Search(ctx, opts)
+		if e == nil && len(res) > 0 {
+			if !isWeak(res) {
+				answered = backendName(s)
+				return res, tot, nil
 			}
 			if weakResults == nil {
-				weakResults, weakTotal = results, total
+				weakResults, weakTotal = res, tot
+				weakFrom = backendName(s)
+				fallbacks = append(fallbacks, weakFrom+": weak")
 				if logger.Log != nil {
 					logger.Log.Info("search: results concentrated on one domain, trying next",
-						"backend", fmt.Sprintf("%T", s),
-						"results", len(results),
+						"backend", weakFrom,
+						"results", len(res),
 						"last_backend", i == len(h.services)-1)
 				}
 			}
 			continue
 		}
-		if err != nil {
-			lastErr = err
+		if e != nil {
+			lastErr = e
+			fallbacks = append(fallbacks, backendName(s)+": error: "+e.Error())
 			if logger.Log != nil {
-				logger.Log.Info("search: backend failed, trying next", "backend", fmt.Sprintf("%T", s), "error", err)
+				logger.Log.Info("search: backend failed, trying next", "backend", fmt.Sprintf("%T", s), "error", e)
 			}
-		} else if logger.Log != nil {
-			logger.Log.Info("search: backend returned empty, trying next", "backend", fmt.Sprintf("%T", s))
+		} else {
+			fallbacks = append(fallbacks, backendName(s)+": empty")
+			if logger.Log != nil {
+				logger.Log.Info("search: backend returned empty, trying next", "backend", fmt.Sprintf("%T", s))
+			}
 		}
 	}
 	if weakResults != nil {
+		answered = weakFrom
 		return weakResults, weakTotal, nil // nothing stronger answered
 	}
 	if lastErr != nil {
 		return nil, 0, lastErr
 	}
 	return nil, 0, nil
+}
+
+// backendName maps a chain member to the short name used in logs, telemetry
+// and /v1/insights.
+func backendName(s Service) string {
+	switch s.(type) {
+	case *NativeService:
+		return "native"
+	case *SearXNGService:
+		return "searxng"
+	case *StealthService:
+		return "stealth"
+	case *BraveService:
+		return "brave"
+	default:
+		return fmt.Sprintf("%T", s)
+	}
+}
+
+// engineNames lists the distinct native engines that contributed results.
+func engineNames(results []Result) []string {
+	var seen []string
+	have := map[string]bool{}
+	for _, r := range results {
+		if r.Engine != "" && !have[r.Engine] {
+			have[r.Engine] = true
+			seen = append(seen, r.Engine)
+		}
+	}
+	return seen
+}
+
+func errText(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }
 
 // noBackendService fails every search with a configuration error. It is

@@ -101,3 +101,4 @@ test_reports
 !/docs/guides/SEARXNG_FLY.md
 /plan/*
 /plan/
+/data/

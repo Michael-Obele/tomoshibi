@@ -40,12 +40,13 @@ func NewRouter(
 			"status":  "ok",
 			"docs":    "/swagger/index.html",
 			"endpoints": gin.H{
-				"scrape":  "/v1/scrape",
-				"search":  "/v1/search",
-				"crawl":   "/v1/crawl",
-				"map":     "/v1/map",
-				"batch":   "/v1/batch/scrape",
-				"monitor": "/v1/monitor",
+				"scrape":   "/v1/scrape",
+				"search":   "/v1/search",
+				"crawl":    "/v1/crawl",
+				"map":      "/v1/map",
+				"batch":    "/v1/batch/scrape",
+				"monitor":  "/v1/monitor",
+				"insights": "/v1/insights",
 			},
 		})
 	})
@@ -77,6 +78,7 @@ func NewRouter(
 		v1.GET("/scrape", scrapeHandler.Scrape)
 		v1.POST("/search", searchHandler.Search)
 		v1.GET("/search", searchHandler.Search)
+		v1.GET("/insights", handlers.NewInsightsHandler(cfg.Telemetry).Insights)
 
 		// URL discovery via sitemap/link traversal.
 		v1.POST("/map", handlers.NewMapHandler().Map)

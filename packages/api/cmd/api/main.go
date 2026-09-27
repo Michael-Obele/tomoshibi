@@ -25,6 +25,7 @@ import (
 	"github.com/Michael-Obele/tomoshibi/internal/search"
 	"github.com/Michael-Obele/tomoshibi/internal/search/compat"
 	"github.com/Michael-Obele/tomoshibi/internal/search/engines"
+	"github.com/Michael-Obele/tomoshibi/internal/telemetry"
 	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
 
@@ -154,6 +155,21 @@ func run() error {
 		logger.Log.Info("Stealth search enabled (reusing chromedp allocator)")
 	}
 
+	// Local-only search telemetry: daily JSONL events under TELEMETRY_DIR,
+	// aggregated by GET /v1/insights. Best-effort — a broken dir disables
+	// recording instead of failing startup.
+	var recorder telemetry.Recorder = telemetry.Nop{}
+	if cfg.Telemetry.Enabled {
+		store, err := telemetry.New(cfg.Telemetry.Dir, cfg.Telemetry.RetainDays)
+		if err != nil {
+			logger.Log.Warn("Telemetry disabled: cannot open store", "dir", cfg.Telemetry.Dir, "error", err)
+		} else {
+			recorder = store
+			defer store.Close()
+			logger.Log.Info("Search telemetry recording", "dir", cfg.Telemetry.Dir, "retain_days", cfg.Telemetry.RetainDays)
+		}
+	}
+
 	// In-house native engine layer (plan/tomoshi-search M1): declarative
 	// YAML roster + browser-grade TLS + Webshare proxy groups. A registry
 	// load failure degrades to the legacy chain instead of killing startup.
@@ -171,10 +187,11 @@ func run() error {
 				BudgetGB:         cfg.Search.ProxyBudgetGB,
 			})
 			nativeSvc = search.NewNativeService(engines.NewEngines(reg, pool))
+			nativeSvc.SetRecorder(recorder)
 			logger.Log.Info("Native search engines loaded", "count", len(nativeSvc.Engines()))
 		}
 	}
-	searchSvc := search.NewHybridServiceWithNative(nativeSvc, cfg.Brave.APIKey, cfg.Search.SearXNGEndpoint, stealthFetcher)
+	searchSvc := search.NewHybridServiceWithNative(recorder, nativeSvc, cfg.Brave.APIKey, cfg.Search.SearXNGEndpoint, stealthFetcher)
 	searchSvc = search.NewCachedService(searchSvc, redisClient)
 	searchHandler := handlers.NewSearchHandler(searchSvc)
 
