@@ -105,7 +105,9 @@ engines:
   - name: mwmbl
     categories: [general]
     weight: 45
-    timeout_ms: 5000
+    # 8s: canary showed a 5004ms spike against otherwise 399–1123ms answers,
+    # and the scorecard had 5/8 timeouts under real load (2026-09-27).
+    timeout_ms: 8000
     request:
       url: "https://api.mwmbl.org/search/?s={{query}}"
       headers:
@@ -144,7 +146,9 @@ engines:
     timeout_ms: 5000
     profile: chrome
     proxy: webshare
-    enabled: true
+    enabled: false # M3 executed 2026-09-27: real-traffic scorecard 0/6 ok (all
+    # blocked — captcha even through a verified-working Webshare exit), canary
+    # 0/3, direct 403. Re-enable only with a residential/tier1 proxy group.
     # direct egress → 403; Webshare datacenter proxy → 200 with <title>Captcha
     block_markers: ["403 - forbidden", "<title>captcha"]
     request:
