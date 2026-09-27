@@ -49,10 +49,10 @@ MCP config (`.vscode/mcp.json` or Claude config):
     "tomoshi": {
       "command": "npx",
       "args": ["-y", "tomoshi"],
-      "env": { "TOMOSHIBI_API_URL": "http://localhost:7431" }
+      "env": { "TOMOSHI_API_URL": "http://localhost:7431" },
       // legacy CINDER_API_URL also works
-    }
-  }
+    },
+  },
 }
 ```
 
@@ -60,11 +60,11 @@ Aliases: `npx tomoshi`, `npx tomoshibi`, `npx tomoshibi-mcp` — same package.
 
 ## Tools (3)
 
-| Tool | `action` | Endpoint | Needs Redis |
-|------|----------|----------|-------------|
-| `tomoshi_extract` | `scrape` · `scrape_multi` · `links` · `batch` · `batch_status` | `/v1/scrape`, `/v1/batch` | `batch*` only |
-| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status` | `/v1/search`, `/v1/map`, `/v1/crawl` | `crawl*` only |
-| `tomoshi_monitor` | `create` · `status` · `delete` | `/v1/monitor` | Yes |
+| Tool               | `action`                                                       | Endpoint                             | Needs Redis   |
+| ------------------ | -------------------------------------------------------------- | ------------------------------------ | ------------- |
+| `tomoshi_extract`  | `scrape` · `scrape_multi` · `links` · `batch` · `batch_status` | `/v1/scrape`, `/v1/batch`            | `batch*` only |
+| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                    | `/v1/search`, `/v1/map`, `/v1/crawl` | `crawl*` only |
+| `tomoshi_monitor`  | `create` · `status` · `delete`                                 | `/v1/monitor`                        | Yes           |
 
 > Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status` until done.
 
@@ -121,6 +121,7 @@ Aliases: `npx tomoshi`, `npx tomoshibi`, `npx tomoshibi-mcp` — same package.
 ## Workflows
 
 ### Research → scrape (most common)
+
 ```
 tomoshi_discover { action: "search", query: "svelte 5 runes", limit: 5 }
 → tomoshi_extract { action: "scrape_multi", urls: [top 3 urls] }
@@ -128,6 +129,7 @@ tomoshi_discover { action: "search", query: "svelte 5 runes", limit: 5 }
 ```
 
 ### Crawl a docs site
+
 ```
 tomoshi_discover { action: "map", url: "https://example.com", search: "/docs" }
 → tomoshi_discover { action: "crawl", url: "https://example.com", include_paths: ["/docs/*"], limit: 20 }
@@ -135,6 +137,7 @@ tomoshi_discover { action: "map", url: "https://example.com", search: "/docs" }
 ```
 
 ### Watch for changes
+
 ```
 tomoshi_monitor { action: "create", url: "https://example.com/changelog", interval_seconds: 3600 }
 → tomoshi_monitor { action: "status", id }
@@ -146,10 +149,10 @@ tomoshi_monitor { action: "create", url: "https://example.com/changelog", interv
 - **MUST** poll `*_status` for async jobs; they return `{ id }` immediately.
 - **MUST** respect limits: `scrape_multi` ≤10, `batch` ≤20, `map` ≤5000, `crawl` limit ≤100, depth ≤10.
 - **MUST** handle Redis-optional degradation: without Redis, `crawl`/`batch`/`monitor` return 503 — fall back to `scrape`/`scrape_multi`/`map`/`search`.
-- **MUST NOT** hardcode `TOMOSHIBI_API_URL` — read from env/mcp config.
+- **MUST NOT** hardcode `TOMOSHI_API_URL` — read from env/mcp config.
 
 ## References
 
 - API: `http://localhost:7431` — all endpoints under `/v1` (`/scrape`, `/search`, `/map`, `/crawl`, `/batch`, `/monitor`)
 - Docs: `packages/mcp/README.md`, `docs/guides/API_REFERENCE.md`
-- Swagger (debug mode): `http://localhost:7431/docs`
+- Swagger (debug mode): `http://localhost:7431/swagger/index.html`

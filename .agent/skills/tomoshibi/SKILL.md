@@ -49,7 +49,7 @@ MCP config (`.vscode/mcp.json` or Claude config):
     "tomoshi": {
       "command": "npx",
       "args": ["-y", "tomoshi"],
-      "env": { "TOMOSHIBI_API_URL": "http://localhost:7431" }
+      "env": { "TOMOSHI_API_URL": "http://localhost:7431" }
       // legacy CINDER_API_URL also works
     }
   }
@@ -146,10 +146,10 @@ tomoshi_monitor { action: "create", url: "https://example.com/changelog", interv
 - **MUST** poll `*_status` for async jobs; they return `{ id }` immediately.
 - **MUST** respect limits: `scrape_multi` ≤10, `batch` ≤20, `map` ≤5000, `crawl` limit ≤100, depth ≤10.
 - **MUST** handle Redis-optional degradation: without Redis, `crawl`/`batch`/`monitor` return 503 — fall back to `scrape`/`scrape_multi`/`map`/`search`.
-- **MUST NOT** hardcode `TOMOSHIBI_API_URL` — read from env/mcp config.
+- **MUST NOT** hardcode `TOMOSHI_API_URL` — read from env/mcp config.
 
 ## References
 
 - API: `http://localhost:7431` — all endpoints under `/v1` (`/scrape`, `/search`, `/map`, `/crawl`, `/batch`, `/monitor`)
 - Docs: `packages/mcp/README.md`, `docs/guides/API_REFERENCE.md`
-- Swagger (debug mode): `http://localhost:7431/docs`
+- Swagger (debug mode): `http://localhost:7431/swagger/index.html`

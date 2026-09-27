@@ -50,11 +50,15 @@ If you're paying Firecrawl/Exa by the token or spawning a Playwright per request
 
 ```bash
 git clone https://github.com/Michael-Obele/tomoshibi.git && cd tomoshibi
-docker compose up -d              # api (7431) + mcp (7433) + web (7432) + redis (7434) + searxng (7435)
+docker compose up -d              # api (7431) + redis (7434) + searxng (7435)
 curl http://localhost:7431/health   # → {"status":"ok","service":"tomoshibi"}
+
+# optional front doors to the same API:
+docker compose -f packages/web/docker-compose.yml up -d --build   # web UI (7432)
+docker compose -f packages/mcp/docker-compose.yml up -d           # MCP   (7433)
 ```
 
-All 5 services on `7431`–`7435` (avoids clashing with 3000/8000/8080). Every feature works — scrape, crawl, batch, monitor, search.
+Ports `7431`–`7435` (avoids clashing with 3000/8000/8080). Every feature works out of the box — scrape, crawl, batch, monitor, search.
 
 ### Individual services
 
@@ -73,8 +77,9 @@ docker pull ghcr.io/michael-obele/tomoshibi:latest
 
 # Run one service standalone (needs a running API on 7431)
 docker run --rm -p 7431:7431 michaelobele/tomoshibi-api
-docker run --rm -p 7433:7433 -e TOMOSHIBI_API_URL=http://host.docker.internal:7431 michaelobele/tomoshibi-mcp
-docker run --rm -p 7432:7432 -e TOMOSHIBI_API_URL=http://host.docker.internal:7431 michaelobele/tomoshibi-web
+docker run --rm -p 7433:7433 -e TOMOSHI_API_URL=http://host.docker.internal:7431 michaelobele/tomoshibi-mcp
+# web bakes its API URL at image build time (http://api:7431), so run it via its
+# compose file instead — that overrides the build arg: packages/web/docker-compose.yml
 
 # Or via compose per-package
 docker compose -f packages/api/docker-compose.yml up -d   # api + redis + searxng
@@ -126,6 +131,28 @@ bun --cwd packages/mcp install && bun --cwd packages/mcp dev
 bun --cwd packages/web install && bun --cwd packages/web dev
 ```
 
+### Repository layout
+
+```text
+tomoshibi/
+├── packages/
+│   ├── api/            # Go scraping API — Gin + Chromedp + Colly + embedded Asynq worker (7431)
+│   ├── mcp/            # MCP server — 3 tools over the API, npm package `tomoshi` (7433)
+│   └── web/            # Svelte 5 playground — scrape/crawl/search in the browser (7432)
+├── docs/               # API reference, search comparison, SearXNG guide (the rest is local-only)
+├── skills/             # agent skills published to skills.sh (mirrored to .agents/, .agent/)
+├── plan/               # local design plans (gitignored)
+├── test_reports/       # historical test runs (gitignored)
+├── .github/workflows/  # CI — ci.yml, docker.yml (images), npm.yml (publish)
+├── docker-compose.yml  # full stack: api 7431 + redis 7434 + searxng 7435
+├── package.json        # bun workspaces — dev:api · dev:mcp · dev:web · check
+├── AGENTS.md           # agent context source of truth (CLAUDE.md symlinks to it)
+├── README.md           # this file
+└── LICENSE             # MIT
+```
+
+Each package has its own README with its own tree: [api](packages/api/README.md) · [mcp](packages/mcp/README.md) · [web](packages/web/README.md).
+
 ---
 
 ## API
@@ -169,7 +196,7 @@ Client → Gin Router → Scraper (Colly / Chromedp + Readability)
     "tomoshi": {
       "command": "npx",
       "args": ["-y", "tomoshi"],
-      "env": { "TOMOSHIBI_API_URL": "http://localhost:7431" },
+      "env": { "TOMOSHI_API_URL": "http://localhost:7431" },
     },
   },
 }
