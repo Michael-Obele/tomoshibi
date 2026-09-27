@@ -102,3 +102,5 @@ test_reports
 /plan/*
 /plan/
 /data/
+test_reports/
+
