@@ -12,7 +12,7 @@ func concentrated(n int, domain string) []Result {
 	for i := range out {
 		out[i] = Result{
 			Title:  "t",
-			URL:    "https://" + domain + "/page",
+			URL:    "https://" + domain + "/page-" + string(rune('a'+i)),
 			Domain: domain,
 		}
 	}
@@ -69,7 +69,8 @@ func TestIsWeak(t *testing.T) {
 }
 
 // TestHybridGatePrefersStrongerBackend: a concentrated first answer must not
-// end the chain when a later backend has a diverse set.
+// end the chain when a later backend has a diverse set — and its hits are
+// merged behind the strong set instead of discarded.
 func TestHybridGatePrefersStrongerBackend(t *testing.T) {
 	weak := concentrated(6, "en.wikipedia.org")
 	strong := diverse(6)
@@ -82,11 +83,23 @@ func TestHybridGatePrefersStrongerBackend(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
-	if len(got) != 6 || got[0].Domain == "en.wikipedia.org" {
-		t.Fatalf("expected the second backend's diverse results, got %#v", got)
+	if len(got) != 12 {
+		t.Fatalf("len(got) = %d, want 12 (strong 6 + weak 6 merged)", len(got))
 	}
-	if total != 6 {
-		t.Errorf("total = %d, want 6 (the strong backend's)", total)
+	if got[0].Domain == "en.wikipedia.org" {
+		t.Error("the strong set must lead the merged list")
+	}
+	weakKept := false
+	for _, r := range got {
+		if r.Domain == "en.wikipedia.org" {
+			weakKept = true
+		}
+	}
+	if !weakKept {
+		t.Error("the weak backend's hits must survive the merge")
+	}
+	if total != 12 {
+		t.Errorf("total = %d, want 12 (the merged length)", total)
 	}
 }
 
@@ -106,8 +119,27 @@ func TestHybridGateKeepsWeakAsLastResort(t *testing.T) {
 	if len(got) != 6 {
 		t.Fatalf("len(got) = %d, want 6 (weak set kept)", len(got))
 	}
-	if total != 100 {
-		t.Errorf("total = %d, want 100 (weak set's own total)", total)
+	if total != 6 {
+		t.Errorf("total = %d, want 6 (the kept weak set's length)", total)
+	}
+}
+
+// TestHybridGateMergesTwoWeakBackends: with no strong backend at all, two
+// concentrated sets are unioned rather than returning only the first.
+func TestHybridGateMergesTwoWeakBackends(t *testing.T) {
+	first := concentrated(6, "en.wikipedia.org")
+	second := concentrated(6, "wikihow.com")
+	h := &HybridService{services: []Service{
+		&stubService{results: first, count: 6},
+		&stubService{results: second, count: 6},
+	}}
+
+	got, total, err := h.Search(context.Background(), SearchOptions{Query: "q"})
+	if err != nil {
+		t.Fatalf("Search() error = %v", err)
+	}
+	if len(got) != 12 || total != 12 {
+		t.Errorf("len/total = %d/%d, want 12/12 (both weak sets merged)", len(got), total)
 	}
 }
 

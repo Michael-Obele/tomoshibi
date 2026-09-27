@@ -107,11 +107,11 @@ func (h *HybridService) Search(ctx context.Context, opts SearchOptions) (results
 	ctx = telemetry.WithTraceID(ctx, telemetry.NewTraceID())
 
 	var (
-		lastErr     error
-		weakResults []Result
-		weakTotal   int
-		weakFrom    string
-		fallbacks   []string
+		lastErr   error
+		weakAccum []Result
+		weakFroms []string
+		weakFirst string
+		fallbacks []string
 	)
 	answered := "none"
 	defer func() {
@@ -127,7 +127,7 @@ func (h *HybridService) Search(ctx context.Context, opts SearchOptions) (results
 			Engines:   engineNames(results),
 			Results:   len(results),
 			LatencyMS: time.Since(start).Milliseconds(),
-			Weak:      weakFrom != "",
+			Weak:      len(weakFroms) > 0,
 			Error:     errText(err),
 		})
 	}()
@@ -137,18 +137,34 @@ func (h *HybridService) Search(ctx context.Context, opts SearchOptions) (results
 		if e == nil && len(res) > 0 {
 			if !isWeak(res) {
 				answered = backendName(s)
+				if len(weakAccum) > 0 {
+					// A concentrated backend's hits are kept, not discarded:
+					// the strong set leads, the weak set fills the tail.
+					merged := mergeResults(res, weakAccum)
+					if logger.Log != nil {
+						logger.Log.Info("search: merged earlier weak results into a stronger set",
+							"backend", answered,
+							"strong", len(res),
+							"weak", len(weakAccum),
+							"merged", len(merged))
+					}
+					return merged, len(merged), nil
+				}
 				return res, tot, nil
 			}
-			if weakResults == nil {
-				weakResults, weakTotal = res, tot
-				weakFrom = backendName(s)
-				fallbacks = append(fallbacks, weakFrom+": weak")
-				if logger.Log != nil {
-					logger.Log.Info("search: results concentrated on one domain, trying next",
-						"backend", weakFrom,
-						"results", len(res),
-						"last_backend", i == len(h.services)-1)
-				}
+			if weakAccum == nil {
+				weakAccum = res
+				weakFirst = backendName(s)
+			} else {
+				weakAccum = mergeResults(weakAccum, res)
+			}
+			weakFroms = append(weakFroms, backendName(s))
+			fallbacks = append(fallbacks, backendName(s)+": weak")
+			if logger.Log != nil {
+				logger.Log.Info("search: results concentrated on one domain, trying next",
+					"backend", backendName(s),
+					"results", len(res),
+					"last_backend", i == len(h.services)-1)
 			}
 			continue
 		}
@@ -165,9 +181,9 @@ func (h *HybridService) Search(ctx context.Context, opts SearchOptions) (results
 			}
 		}
 	}
-	if weakResults != nil {
-		answered = weakFrom
-		return weakResults, weakTotal, nil // nothing stronger answered
+	if weakAccum != nil {
+		answered = weakFirst
+		return weakAccum, len(weakAccum), nil // nothing stronger answered
 	}
 	if lastErr != nil {
 		return nil, 0, lastErr
@@ -203,6 +219,30 @@ func engineNames(results []Result) []string {
 		}
 	}
 	return seen
+}
+
+// mergeResults returns `first`'s results followed by `second`'s entries whose
+// canonical URL is not already present — the same dedupe key the native merge
+// uses. Order matters: the stronger (or earlier) backend keeps the head of the
+// list; the weak set only extends the tail.
+func mergeResults(first, second []Result) []Result {
+	if len(second) == 0 {
+		return first
+	}
+	seen := make(map[string]bool, len(first)+len(second))
+	out := make([]Result, 0, len(first)+len(second))
+	for _, r := range append(append([]Result{}, first...), second...) {
+		key := canonicalURL(r.URL)
+		if key == "" {
+			key = r.URL
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, r)
+	}
+	return out
 }
 
 func errText(err error) string {

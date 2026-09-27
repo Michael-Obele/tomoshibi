@@ -53,8 +53,8 @@ func TestHybridRecordsSearchTelemetry(t *testing.T) {
 	if len(ev.Fallbacks) != 1 || !strings.Contains(ev.Fallbacks[0], "weak") {
 		t.Errorf("Fallbacks = %v, want exactly the weak skip", ev.Fallbacks)
 	}
-	if ev.Results != 6 {
-		t.Errorf("Results = %d, want 6", ev.Results)
+	if ev.Results != 12 {
+		t.Errorf("Results = %d, want 12 (strong set merged with the weak one)", ev.Results)
 	}
 	if ev.Query != "q" {
 		t.Errorf("Query = %q, want %q", ev.Query, "q")

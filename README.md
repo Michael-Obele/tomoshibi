@@ -197,7 +197,7 @@ Self-hosters pull the same images CI pushed: `docker pull ghcr.io/michael-obele/
 - **Port 7431 already in use.** An older container or process holds it (`docker ps`). Experiments use `SERVER_PORT=7452`.
 - **`/v1/crawl`, `/v1/batch`, `/v1/monitor` return 503.** Redis is optional by design — scrape/search keep working; `docker compose up -d redis`.
 - **MCP tools fail with `{}` or a raw `Invalid arguments …` dump.** You're on `tomoshi` < 1.1.6, which published a root-level `oneOf` schema clients rendered as empty properties. Upgrade/restart the MCP — 1.1.6+ ships flat schemas and readable usage errors.
-- **Search results look thin or off-topic.** Check `backends` (who answered), `weak_gates` (how often native was single-domain and got handed to SearXNG/Brave), and `engines.<name>.empty` (corpus mismatches) in `/v1/insights`.
+- **Search results look thin or off-topic.** Check `backends` (who answered), `weak_gates` (how often native was single-domain and got merged with SearXNG/Brave hits), and `engines.<name>.empty` (corpus mismatches) in `/v1/insights`.
 
 ---
 
