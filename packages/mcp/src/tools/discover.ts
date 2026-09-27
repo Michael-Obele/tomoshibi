@@ -335,10 +335,12 @@ const DISCOVER_ACTIONS: Record<string, ActionSpec> = {
   search: {
     required: ["query"],
     example: { action: "search", query: "svelte 5 runes" },
+    limitMax: 100,
   },
   map: {
     required: ["url"],
     example: { action: "map", url: "https://example.com" },
+    limitMax: 5000,
   },
   crawl: {
     required: ["url"],
@@ -348,6 +350,7 @@ const DISCOVER_ACTIONS: Record<string, ActionSpec> = {
       maxDepth: 2,
       limit: 10,
     },
+    limitMax: 100,
   },
   crawl_status: {
     required: ["id"],

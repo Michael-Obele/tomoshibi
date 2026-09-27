@@ -175,6 +175,37 @@ describe("guardAction", () => {
       '{"action":"map","url":"https://example.com"}',
     );
   });
+
+  test("enforces the action's limit bound when one is set", () => {
+    const bounded = {
+      ...actions,
+      search: { ...actions.search, limitMax: 100 },
+    };
+    const over = guardAction(
+      "demo",
+      { action: "search", query: "x", limit: 500 },
+      bounded,
+      usage,
+    );
+    expect(over?.content[0].text).toContain("≤ 100");
+    expect(over?.content[0].text).toContain("500");
+    expect(
+      guardAction(
+        "demo",
+        { action: "search", query: "x", limit: 100 },
+        bounded,
+        usage,
+      ),
+    ).toBeUndefined();
+    expect(
+      guardAction(
+        "demo",
+        { action: "map", url: "https://example.com", limit: 500 },
+        bounded,
+        usage,
+      ),
+    ).toBeUndefined();
+  });
 });
 
 describe("flattenShapes", () => {

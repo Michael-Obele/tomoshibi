@@ -159,6 +159,11 @@ export interface ActionSpec {
   required?: string[];
   /** Example payload quoted in the error message. */
   example?: Record<string, unknown>;
+  /**
+   * Upper bound for the `limit` parameter on this action (absent = unchecked
+   * here; the schema still enforces its global maximum before the handler).
+   */
+  limitMax?: number;
 }
 
 /**
@@ -192,6 +197,16 @@ export function guardAction(
   const missing = missingKeys(input, spec.required ?? []);
   if (missing.length > 0) {
     return usageError({ tool, action, missing, usage, example: spec.example });
+  }
+
+  if (spec.limitMax !== undefined) {
+    const limit = input["limit"];
+    if (typeof limit === "number" && limit > spec.limitMax) {
+      return toolError(
+        `"limit" must be ≤ ${spec.limitMax} for action "${action}" (received ${limit}).\n` +
+          `Usage — ${tool}: ${usage}`,
+      );
+    }
   }
   return undefined;
 }

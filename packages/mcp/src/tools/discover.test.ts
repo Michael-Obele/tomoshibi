@@ -153,4 +153,29 @@ describe("tomoshi_discover handler", () => {
       "/docs/*",
     ]);
   });
+
+  test("rejects a limit above the action's bound with a readable error", async () => {
+    const { client, calls } = stubClient();
+    const res = (await createDiscoverHandler(client)({
+      action: "search",
+      query: "x",
+      limit: 500,
+    })) as Result;
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toContain("≤ 100");
+    expect(res.content[0].text).toContain("500");
+    expect(calls).toHaveLength(0);
+  });
+
+  test("allows map's larger limit", async () => {
+    const { client, calls } = stubClient();
+    const res = (await createDiscoverHandler(client)({
+      action: "map",
+      url: "https://example.com",
+      limit: 4000,
+    })) as Result;
+    expect(res.isError).toBeUndefined();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("map");
+  });
 });
