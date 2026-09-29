@@ -230,3 +230,58 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+
+  # ── Sync Docker Hub overview (full description) from each README ───────
+  # CI-pushed images never inherit the GitHub README on their own (only Hub
+  # automated builds do), so this PATCHes the Hub after every push/tag.
+  # Needs DOCKERHUB_TOKEN as a PAT with Read/Write/Delete scope.
+  # Hub limits: short-description ≤100 bytes, overview ≤25,000 bytes —
+  # the action truncates with a warning instead of failing.
+  hub-description:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker Hub overview (api)
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/tomoshibi-api
+          readme-filepath: ./packages/api/README.md
+          short-description: "Self-hosted web scraping API in Go. Turns any site into LLM-ready markdown. Firecrawl alt."
+          enable-url-completion: true
+
+      - name: Docker Hub overview (mcp)
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/tomoshibi-mcp
+          readme-filepath: ./packages/mcp/README.md
+          short-description: "MCP server for Tomoshibi: scrape, search, map and monitor the web as LLM-ready markdown."
+          enable-url-completion: true
+
+      - name: Docker Hub overview (web)
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/tomoshibi-web
+          readme-filepath: ./packages/web/README.md
+          short-description: "Web playground for Tomoshibi: try scraping, crawling and mapping as LLM-ready markdown."
+          enable-url-completion: true
+
+      - name: Docker Hub overview (all-in-one)
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/tomoshibi
+          readme-filepath: ./README.md
+          short-description: "Tomoshibi full stack in one container: scraping API, MCP server and web playground."
+          enable-url-completion: true
