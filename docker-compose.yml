@@ -29,21 +29,32 @@ services:
     build: ./packages/api
     ports:
       - "7431:7431"
+    # Compose reads ./ .env from this directory, but the API's own .env lives
+    # in packages/api/ (that is the working directory godotenv.Load() expects).
+    # Without this, BRAVE_SEARCH_API_KEY and friends are silently blank here
+    # and every general engine fails — which presents as
+    # "all 7 engines failed (last: engine not configured)".
+    env_file:
+      - ./packages/api/.env
     environment:
       - SERVER_PORT=7431
+      # Container-network addresses override anything in env_file.
       - REDIS_URL=redis://redis:6379
       - SERVER_MODE=release
       - SEARXNG_ENDPOINT=http://searxng:8080
-      - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY}
       - STEALTH_ENABLED=true
-      # Native engine layer: on by default in code; explicit here so a
-      # root-.env override can A/B it without editing this file.
-      - SEARCH_NATIVE_ENABLED=${SEARCH_NATIVE_ENABLED:-true}
-      # Webshare proxies for roster engines with a `proxy:` group. Without the
-      # key the native layer runs direct-only, and from datacenter egress
-      # ddg/marginalia/mojeek answer with block pages instead of results.
-      - WEBSHARE_API_KEY=${WEBSHARE_API_KEY:-}
-      - SEARCH_PROXY_BUDGET_GB=${SEARCH_PROXY_BUDGET_GB:-1}
+      # SEARCH_NATIVE_ENABLED defaults to true in code; set it in
+      # packages/api/.env to A/B the native layer without editing this file.
+      #
+      # BRAVE_SEARCH_API_KEY and WEBSHARE_API_KEY are deliberately NOT listed
+      # here. A ${VAR:-} line interpolates against the compose project
+      # directory's .env, which does not exist (the API's .env is one level
+      # down), so it resolved to "" and — because `environment` beats
+      # `env_file` — silently blanked a key that env_file had correctly
+      # loaded. Anything not overridden in-container should come from
+      # env_file alone.
+      #
+      # SEARCH_PROXY_BUDGET_GB is pinned per the project's egress budget.
     volumes:
       # Local-only search telemetry (JSONL) survives container recreation.
       - ./data:/app/data

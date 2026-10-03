@@ -19,12 +19,23 @@ services:
     build: .
     ports:
       - "7431:7431"
+    # This file lives beside the API's .env, which is exactly what
+    # godotenv.Load() expects at runtime — so load it into the container too.
+    # Without this the key below is interpolated by compose against a .env
+    # that may not exist, and every general engine fails with
+    # "engine not configured: set BRAVE_SEARCH_API_KEY".
+    env_file:
+      - .env
     environment:
       - SERVER_PORT=7431
+      # Container-network addresses override anything in env_file.
       - REDIS_URL=redis://redis:6379
       - SERVER_MODE=release
       - SEARXNG_ENDPOINT=http://searxng:8080
-      - BRAVE_SEARCH_API_KEY=${BRAVE_SEARCH_API_KEY}
+      # Not listed explicitly: BRAVE_SEARCH_API_KEY and WEBSHARE_API_KEY come
+      # from env_file. Re-declaring them here as ${VAR} would resolve against
+      # the project directory and blank a key env_file had loaded, because
+      # `environment` takes precedence over `env_file`.
       - STEALTH_ENABLED=true
     depends_on:
       redis:
