@@ -49,22 +49,47 @@ func TestNativeMergeOrderAndDedup(t *testing.T) {
 		t.Fatalf("search: %v", err)
 	}
 	// a2 (utm variant) and a2 (clean) share one canonical key; #fragment
-	// and bare form likewise — first occurrence wins, so 5 raw → 3 unique.
+	// and bare form likewise — 5 raw → 3 unique.
 	if total != 3 {
 		t.Errorf("total = %d, want 3 (deduped)", total)
 	}
 	if len(got) != 3 {
 		t.Fatalf("want 3 results after dedup, got %d: %+v", len(got), urls(got))
 	}
-	if got[0].Engine != "first" || got[2].Engine != "second" {
-		t.Errorf("engine attribution wrong: %s … %s", got[0].Engine, got[2].Engine)
+
+	// Reciprocal-rank fusion changes what "first" means, deliberately.
+	//
+	// a2 is surfaced by BOTH engines, so corroboration lifts it to the top
+	// even though `first` ranked it second. It is attributed to `second`,
+	// because `second` ranked it first — the previous merge kept whichever
+	// engine happened to be iterated first, which is an accident of ordering
+	// rather than a signal.
+	if got[0].URL != "https://example.com/a2" {
+		t.Errorf("corroborated URL should rank first, got %s", got[0].URL)
 	}
-	if got[0].Relevance < got[2].Relevance {
-		t.Errorf("earlier engine should outrank later: %.2f < %.2f", got[0].Relevance, got[2].Relevance)
+	if got[0].Engine != "second" {
+		t.Errorf("a2 should be attributed to the engine that ranked it first, got %q", got[0].Engine)
+	}
+	// A single-engine hit cannot outrank a corroborated one. Compare
+	// canonical keys, not raw URLs: dedup keys are canonicalised, but the
+	// surfaced Result keeps the engine's own URL (utm params and all) so
+	// clients still get a working link.
+	if canonicalURL(got[1].URL) != "https://example.com/a1" ||
+		canonicalURL(got[2].URL) != "https://other.org/b2" {
+		t.Errorf("unexpected order: %+v", urls(got))
+	}
+	if got[0].Relevance < got[1].Relevance {
+		t.Errorf("fused score should descend: %.4f < %.4f", got[0].Relevance, got[1].Relevance)
+	}
+	if got[0].Relevance != 1.0 {
+		t.Errorf("top hit relevance should normalise to 1.0, got %.4f", got[0].Relevance)
 	}
 	if got[0].Domain != "example.com" || got[0].ID == "" {
 		t.Errorf("metadata not populated: %+v", got[0])
 	}
+	// The fragment form is a distinct Result carrying the engine's own URL,
+	// but the canonical dedup key must still have collapsed it with the bare
+	// form (3 unique, not 4).
 }
 
 func urls(rs []Result) []string {

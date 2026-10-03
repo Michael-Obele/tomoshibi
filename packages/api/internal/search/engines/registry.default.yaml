@@ -146,11 +146,13 @@ engines:
     timeout_ms: 5000
     profile: chrome
     proxy: webshare
-    enabled: false # M3 executed 2026-09-27: real-traffic scorecard 0/6 ok (all
-    # blocked — captcha even through a verified-working Webshare exit), canary
-    # 0/3, direct 403. Re-enable only with a residential/tier1 proxy group.
-    # direct egress → 403; Webshare datacenter proxy → 200 with <title>Captcha
-    block_markers: ["403 - forbidden", "<title>captcha"]
+    # Retested 2026-10-03 (direct): HTTP 200 but <title>Captcha — unchanged
+    # from the 2026-09-27 scorecard (0/6 through Webshare, 403 direct). The
+    # block is IP reputation, not markup: the selector set below is
+    # unverified because no response has ever contained results. Needs a
+    # residential/tier1 exit; do not re-enable against datacenter egress.
+    enabled: false
+    block_markers: ["403 - forbidden", "<title>captcha", "captcha"]
     request:
       url: "https://www.mojeek.com/search?q={{query}}"
     parse:
@@ -167,8 +169,13 @@ engines:
     timeout_ms: 5000
     profile: chrome
     proxy: webshare
-    enabled: false # R2: Google HTML disabled by default (ToS + JS wall)
-    block_markers: ["unusual traffic", "/sorry/"]
+    # Retested 2026-10-03 (direct, no proxy): HTTP 200, 94KB, title
+    # "Google Search", but ZERO results — 0 `div.g`, 0 `h3`, 0 result
+    # links, 5 <noscript> markers. It serves a JavaScript shell, so the HTML
+    # endpoint is structurally unparseable regardless of IP reputation.
+    # Not a parser bug. Enabling would add latency and return nothing.
+    enabled: false
+    block_markers: ["unusual traffic", "/sorry/", "noscript"]
     request:
       url: "https://www.google.com/search?q={{query}}&num=20&hl=en"
       headers:
@@ -187,8 +194,12 @@ engines:
     timeout_ms: 6000
     profile: chrome
     proxy: webshare
-    enabled: false # M3: consent/cookie dance still required (captcha today)
-    block_markers: ["captcha-block", "captcha"]
+    # Retested 2026-10-03 (direct): HTTP 303 -> /sp/captcha-block?bc=... with
+    # geo=NG, i.e. an explicit captcha redirect before any results render.
+    # Confirms the 2026-09-27 "consent/cookie dance" note as a hard captcha.
+    # Do not re-enable: it costs a round-trip and yields zero rows.
+    enabled: false
+    block_markers: ["captcha-block", "captcha", "/sorry/"]
     request:
       url: "https://www.startpage.com/sp/search?query={{query}}"
     parse:

@@ -241,38 +241,34 @@ func (n *NativeService) SearchWithReport(ctx context.Context, opts SearchOptions
 	}
 	sort.Slice(report.Outcomes, func(i, j int) bool { return report.Outcomes[i].Engine < report.Outcomes[j].Engine })
 
-	// Merge in engine order (already weight-sorted by NewEngines); each
-	// engine keeps its own upstream ranking. Dedup by canonical URL.
-	merged := make([]Result, 0, len(list)*10)
-	seen := make(map[string]bool, len(list)*10)
-	base := 0
-	for i := 0; i < len(list); i++ {
-		o := raw[i]
-		engineName := list[i].Name()
-		for _, er := range o.res {
-			key := canonicalURL(er.URL)
-			if key == "" || seen[key] {
-				continue
-			}
-			seen[key] = true
-			rel := relevanceAt(len(list), i, base)
-			name := er.Engine
-			if name == "" {
-				name = engineName
-			}
-			merged = append(merged, Result{
-				Title:       er.Title,
-				URL:         er.URL,
-				Description: er.Description,
-				ID:          fmt.Sprintf("%s_%d", opts.Query, len(merged)),
-				Domain:      extractDomain(er.URL),
-				Relevance:   rel,
-				Highlights:  extractHighlights(er.Description, opts.Query),
-				Engine:      name,
-				PublishedAt: er.Published,
-			})
-			base++
+	// Reciprocal-rank fusion across engines.
+	//
+	// The previous scheme scored every hit by (engine weight, position)
+	// alone, which meant a URL found independently by six engines scored the
+	// same as the same URL found by one: cross-engine agreement — the only
+	// real evidence of quality available to a metasearch — was worth nothing.
+	// RRF scores a document by the sum of 1/(k+rank) over the engines that
+	// surfaced it, so agreement accumulates and no score normalization
+	// between heterogeneous upstreams is required.
+	// Named `fe` rather than `engines` so it does not shadow the engines
+	// package imported by fusion.go.
+	fe := make([]fuseEngine, 0, len(list))
+	for i, o := range raw {
+		fe = append(fe, fuseEngine{
+			name:    list[i].Name(),
+			weight:  weightFor(i, len(list)),
+			results: o.res,
+		})
+	}
+	fused := fuse(fe)
+
+	merged := make([]Result, 0, len(fused))
+	for i, r := range fused {
+		r.ID = fmt.Sprintf("%s_%d", opts.Query, i)
+		if len(r.Highlights) == 0 {
+			r.Highlights = extractHighlights(r.Description, opts.Query)
 		}
+		merged = append(merged, r)
 	}
 
 	merged = filterResults(merged, opts)
@@ -335,18 +331,25 @@ func suffixMatch(set map[string]bool, domain string) bool {
 	return false
 }
 
-// relevanceAt decays with global position while keeping the engine's
-// weight in play (first engine's first hit scores highest).
-func relevanceAt(numEngines, engineIdx, position int) float64 {
-	base := 1.0 - float64(engineIdx)*0.08
-	if base < 0.2 {
-		base = 0.2
+// weightFor returns an engine's fusion weight, derived from its position in
+// the weight-sorted roster.
+//
+// Engines reach this function already sorted by registry weight descending
+// (engines.Specs sorts on weight, then name), so index i is a direct proxy
+// for the roster's trust ordering. The Engine interface deliberately does
+// not expose Weight — fusion needs the ordering, not the raw number, and
+// widening the interface would couple ranking to the registry type.
+//
+// The weight decays gently rather than using the raw 40-90 registry values:
+// scaling to 0..1 keeps a top engine influential while letting three or four
+// agreeing lower-weighted engines still outrank one engine's lone opinion.
+func weightFor(index, total int) float64 {
+	if total <= 1 {
+		return 1
 	}
-	rel := base - float64(position)*0.015
-	if rel < 0.05 {
-		rel = 0.05
-	}
-	return rel
+	// 1.0 at the top engine, ~0.5 at the bottom of a 14-engine roster.
+	span := float64(total - 1)
+	return 1.0 - 0.5*(float64(index)/span)
 }
 
 // canonicalURL normalizes a URL for dedup (host case, fragment, trailing

@@ -25,11 +25,40 @@ const (
 	// weakDomainShare is the top-domain share at or above which a result set
 	// counts as concentrated (observed: 10/10 wikipedia → off-topic junk).
 	weakDomainShare = 0.8
+	// thinMinResults is the largest set the thinness check treats as thin. A set
+	// with more rows than this carries enough evidence on its own that a
+	// single source is no longer suspicious. Three rows is the cut: below it,
+	// a same-host set is almost always a blocked upstream answering with a
+	// token response rather than a genuinely one-page answer.
+	thinMinResults = 4
+	// thinDomainShare is the top-domain share at or above which a thin set
+	// counts as single-source. A 2-result set is inherently "thin"; the
+	// share check is what separates "one site answered this" from "several
+	// sites agreed this is a one-page answer".
+	thinDomainShare = 0.99
 )
 
-// isWeak reports whether a result set is concentrated enough that the chain
-// should keep looking for a better backend.
+// isWeak reports whether a result set is concentrated enough — or too thin —
+// that the chain should keep looking for a better backend.
+//
+// Two distinct failure modes end a search early, and both used to be invisible:
+//
+//  1. Concentration. Several engines are blocked from datacenter egress, so a
+//     set arrives dominated by whichever site still answers (wikipedia-only).
+//  2. Thinness. An upstream is blocked and returns a token 1-2 row response.
+//     The set is non-empty, so the chain accepted it — even when every row
+//     came from one domain and the total is too small to trust.
+//
+// The second case is why a bare `len(results) < weakMinResults => not weak`
+// shortcut is wrong: it is precisely the small, single-source set that most
+// needs a second opinion.
 func isWeak(results []Result) bool {
+	if len(results) == 0 {
+		return false
+	}
+	if isThin(results) {
+		return true
+	}
 	if len(results) < weakMinResults {
 		return false
 	}
@@ -44,6 +73,31 @@ func isWeak(results []Result) bool {
 		}
 	}
 	return float64(top) >= weakDomainShare*float64(len(results))
+}
+
+// isThin reports whether a result set is too small and too single-source to
+// be trusted as a complete answer.
+//
+// A tiny set from several domains is left alone: a genuinely narrow query
+// ("sqlite fts5 porter tokenizer") can legitimately be answered by one or two
+// pages, and forcing the chain onward would trade a correct answer for a
+// slower, possibly worse one. The gate only fires when the small set is also
+// concentrated — the signature of a blocked upstream rather than a narrow
+// question.
+func isThin(results []Result) bool {
+	// thinDomainShare is 0.99, so this reduces to "every row shares one
+	// host". Comparing explicitly keeps the intent readable and ties the
+	// behaviour to the documented constant.
+	if len(results) >= thinMinResults {
+		return false
+	}
+	// Fewer than thinMinResults rows: only a single source is unconvincing.
+	for _, r := range results {
+		if resultHost(r) != resultHost(results[0]) {
+			return false
+		}
+	}
+	return float64(len(results)) >= thinDomainShare*float64(len(results))
 }
 
 // resultHost is the bucket a result is counted under: Domain when the backend

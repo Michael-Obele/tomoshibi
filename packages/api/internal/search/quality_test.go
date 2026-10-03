@@ -51,8 +51,14 @@ func TestIsWeak(t *testing.T) {
 		want    bool
 	}{
 		{"empty", nil, false},
-		{"single", concentrated(1, "en.wikipedia.org"), false},
-		{"below min results", concentrated(4, "en.wikipedia.org"), false},
+		// Small same-host sets now count as weak: a blocked upstream that
+		// answers with one or two rows must not end the fallback chain.
+		{"single row, one host", concentrated(1, "en.wikipedia.org"), true},
+		{"two rows, one host", concentrated(2, "en.wikipedia.org"), true},
+		{"three rows, one host", concentrated(3, "en.wikipedia.org"), true},
+		// Four rows cross the thinness threshold, so the concentration gate
+		// (which starts at 5) applies and the set stands on its own.
+		{"four rows, one host", concentrated(4, "en.wikipedia.org"), false},
 		{"all one domain", concentrated(5, "en.wikipedia.org"), true},
 		{"exactly 80 percent", mixed(8, 2, "en.wikipedia.org"), true},
 		{"under 80 percent", mixed(7, 3, "en.wikipedia.org"), false},
@@ -143,20 +149,36 @@ func TestHybridGateMergesTwoWeakBackends(t *testing.T) {
 	}
 }
 
-// TestHybridGateIgnoresSmallSets: below weakMinResults the first backend's
-// answer stands, exactly as before the gate existed.
-func TestHybridGateIgnoresSmallSets(t *testing.T) {
-	small := concentrated(3, "en.wikipedia.org")
+// TestHybridGateHedgesThinSets: a small, single-host answer no longer ends
+// the chain. It was previously taken at face value, which meant a blocked
+// upstream answering with a token 3-row response beat every fallback behind
+// it. The chain now continues, and the thin hits are merged into the tail of
+// the stronger set rather than discarded.
+func TestHybridGateHedgesThinSets(t *testing.T) {
+	thin := concentrated(3, "en.wikipedia.org")
+	strong := diverse(6)
 	h := &HybridService{services: []Service{
-		&stubService{results: small, count: 30},
-		&stubService{results: diverse(6), count: 6},
+		&stubService{results: thin, count: 30},
+		&stubService{results: strong, count: 6},
 	}}
 
-	got, total, err := h.Search(context.Background(), SearchOptions{Query: "q"})
+	got, _, err := h.Search(context.Background(), SearchOptions{Query: "q"})
 	if err != nil {
 		t.Fatalf("Search() error = %v", err)
 	}
-	if len(got) != 3 || total != 30 {
-		t.Errorf("expected the first backend's small set untouched, got len=%d total=%d", len(got), total)
+	if len(got) != 9 {
+		t.Fatalf("expected strong 6 + thin 3 merged = 9, got %d", len(got))
+	}
+	if got[0].Domain == "en.wikipedia.org" {
+		t.Error("the strong set must lead the merged list")
+	}
+	kept := false
+	for _, r := range got {
+		if r.Domain == "en.wikipedia.org" {
+			kept = true
+		}
+	}
+	if !kept {
+		t.Error("thin results must survive as a tail rather than being dropped")
 	}
 }
