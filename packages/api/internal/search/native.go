@@ -70,15 +70,51 @@ type NativeService struct {
 	byCat map[string][]engines.Engine
 	// rec records per-engine outcomes for telemetry (nil = recording off).
 	rec telemetry.Recorder
+	// maxPerDomain caps how many results one engine may contribute from a
+	// single registrable domain, per category. Nil means uncapped.
+	maxPerDomain map[string]int
+}
+
+// NativeOption configures optional NativeService behaviour.
+type NativeOption func(*NativeService)
+
+// fusionCategories are the roster categories a cap can be configured for.
+// "default" is a fallback key, not a category.
+var fusionCategories = [...]string{"general", "news", "it"}
+
+// WithMaxPerDomain caps per-engine, per-domain contributions before fusion,
+// keyed by registry category. The "default" key is resolved into every
+// category here, once, so the hot path is a plain map lookup and a category
+// with no explicit entry still gets the roster-wide policy rather than
+// silently reverting to uncapped.
+func WithMaxPerDomain(byCategory map[string]int) NativeOption {
+	return func(n *NativeService) {
+		if len(byCategory) == 0 {
+			return
+		}
+		resolved := make(map[string]int, len(fusionCategories))
+		fallback := byCategory["default"]
+		for _, c := range fusionCategories {
+			if v, ok := byCategory[c]; ok {
+				resolved[c] = v
+			} else {
+				resolved[c] = fallback
+			}
+		}
+		n.maxPerDomain = resolved
+	}
 }
 
 // NewNativeService builds a NativeService from ready-made engines (order
 // should be merge order — weight desc). Engines are grouped by category;
 // "code" queries map onto the "it" group (same mapping SearXNG uses).
-func NewNativeService(engs []engines.Engine) *NativeService {
+func NewNativeService(engs []engines.Engine, opts ...NativeOption) *NativeService {
 	n := &NativeService{
 		all:   engs,
 		byCat: map[string][]engines.Engine{},
+	}
+	for _, o := range opts {
+		o(n)
 	}
 	for _, e := range engs {
 		for _, c := range e.Categories() {
@@ -187,10 +223,12 @@ func (n *NativeService) SearchWithReport(ctx context.Context, opts SearchOptions
 		limit = 100
 	}
 	q := engines.Query{
-		Q:         opts.Query,
-		Pageno:    pageOf(opts),
-		Language:  "en",
-		TimeRange: timeRangeOf(opts.MaxAge),
+		Q:              opts.Query,
+		Pageno:         pageOf(opts),
+		Language:       "en",
+		TimeRange:      timeRangeOf(opts.MaxAge),
+		IncludeDomains: opts.IncludeDomains,
+		ExcludeDomains: opts.ExcludeDomains,
 	}
 
 	type outcome struct {
@@ -257,7 +295,7 @@ func (n *NativeService) SearchWithReport(ctx context.Context, opts SearchOptions
 		fe = append(fe, fuseEngine{
 			name:    list[i].Name(),
 			weight:  weightFor(i, len(list)),
-			results: o.res,
+			results: capPerDomain(o.res, n.maxPerDomain[cat]),
 		})
 	}
 	fused := fuse(fe)

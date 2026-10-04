@@ -12,7 +12,42 @@
 #   field: sel/attr (css) | path (json/rss) | template+encode | urlparam
 #           (uddg=ddg redirector | bing_u=bing ck/a | url=news apiclick)
 #           | join (segment arrays) | or_template | strip_html
+#   site_operator: true = engine honours `site:`/`-site:` in the query, so
+#           includeDomains/excludeDomains can be pushed upstream instead of
+#           only post-filtered. MEASURED 2026-10-04 (TOMOSHI_LIVE=1):
+#             brave      20 results / 20 in-domain  -> ON
+#             marginalia  7 results /  7 in-domain  -> ON (throttles on repeat)
+#             bing       10 results /  0 in-domain  -> OFF (see note below)
+#             ddg        egress anomaly-blocked    -> ON, doc-verified only
+#           mwmbl has no verified support. No JSON/RSS API engine can have it:
+#           github/npm/wikipedia/mdn would match `site:x` as a literal term.
+#           BING IS OFF ON PURPOSE: Bing documents site:, but from datacenter
+#           egress it ignored the operator outright. An engine that ignores
+#           `site:` does not degrade to neutral — it ranks the injected token
+#           as a search term, which hurts. Re-test before re-enabling.
+#           Correctness never depends on this flag — the post-filter always runs.
 version: 1
+
+# Ranking policy for the roster as a whole (not per engine).
+#
+# max_per_domain caps how many results ONE engine may contribute from a single
+# registrable domain, before fusion. Without it a single high-weighted engine
+# can fill an entire page: measured on live output 2026-10-04, one engine held
+# 8 of the top 10 slots on a shopping query, because weightFor gives the top
+# engine ~1.0 and every other engine's best hit then scores below the leader's
+# EIGHTH. Capping matches Google/Bing, which show at most two results from one
+# domain per SERP.
+#
+#   default: 2  general and news. Wikipedia dominating 8/10 was the observed
+#               failure; retail/review/forum sources now fill the freed slots.
+#   it: 0      UNCAPPED on purpose. GitHub answers a code query with twenty
+#               repos, all on github.com — capping those would discard the
+#               answer instead of diversifying it.
+fusion:
+  max_per_domain:
+    default: 2
+    it: 0
+
 engines:
   # ---------------------------------------------------------------- general
   - name: ddg
@@ -21,6 +56,7 @@ engines:
     timeout_ms: 5000
     min_interval_ms: 4000 # anomaly page fires on fast repeats (T0 2026-09-26)
     profile: chrome
+    site_operator: true # documented operator; egress was anomaly-blocked 2026-10-04
     block_markers: ["detected unusual traffic", "anomaly-modal"]
     request:
       url: "https://html.duckduckgo.com/html/?q={{query}}&kl=us-en"
@@ -39,6 +75,7 @@ engines:
     weight: 65
     timeout_ms: 5000
     profile: chrome
+    # site_operator stays OFF: measured 10 results / 0 in-domain on 2026-10-04.
     block_markers: ["challenge-form", "captcha"]
     request:
       url: "https://www.bing.com/search?q={{query}}&setlang=en&cc=US&count=20"
@@ -91,6 +128,7 @@ engines:
     categories: [general]
     weight: 50
     timeout_ms: 6000
+    site_operator: true # measured 7/7 in-domain 2026-10-04; 200-but-throttled on repeat
     block_markers: ["barraged by queries", "Wait For A Moment"] # 200-but-throttled interstitial
     request:
       url: "https://old-search.marginalia.nu/search?query={{query}}"
@@ -125,6 +163,7 @@ engines:
     weight: 75
     timeout_ms: 5000
     requires_env: BRAVE_SEARCH_API_KEY
+    site_operator: true # measured 20/20 in-domain 2026-10-04
     request:
       url: "https://api.search.brave.com/res/v1/web/search?q={{query}}&count=20"
       headers:
@@ -215,6 +254,7 @@ engines:
     categories: [news]
     weight: 80
     timeout_ms: 5000
+    # site_operator OFF: same Bing uncertainty as the web engine above.
     request:
       url: "https://www.bing.com/news/search?q={{query}}&format=rss&count=20"
     parse:

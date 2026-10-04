@@ -270,6 +270,14 @@ func (e *engineHTTP) fetch(ctx context.Context, q Query) ([]Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, e.timeout)
 	defer cancel()
 
+	// Push domain filters into the query text for engines that understand
+	// `site:`, so upstream spends its whole result page on the domains the
+	// caller asked for instead of us discarding most of it afterwards. The
+	// query is URL-encoded by renderURL, so the operators survive intact.
+	if s.SiteOperator {
+		q.Q = siteOperatorQuery(q.Q, q)
+	}
+
 	rawURL := renderURL(s.Request.URL, q)
 	body := renderURL(s.Request.Body, q)
 	headers := make(map[string]string, len(s.Request.Headers))

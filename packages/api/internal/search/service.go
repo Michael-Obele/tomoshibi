@@ -43,6 +43,10 @@ type Result struct {
 	// it (RSS engines); nil otherwise. Feeds MaxAge filtering and the
 	// compat listener's publishedDate.
 	PublishedAt *time.Time `json:"published_at,omitempty"`
+	// Content is the page body as markdown, populated only when the caller
+	// asked for it (scrapeContent). Left empty for any URL whose fetch
+	// failed — the SERP row itself is still valid without it.
+	Content string `json:"content,omitempty"`
 }
 
 // SearchOptions contains options for the search

@@ -7,8 +7,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/tomoshibi-api ./cmd/api
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/tomoshibi-worker ./cmd/worker
+# -p 8 pins the compiler to 8 build jobs, matching this machine's core count.
+# Left unset, go build defaults to nproc and saturates every core, which reads
+# as a runaway Docker process in any system monitor even though no container is
+# involved — BuildKit runs inside dockerd.
+RUN CGO_ENABLED=0 GOOS=linux go build -p 8 -ldflags="-s -w" -o /app/tomoshibi-api ./cmd/api
+RUN CGO_ENABLED=0 GOOS=linux go build -p 8 -ldflags="-s -w" -o /app/tomoshibi-worker ./cmd/worker
 
 # Final Stage
 FROM alpine:3.20

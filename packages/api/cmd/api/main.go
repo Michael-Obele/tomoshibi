@@ -186,14 +186,18 @@ func run() error {
 				Tier2:            cfg.Search.ProxyTier2,
 				BudgetGB:         cfg.Search.ProxyBudgetGB,
 			})
-			nativeSvc = search.NewNativeService(engines.NewEngines(reg, pool))
+			nativeSvc = search.NewNativeService(engines.NewEngines(reg, pool),
+				search.WithMaxPerDomain(reg.Fusion().MaxPerDomain))
 			nativeSvc.SetRecorder(recorder)
 			logger.Log.Info("Native search engines loaded", "count", len(nativeSvc.Engines()))
 		}
 	}
 	searchSvc := search.NewHybridServiceWithNative(recorder, nativeSvc, cfg.Brave.APIKey, cfg.Search.SearXNGEndpoint, stealthFetcher)
 	searchSvc = search.NewCachedService(searchSvc, redisClient)
-	searchHandler := handlers.NewSearchHandler(searchSvc)
+	// scrapeHandler's service also backs search-time content composition, so a
+	// scrapeContent search and an explicit scrape share one browser allocator
+	// and one cache.
+	searchHandler := handlers.NewSearchHandler(searchSvc, handlers.WithScraper(scraperService))
 
 	// SearXNG-compat listener: same JSON contract on its own port so the
 	// service can replace a SearXNG container (and so shadow diffing can

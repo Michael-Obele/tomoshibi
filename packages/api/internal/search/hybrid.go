@@ -135,7 +135,32 @@ func (h *HybridService) Search(ctx context.Context, opts SearchOptions) (results
 	for i, s := range h.services {
 		res, tot, e := s.Search(ctx, opts)
 		if e == nil && len(res) > 0 {
-			if !isWeak(res) {
+			// Apply the domain and MaxAge filters here rather than trusting each
+			// backend to do it. Only NativeService filtered, so any search that
+			// fell through to SearXNG, Stealth or the Brave API silently dropped
+			// the caller's filters and returned unfiltered rows — a domain-scoped
+			// query would come back with whatever the fallback felt like. The
+			// filter is idempotent, so re-running it over native's already
+			// filtered set is free.
+			if len(res) > 0 {
+				before := len(res)
+				res = filterResults(res, opts)
+				if len(res) != before {
+					// Results shrank, so the backend's own total (often an
+					// estimate like Brave's offset+len+100) is now wrong.
+					tot = len(res)
+				}
+			}
+		}
+		if len(res) == 0 && e == nil {
+			// Everything this backend returned was filtered out. That is an
+			// empty answer to the caller's question, not a backend failure, so
+			// keep walking the chain rather than reporting it as answered.
+			fallbacks = append(fallbacks, backendName(s)+": empty after filter")
+			continue
+		}
+		if e == nil && len(res) > 0 {
+			if !isWeak(res, opts) {
 				answered = backendName(s)
 				if len(weakAccum) > 0 {
 					// A concentrated backend's hits are kept, not discarded:

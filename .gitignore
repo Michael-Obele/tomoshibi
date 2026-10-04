@@ -29,6 +29,12 @@ vendor/
 /tomoshibi-worker
 /worker
 
+# Same build outputs, built from the module directory. The rules above are
+# root-anchored, so `go build ./cmd/api` inside packages/api/ produced a 52MB
+# binary that no rule covered.
+/packages/api/tomoshibi-api
+/packages/api/tomoshibi-worker
+
 # IDEs and editors
 .vscode/
 .idea/
@@ -103,4 +109,3 @@ test_reports
 /plan/
 /data/
 test_reports/
-

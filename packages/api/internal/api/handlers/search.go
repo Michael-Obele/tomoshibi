@@ -19,6 +19,13 @@ type SearchRequest struct {
 	Mode           string   `json:"mode"`
 	Category       string   `json:"category"`
 	Rerank         bool     `json:"rerank"`
+	// ScrapeContent fetches each result's page body in the same call and
+	// returns it as `content`, instead of the caller making a second request
+	// per result. Opt-in: it costs one fetch per result.
+	ScrapeContent bool `json:"scrapeContent,omitempty"`
+	// ScrapeLimit caps how many top results are fetched when
+	// ScrapeContent is set. 0 = every returned result. Ignored otherwise.
+	ScrapeLimit int `json:"scrapeLimit,omitempty"`
 }
 
 type SearchResponse struct {
@@ -31,12 +38,26 @@ type SearchResponse struct {
 
 type SearchHandler struct {
 	service search.Service
+	// scraper is optional. When nil, a scrapeContent request is honoured
+	// structurally (the field is accepted) but no content is fetched.
+	scraper search.ContentFetcher
 }
 
-func NewSearchHandler(s search.Service) *SearchHandler {
-	return &SearchHandler{
-		service: s,
+// HandlerOption configures optional SearchHandler dependencies.
+type HandlerOption func(*SearchHandler)
+
+// WithScraper wires the page fetcher used for search-time content
+// composition. Without it, scrapeContent has nothing to fetch through.
+func WithScraper(s search.ContentFetcher) HandlerOption {
+	return func(h *SearchHandler) { h.scraper = s }
+}
+
+func NewSearchHandler(s search.Service, opts ...HandlerOption) *SearchHandler {
+	h := &SearchHandler{service: s}
+	for _, o := range opts {
+		o(h)
 	}
+	return h
 }
 
 // Search godoc
@@ -51,6 +72,7 @@ func NewSearchHandler(s search.Service) *SearchHandler {
 // @Param        limit          query     int     false  "Pagination limit (max 100)"
 // @Param        category       query     string  false  "Category filter: general, news, code" Enums(general,news,code)
 // @Param        rerank         query     bool    false  "Lightweight TF-IDF re-rank (pure Go, no ONNX)"
+// @Param        scrapeContent  query     bool    false  "Fetch each result's page body and return it as `content`"
 // @Param        body           body      SearchRequest  false  "JSON request body"
 // @Success      200    {object}  SearchResponse
 // @Failure      400    {object}  map[string]interface{}
@@ -95,6 +117,13 @@ func (h *SearchHandler) Search(c *gin.Context) {
 			req.Rerank = true
 		}
 	}
+	if r := c.Query("scrapeContent"); r != "" {
+		if b, err := strconv.ParseBool(r); err == nil {
+			req.ScrapeContent = b
+		} else if r == "1" {
+			req.ScrapeContent = true
+		}
+	}
 
 	// Validate query
 	if req.Query == "" {
@@ -136,6 +165,16 @@ func (h *SearchHandler) Search(c *gin.Context) {
 
 	hasMore := req.Offset+req.Limit < totalCount
 	nextOffset := req.Offset + req.Limit
+
+	// Content composition happens after the cached search layer, so the SERP
+	// cache stays keyed on the query alone and the scrape cache is reused
+	// independently on repeat calls.
+	if req.ScrapeContent && h.scraper != nil {
+		results = search.EnrichResults(c.Request.Context(), results, h.scraper, search.EnrichOptions{
+			Limit: req.ScrapeLimit,
+			Mode:  req.Mode,
+		})
+	}
 
 	c.JSON(http.StatusOK, SearchResponse{
 		Query:      req.Query,

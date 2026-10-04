@@ -52,8 +52,19 @@ const (
 // The second case is why a bare `len(results) < weakMinResults => not weak`
 // shortcut is wrong: it is precisely the small, single-source set that most
 // needs a second opinion.
-func isWeak(results []Result) bool {
+//
+// opts is consulted because concentration is only a symptom when the caller
+// did not ask for it. With includeDomains=["go.dev"], a result set that is
+// 10/10 go.dev is the correct answer, not a blocked upstream answering with
+// wikipedia — treating it as weak made the chain walk past a perfectly good
+// backend and hand the caller a worse one. Only includeDomains pins the shape
+// like that; excludeDomains leaves the expected shape unchanged, so the gate
+// still applies there.
+func isWeak(results []Result, opts SearchOptions) bool {
 	if len(results) == 0 {
+		return false
+	}
+	if len(opts.IncludeDomains) > 0 {
 		return false
 	}
 	if isThin(results) {

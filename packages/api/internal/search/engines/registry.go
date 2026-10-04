@@ -44,6 +44,17 @@ type Spec struct {
 	Proxy string `yaml:"proxy"`
 	// RequiresEnv skips the engine cleanly when this env var is empty.
 	RequiresEnv string `yaml:"requires_env"`
+	// SiteOperator declares that this engine understands the `site:` query
+	// operator, so domain filters can be pushed into the query text instead
+	// of only being applied after the fact. Defaults to false.
+	//
+	// Only set it on engines verified to implement the operator. Leaving it
+	// off costs recall but stays correct; setting it on an engine that does
+	// not (a plain JSON/RSS API such as github or npm) injects a token the
+	// engine reads as a literal search term and returns nonsense. The
+	// post-filter in the parent package runs either way, so this flag can
+	// never make results incorrect — only the query text sent upstream.
+	SiteOperator bool `yaml:"site_operator"`
 	// BlockMarkers are lowercased substrings that, in a 200 body, mark the
 	// response as a captcha/anomaly page (engine returns ErrBlocked).
 	BlockMarkers []string `yaml:"block_markers"`
@@ -105,11 +116,57 @@ type FieldSpec struct {
 type Registry struct {
 	specs  []*Spec
 	byName map[string]*Spec
+	fusion Fusion
+}
+
+// Fusion holds ranking policy that belongs to the roster as a whole rather
+// than to any single engine.
+type Fusion struct {
+	// MaxPerDomain caps how many results ONE engine may contribute from a
+	// single registrable domain ("example.com", not "www.example.com").
+	//
+	// Without it a metasearch has no defence against one source monopolising
+	// a page: measured on live engine output, a single encyclopaedia engine
+	// held 8 of the top 10 slots on a shopping query, purely because
+	// weightFor hands the top-weighted engine ~1.0 and every other engine's
+	// best hit scores below the leader's eighth. Capping matches what the
+	// major engines do — Google and Bing show at most two results from one
+	// domain on a SERP (Akritidis et al., JSS 2010).
+	//
+	// Keyed by category with an optional "default" fallback. Zero means
+	// uncapped, which is the right setting for "it": GitHub legitimately
+	// answers a code query with twenty repos, all on github.com, and capping
+	// those would discard the answer rather than diversify it.
+	MaxPerDomain map[string]int `yaml:"max_per_domain"`
+}
+
+// Fusion returns the roster-level ranking policy.
+func (r *Registry) Fusion() Fusion {
+	if r == nil {
+		return Fusion{}
+	}
+	return r.fusion
+}
+
+// MaxPerDomainFor resolves the cap for a category, falling back to
+// "default" and then to uncapped.
+func (r *Registry) MaxPerDomainFor(category string) int {
+	if r == nil || len(r.fusion.MaxPerDomain) == 0 {
+		return 0
+	}
+	if n, ok := r.fusion.MaxPerDomain[category]; ok {
+		return n
+	}
+	if n, ok := r.fusion.MaxPerDomain["default"]; ok {
+		return n
+	}
+	return 0
 }
 
 // doc is the on-disk YAML shape.
 type doc struct {
 	Version int     `yaml:"version"`
+	Fusion  Fusion  `yaml:"fusion"`
 	Engines []*Spec `yaml:"engines"`
 }
 
@@ -141,7 +198,15 @@ func LoadRegistry(path string) (*Registry, error) {
 	if d.Version != 1 {
 		return nil, fmt.Errorf("%s: unsupported registry version %d (want 1)", src, d.Version)
 	}
-	reg := &Registry{byName: make(map[string]*Spec, len(d.Engines))}
+	for cat, n := range d.Fusion.MaxPerDomain {
+		if cat != "default" && !validCategories[cat] {
+			return nil, fmt.Errorf("%s: fusion.max_per_domain: unknown category %q (want default|general|news|it)", src, cat)
+		}
+		if n < 0 {
+			return nil, fmt.Errorf("%s: fusion.max_per_domain.%s: must be >= 0 (0 = uncapped)", src, cat)
+		}
+	}
+	reg := &Registry{byName: make(map[string]*Spec, len(d.Engines)), fusion: d.Fusion}
 	for i, s := range d.Engines {
 		if err := validateSpec(s); err != nil {
 			return nil, fmt.Errorf("%s: engine #%d: %w", src, i+1, err)

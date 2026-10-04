@@ -23,6 +23,14 @@ type Query struct {
 	Language string
 	// TimeRange is "", "day", "week" or "month".
 	TimeRange string
+	// IncludeDomains and ExcludeDomains are the caller's domain filters.
+	// They are injected into the query text as `site:` / `-site:` operators
+	// only for engines that declare Spec.SiteOperator — see siteop.go for why
+	// that has to be opt-in. Engines without the capability ignore these
+	// fields entirely, and the parent package post-filters regardless, so a
+	// filter is honoured either way.
+	IncludeDomains []string
+	ExcludeDomains []string
 }
 
 // Result is one normalized hit from an engine. Engines never import the
