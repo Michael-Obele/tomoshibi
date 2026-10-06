@@ -192,7 +192,7 @@ const CrawlOptionsSchema = v.object({
   webhook_secret: v.optional(v.string(), ""),
 });
 
-// Search — POST /v1/search (SearXNG primary, Brave fallback)
+// Search — POST /v1/search (native roster → SearXNG → stealth → Brave)
 // New: category (general|news|code) maps to SearXNG categories + Brave search_type, rerank (TF-IDF), highlights per hit.
 const SearchOptionsSchema = v.object({
   query: v.pipe(v.string(), v.nonEmpty("Query is required")),
@@ -480,7 +480,7 @@ export const getCrawlStatus = query(v.string(), async (id) => {
   };
 });
 
-// 3. Search — POST /v1/search (SearXNG primary, Brave fallback)
+// 3. Search — POST /v1/search (native roster → SearXNG → stealth → Brave)
 // Now: category (general|news|code) + rerank (TF-IDF) + highlights/relevance per hit
 export const searchWeb = form(SearchOptionsSchema, async (data) => {
   if (!isAuthenticated()) {

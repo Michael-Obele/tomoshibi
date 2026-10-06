@@ -378,6 +378,49 @@ export const TOMOSHI_TIMEOUT = {
   links: 60_000,
 } as const;
 
+/** Header the backend accepts per-request env overrides on (JSON object of NAME → value). */
+export const ENV_HEADER = "X-Tomoshi-Env";
+
+/** True when TOMOSHI_FORWARD_ENV turns env forwarding off entirely. */
+export function forwardEnvDisabled(setting: string): boolean {
+  const s = setting.trim().toLowerCase();
+  return s === "false" || s === "0" || s === "off" || s === "never";
+}
+
+/**
+ * Build the X-Tomoshi-Env header value: the backend-wanted names that exist
+ * in `env`, restricted to TOMOSHI_FORWARD_ENV when it is a comma list.
+ * Returns undefined when there is nothing (safe) to send. The backend
+ * re-validates against its own allowlist — we never need to know it.
+ */
+export function buildForwardEnvHeader(
+  wanted: string[],
+  setting: string,
+  env: Record<string, string | undefined>,
+): string | undefined {
+  if (forwardEnvDisabled(setting)) return undefined;
+  let names = wanted;
+  const trimmed = setting.trim();
+  if (trimmed !== "") {
+    const allow = new Set(
+      trimmed
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
+    names = wanted.filter((n) => allow.has(n));
+  }
+  const out: Record<string, string> = {};
+  for (const name of names) {
+    const value = env[name];
+    if (value) out[name] = value;
+  }
+  if (Object.keys(out).length === 0) return undefined;
+  const json = JSON.stringify(out);
+  // Defensive cap: stay well under common 16 KiB header limits.
+  return json.length > 6144 ? undefined : json;
+}
+
 /**
  * HTTP client for the Tomoshibi API (formerly Cinder).
  * Wraps all Tomoshibi endpoints with type-safe methods, error handling, and SSRF prevention.
@@ -385,6 +428,9 @@ export const TOMOSHI_TIMEOUT = {
 export class TomoshiClient {
   private baseUrl: string;
   private apiKey: string;
+  /** Cached GET /v1/env: undefined = not fetched yet, null = unsupported. */
+  private envWanted: string[] | null | undefined = undefined;
+  private envDiscover: Promise<string[] | null> | null = null;
 
   constructor() {
     const config = getConfig();
@@ -404,6 +450,56 @@ export class TomoshiClient {
     return h;
   }
 
+  /**
+   * Base headers plus X-Tomoshi-Env: the allowlisted search API keys this
+   * backend asked for (GET /v1/env) that are present in our own env. This is
+   * the "configure the key once, in the MCP env" path — the backend resolves
+   * them per request and never stores them.
+   */
+  private async requestHeaders(): Promise<Record<string, string>> {
+    const setting = getConfig().TOMOSHI_FORWARD_ENV;
+    if (forwardEnvDisabled(setting)) return this.headers;
+    const wanted = await this.wantedEnvNames();
+    const forwarded = wanted
+      ? buildForwardEnvHeader(wanted, setting, process.env)
+      : undefined;
+    if (!forwarded) return this.headers;
+    return { ...this.headers, [ENV_HEADER]: forwarded };
+  }
+
+  /** Env var names the backend accepts per request; null = unsupported. */
+  private wantedEnvNames(): Promise<string[] | null> {
+    if (this.envWanted !== undefined) return Promise.resolve(this.envWanted);
+    if (!this.envDiscover) this.envDiscover = this.discoverEnvNames();
+    return this.envDiscover;
+  }
+
+  private async discoverEnvNames(): Promise<string[] | null> {
+    try {
+      const res = await fetch(`${this.baseUrl}/v1/env`, {
+        method: "GET",
+        headers: this.headers,
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) {
+        this.envWanted = null;
+        return null;
+      }
+      const data = (await res.json()) as { env?: unknown };
+      const names = Array.isArray(data.env)
+        ? data.env.filter((n): n is string => typeof n === "string")
+        : [];
+      this.envWanted = names;
+      return names;
+    } catch {
+      // Older backend (404), unreachable, or timeout: stop asking for the
+      // lifetime of this process. Forwarding is an enhancement — a dead
+      // discovery endpoint must not tax every call.
+      this.envWanted = null;
+      return null;
+    }
+  }
+
   private async request<T>(
     method: string,
     path: string,
@@ -417,9 +513,10 @@ export class TomoshiClient {
       : null;
 
     try {
+      const headers = await this.requestHeaders();
       const response = await fetch(url, {
         method,
-        headers: this.headers,
+        headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });

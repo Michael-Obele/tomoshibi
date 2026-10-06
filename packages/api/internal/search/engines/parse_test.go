@@ -1,6 +1,7 @@
 package engines
 
 import (
+	"context"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -181,6 +182,18 @@ func TestParseEngines(t *testing.T) {
 				}
 			}
 		}},
+		{engine: "serper", file: "web.json", wantMin: 8, check: func(t *testing.T, res []Result) {
+			if !anyURL(res, "https://en.wikipedia.org/wiki/Web_scraping") {
+				t.Error("expected the wikipedia hit (fixture contains it)")
+			}
+		}},
+		{engine: "tavily", file: "web.json", wantMin: 8, check: func(t *testing.T, res []Result) {
+			for _, r := range res {
+				if !strings.HasPrefix(r.URL, "http") {
+					t.Errorf("bad tavily URL %q", r.URL)
+				}
+			}
+		}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.engine, func(t *testing.T) {
@@ -233,13 +246,19 @@ func TestDecodeRedirect(t *testing.T) {
 
 func TestRenderURL(t *testing.T) {
 	q := Query{Q: "web scraping & js", Pageno: 2, Language: "en", TimeRange: "week"}
-	got := renderURL("https://x.test/s?q={{query}}&p={{pageno}}&l={{language}}&t={{time_range}}", q)
+	got := renderURL(context.Background(), "https://x.test/s?q={{query}}&p={{pageno}}&l={{language}}&t={{time_range}}", q)
 	want := "https://x.test/s?q=web+scraping+%26+js&p=2&l=en&t=week"
 	if got != want {
 		t.Errorf("renderURL = %q, want %q", got, want)
 	}
-	if out := renderURL("https://x.test/?k=${TEST_ENV_VAR_XYZ}", Query{}); out != "https://x.test/?k=" {
+	if out := renderURL(context.Background(), "https://x.test/?k=${TEST_ENV_VAR_XYZ}", Query{}); out != "https://x.test/?k=" {
 		t.Errorf("env expansion failed: %q", out)
+	}
+	// {{query_json}} is for JSON bodies: JSON-string escaping, not URL encoding.
+	got = renderURL(context.Background(), `{"q":"{{query_json}}"}`, Query{Q: `a "b" & <c>`})
+	want = `{"q":"a \"b\" & <c>"}`
+	if got != want {
+		t.Errorf("renderURL json = %q, want %q", got, want)
 	}
 }
 

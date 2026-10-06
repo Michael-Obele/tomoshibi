@@ -1,13 +1,18 @@
 # Tomoshibi Search — bundled engine roster (registry v1).
 #
 # Roster is DATA (plan README R5): replace wholesale via SEARCH_ENGINES_PATH.
-# Every entry below was verified live from this machine on 2026-09-26
-# (evidence: plan/tomoshi-search/research.md §3b). Engines marked
-# `enabled: false` are kept as documented opt-ins (proxy experiments).
+# Every HTML/API entry below was verified live from this machine on
+# 2026-09-26 (evidence: plan/tomoshi-search/research.md §3b). EXCEPTION:
+# the keyed APIs `serper`/`tavily` (added 2026-10-05) are contract-verified
+# only (vendor docs + auth probes, §3b) and gated by requires_env — their
+# first keyed call is the live probe. Engines marked `enabled: false` are
+# kept as documented opt-ins (proxy experiments).
 #
 # Field cheat-sheet:
 #   profile: "" = plain net/http | "chrome" = browser TLS fingerprint
 #   proxy:   proxy group name (webshare | tier1 | tier2); "" = direct
+#   method/body: POST + JSON body for API engines; {{query_json}} = the
+#           query escaped as a JSON string, {{query}} = URL-encoded
 #   parse.type: css | rss | json
 #   field: sel/attr (css) | path (json/rss) | template+encode | urlparam
 #           (uddg=ddg redirector | bing_u=bing ck/a | url=news apiclick)
@@ -176,6 +181,57 @@ engines:
         title: { path: title }
         url: { path: url }
         content: { path: description }
+
+  # ------------------------------------------------------------ keyed APIs
+  # Contract evidence: plan/tomoshi-search/research.md §3b (2026-10-05).
+  # requires_env-gated: without a key they report "not configured" and the
+  # chain runs exactly as before, so keyless users lose nothing.
+  - name: serper
+    categories: [general]
+    weight: 90
+    timeout_ms: 6000
+    requires_env: SERPER_API_KEY
+    # site_operator OFF until measured — the bing note above applies: a
+    # vendor claiming `site:` support is not evidence that it is honoured.
+    request:
+      method: POST
+      url: "https://google.serper.dev/search"
+      headers:
+        Content-Type: "application/json"
+        X-API-KEY: "${SERPER_API_KEY}"
+      # q/gl/hl only — every extra param is contract risk until a real-key
+      # probe proves it (num deliberately omitted).
+      body: '{"q":"{{query_json}}","gl":"us","hl":"en"}'
+    parse:
+      type: json
+      item: organic
+      fields:
+        title: { path: title }
+        url: { path: link }
+        content: { path: snippet }
+
+  - name: tavily
+    categories: [general]
+    weight: 70
+    timeout_ms: 6000
+    requires_env: TAVILY_API_KEY
+    # site_operator OFF: Tavily documents include/exclude_domains params,
+    # not `site:` in the raw query.
+    request:
+      method: POST
+      url: "https://api.tavily.com/search"
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer ${TAVILY_API_KEY}"
+      # basic = 1 credit per call (free tier: 1,000 credits/mo).
+      body: '{"query":"{{query_json}}","max_results":20,"search_depth":"basic"}'
+    parse:
+      type: json
+      item: results
+      fields:
+        title: { path: title }
+        url: { path: url }
+        content: { path: content }
 
   # Opt-in experiments: both need a proxy group (Webshare) before they have
   # a chance from a datacenter/WARP egress — see research.md §3b.

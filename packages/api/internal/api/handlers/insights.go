@@ -27,7 +27,7 @@ func NewInsightsHandler(cfg config.TelemetryConfig) *InsightsHandler {
 // @Produce      json
 // @Param        hours query int false "Aggregation window in hours (default 24, max 720)"
 // @Success      200 {object} map[string]interface{}
-// @Router       /v1/insights [get]
+// @Router       /insights [get]
 func (h *InsightsHandler) Insights(c *gin.Context) {
 	if !h.cfg.Enabled {
 		c.JSON(http.StatusOK, gin.H{

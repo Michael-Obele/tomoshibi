@@ -52,6 +52,16 @@ const ConfigSchema = v.object({
   ),
   RATE_LIMIT_MAX: v.optional(v.pipe(v.string(), v.transform(Number)), "60"),
 
+  /**
+   * Env vars to forward to the backend as X-Tomoshi-Env, so search API keys
+   * (e.g. BRAVE_SEARCH_API_KEY) are configured once — here — instead of also
+   * in the backend's .env.
+   * ""      = forward every name the backend asks for (GET /v1/env)
+   * "false" = never forward
+   * "a,b"   = only forward these names
+   */
+  TOMOSHI_FORWARD_ENV: v.optional(v.string(), ""),
+
   /** Logging */
   LOG_LEVEL: v.optional(v.picklist(["debug", "info", "warn", "error"]), "info"),
 });

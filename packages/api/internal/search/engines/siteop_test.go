@@ -1,6 +1,7 @@
 package engines
 
 import (
+	"context"
 	"net/url"
 	"strings"
 	"testing"
@@ -119,7 +120,7 @@ func TestSiteOperatorEncodeRoundTrip(t *testing.T) {
 	}
 	q.Q = siteOperatorQuery(q.Q, q)
 
-	raw := renderURL("https://example.com/s?q={{query}}", q)
+	raw := renderURL(context.Background(), "https://example.com/s?q={{query}}", q)
 	u, err := url.Parse(raw)
 	if err != nil {
 		t.Fatalf("parse rendered url: %v", err)

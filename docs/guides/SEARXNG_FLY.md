@@ -1,8 +1,11 @@
 # Deploy SearXNG on Fly.io for Tomoshibi Search
 
 > [!TIP]
-> Tomoshibi's `/v1/search` uses a self-hosted SearXNG when `SEARXNG_ENDPOINT` is
-> set, falling back to the `BRAVE_SEARCH_API_KEY` secret otherwise. SearXNG
+> Tomoshibi's `/v1/search` runs the in-house native engine roster first, then a
+> self-hosted SearXNG when `SEARXNG_ENDPOINT` is set, then stealth/Brave.
+> Optional keyed engines add quality — `BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`,
+> `TAVILY_API_KEY` — and a client may send them per request in `X-Tomoshi-Env`
+> (MCP `TOMOSHI_FORWARD_ENV`) instead of configuring them server-side. SearXNG
 > aggregates Google, Bing, DuckDuckGo, Brave, Mojeek and Wikipedia — free,
 > no per-query cost, and no single fragile engine to scrape.
 

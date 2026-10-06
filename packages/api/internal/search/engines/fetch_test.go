@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/Michael-Obele/tomoshibi/internal/search/envctx"
 )
 
 func testSpec(path string) *Spec {
@@ -102,6 +104,35 @@ func TestEngineHTTPFetch(t *testing.T) {
 		_, err := newEngineHTTP(spec, pool).fetch(context.Background(), Query{Q: "x"})
 		if !errors.Is(err, ErrNotConfigured) {
 			t.Errorf("→ %v, want ErrNotConfigured", err)
+		}
+	})
+
+	t.Run("requires_env satisfied by per-request override", func(t *testing.T) {
+		spec := testSpec(srv.URL + "/ok?q={{query}}")
+		spec.RequiresEnv = "TOMOSHIBI_TEST_OVERRIDDEN_KEY_XYZ"
+		ctx := envctx.With(context.Background(), envctx.Overrides{
+			"TOMOSHIBI_TEST_OVERRIDDEN_KEY_XYZ": "supplied-by-client",
+		})
+		if _, err := newEngineHTTP(spec, pool).fetch(ctx, Query{Q: "web scraping"}); err != nil {
+			t.Fatalf("fetch with override: %v", err)
+		}
+	})
+
+	t.Run("header ${ENV} resolves from per-request override", func(t *testing.T) {
+		srvKeyed := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if got := r.Header.Get("X-Test-Key"); got != "supplied-by-client" {
+				t.Errorf("header = %q, want override value", got)
+			}
+			_, _ = w.Write([]byte(`<ul><li class="r"><a href="https://x.dev/1">T1</a><p>C1</p></li></ul>`))
+		}))
+		defer srvKeyed.Close()
+		spec := testSpec(srvKeyed.URL + "/ok?q={{query}}")
+		spec.Request.Headers = map[string]string{"X-Test-Key": "${TOMOSHIBI_TEST_HDR_KEY_XYZ}"}
+		ctx := envctx.With(context.Background(), envctx.Overrides{
+			"TOMOSHIBI_TEST_HDR_KEY_XYZ": "supplied-by-client",
+		})
+		if _, err := newEngineHTTP(spec, pool).fetch(ctx, Query{Q: "x"}); err != nil {
+			t.Fatalf("fetch: %v", err)
 		}
 	})
 

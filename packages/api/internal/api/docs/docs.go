@@ -184,6 +184,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/env": {
+            "get": {
+                "description": "Returns the allowlisted env var names accepted in the X-Tomoshi-Env request header (JSON object of NAME to value). The MCP calls this once and forwards the matching keys from its own env, so search API keys are configured in a single place. Values are never echoed back.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "search"
+                ],
+                "summary": "List env var names a client may supply per request",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/insights": {
+            "get": {
+                "description": "Aggregates the local JSONL telemetry: per-engine scorecard (ok/empty/blocked/timeout), chain stats (fallbacks, weak gates), latency percentiles and recent errors. Local-only — nothing leaves the machine. Returns {\"enabled\":false} when TELEMETRY_ENABLED=false.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "search"
+                ],
+                "summary": "Local search telemetry",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Aggregation window in hours (default 24, max 720)",
+                        "name": "hours",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/map": {
             "post": {
                 "description": "Discovers URLs for a site via robots.txt/sitemap.xml, falling back to link discovery. Returns up to limit URLs, optionally filtered by search.",
@@ -385,7 +435,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Capture full-page screenshot (requires mode=dynamic or smart)",
+                        "description": "Capture a full-page screenshot (waits for the page to finish loading; requires mode=dynamic or smart)",
                         "name": "screenshot",
                         "in": "query"
                     },
@@ -490,7 +540,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Capture full-page screenshot (requires mode=dynamic or smart)",
+                        "description": "Capture a full-page screenshot (waits for the page to finish loading; requires mode=dynamic or smart)",
                         "name": "screenshot",
                         "in": "query"
                     },
@@ -613,6 +663,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Fetch each result's page body and return it as ` + "`" + `content` + "`" + `",
+                        "name": "scrapeContent",
+                        "in": "query"
+                    },
+                    {
                         "description": "JSON request body",
                         "name": "body",
                         "in": "body",
@@ -696,6 +752,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Lightweight TF-IDF re-rank (pure Go, no ONNX)",
                         "name": "rerank",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Fetch each result's page body and return it as ` + "`" + `content` + "`" + `",
+                        "name": "scrapeContent",
                         "in": "query"
                     },
                     {
@@ -864,6 +926,10 @@ const docTemplate = `{
                 },
                 "size_bytes": {
                     "type": "integer"
+                },
+                "truncated": {
+                    "description": "Truncated reports that the page was taller than the configured\nscreenshot height cap, so the capture covers the top of the page only.",
+                    "type": "boolean"
                 },
                 "url": {
                     "type": "string"
@@ -1258,6 +1324,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "full_page": {
+                    "description": "FullPage defaults to true when omitted; false captures the viewport only.",
                     "type": "boolean"
                 },
                 "height": {
@@ -1318,6 +1385,14 @@ const docTemplate = `{
                 },
                 "rerank": {
                     "type": "boolean"
+                },
+                "scrapeContent": {
+                    "description": "ScrapeContent fetches each result's page body in the same call and\nreturns it as ` + "`" + `content` + "`" + `, instead of the caller making a second request\nper result. Opt-in: it costs one fetch per result.",
+                    "type": "boolean"
+                },
+                "scrapeLimit": {
+                    "description": "ScrapeLimit caps how many top results are fetched when\nScrapeContent is set. 0 = every returned result. Ignored otherwise.",
+                    "type": "integer"
                 }
             }
         },
@@ -1347,10 +1422,18 @@ const docTemplate = `{
         "search.Result": {
             "type": "object",
             "properties": {
+                "content": {
+                    "description": "Content is the page body as markdown, populated only when the caller\nasked for it (scrapeContent). Left empty for any URL whose fetch\nfailed — the SERP row itself is still valid without it.",
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
                 "domain": {
+                    "type": "string"
+                },
+                "engine": {
+                    "description": "Engine names the backend that produced the result (empty for\naggregated/fallback paths). Mirrors SearXNG's per-result engine\nstring; omitempty keeps legacy responses unchanged.",
                     "type": "string"
                 },
                 "highlights": {
@@ -1360,6 +1443,10 @@ const docTemplate = `{
                     }
                 },
                 "id": {
+                    "type": "string"
+                },
+                "published_at": {
+                    "description": "PublishedAt is the upstream publication time when the backend knows\nit (RSS engines); nil otherwise. Feeds MaxAge filtering and the\ncompat listener's publishedDate.",
                     "type": "string"
                 },
                 "relevance": {

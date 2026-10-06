@@ -42,6 +42,7 @@ func NewRouter(
 			"endpoints": gin.H{
 				"scrape":   "/v1/scrape",
 				"search":   "/v1/search",
+				"env":      "/v1/env",
 				"crawl":    "/v1/crawl",
 				"map":      "/v1/map",
 				"batch":    "/v1/batch/scrape",
@@ -73,12 +74,19 @@ func NewRouter(
 	v1 := r.Group("/v1")
 	v1.Use(middleware.APIKeyAuth(cfg.App.APIKeys))
 	v1.Use(middleware.RateLimit(cfg.App.RateLimitRPM, redisClient))
+	// After auth: per-request env overrides (X-Tomoshi-Env) only matter for
+	// authenticated callers, and the parse is skipped entirely without the header.
+	v1.Use(middleware.RequestEnv(logger))
 	{
 		v1.POST("/scrape", scrapeHandler.Scrape)
 		v1.GET("/scrape", scrapeHandler.Scrape)
 		v1.POST("/search", searchHandler.Search)
 		v1.GET("/search", searchHandler.Search)
 		v1.GET("/insights", handlers.NewInsightsHandler(cfg.Telemetry).Insights)
+
+		// Discovery for env forwarding: which env var names this backend
+		// accepts per request in X-Tomoshi-Env (used by the MCP client).
+		v1.GET("/env", handlers.Env)
 
 		// URL discovery via sitemap/link traversal.
 		v1.POST("/map", handlers.NewMapHandler().Map)

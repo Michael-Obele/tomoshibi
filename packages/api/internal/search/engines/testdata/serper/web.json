@@ -1,0 +1,89 @@
+{
+  "searchParameters": {
+    "q": "web scraping",
+    "gl": "us",
+    "hl": "en",
+    "type": "search"
+  },
+  "knowledgeGraph": {
+    "title": "Web scraping",
+    "type": "Software technique",
+    "website": "https://en.wikipedia.org/wiki/Web_scraping",
+    "imageUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTestFixture",
+    "description": "Web scraping, web crawling, HTML scraping or screen scraping is the process of extracting data from websites."
+  },
+  "organic": [
+    {
+      "title": "Web scraping - Wikipedia",
+      "link": "https://en.wikipedia.org/wiki/Web_scraping",
+      "snippet": "Web scraping, web crawling, HTML scraping or screen scraping is the process of extracting data from websites.",
+      "position": 1
+    },
+    {
+      "title": "What is Web Scraping? - IBM",
+      "link": "https://www.ibm.com/topics/web-scraping",
+      "snippet": "Web scraping, also known as screen scraping, data scraping and web data extraction, is the process of collecting data from websites.",
+      "position": 2
+    },
+    {
+      "title": "A beginner's guide to web scraping - Zapier",
+      "link": "https://zapier.com/blog/web-scraping/",
+      "snippet": "Web scraping is the process of using bots to extract content and data from a website.",
+      "position": 3
+    },
+    {
+      "title": "Scrapy | Open Source Python Web Crawling and Scraping Framework",
+      "link": "https://scrapy.org/",
+      "snippet": "Scrapy is an open source and collaborative web crawling framework for Python.",
+      "position": 4
+    },
+    {
+      "title": "Web Scraping with Python - GitHub",
+      "link": "https://github.com/wkeeling/web-scraping-with-python",
+      "snippet": "Code examples for the Web Scraping with Python book.",
+      "position": 5
+    },
+    {
+      "title": "The complete guide to web scraping - Bright Data",
+      "link": "https://www.brightdata.com/blog/web-data/web-scraping-guide",
+      "snippet": "Everything you need to know about web scraping: what it is, how it works, and how to use it.",
+      "position": 6
+    },
+    {
+      "title": "Web Scraping with Requests and Beautiful Soup - Real Python",
+      "link": "https://realpython.com/webscraping-with-requests-and-beautifulsoup/",
+      "snippet": "An introductory tutorial on scraping with Requests and BeautifulSoup.",
+      "position": 7
+    },
+    {
+      "title": "Web Scraping API | ScraperAPI",
+      "link": "https://www.scraperapi.com/",
+      "snippet": "Web scraping API for extracting structured data from any website.",
+      "position": 8
+    },
+    {
+      "title": "Web scraping | Programming | MIT OpenCourseWare",
+      "link": "https://ocw.mit.edu/courses/6-0001-introduction-to-computer-science-and-programming-in-python-fall-2016/resources/lecture-9c-web-scraping/",
+      "snippet": "Lecture notes on web scraping with BeautifulSoup.",
+      "position": 9
+    },
+    {
+      "title": "Nutch: A web crawling framework",
+      "link": "https://nutch.apache.org/",
+      "snippet": "Apache Nutch is an open source web crawler written in Java.",
+      "position": 10
+    }
+  ],
+  "peopleAlsoAsk": [
+    {
+      "question": "What is web scraping used for?",
+      "snippet": "Web scraping is used to collect data from websites for research, monitoring and data pipelines.",
+      "title": "Web scraping - Wikipedia",
+      "link": "https://en.wikipedia.org/wiki/Web_scraping"
+    }
+  ],
+  "relatedSearches": [
+    { "query": "web scraping python" },
+    { "query": "web scraping api" }
+  ]
+}

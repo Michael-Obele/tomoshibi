@@ -1,16 +1,18 @@
 package engines
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Michael-Obele/tomoshibi/internal/search/envctx"
 	http2 "github.com/bogdanfinn/fhttp"
 	tlsclient "github.com/bogdanfinn/tls-client"
 	"github.com/bogdanfinn/tls-client/profiles"
@@ -257,7 +259,9 @@ func (g *timeGate) wait(ctx context.Context) error {
 // 200 body) so the fan-out layer can report them distinctly.
 func (e *engineHTTP) fetch(ctx context.Context, q Query) ([]Result, error) {
 	s := e.spec
-	if s.RequiresEnv != "" && strings.TrimSpace(os.Getenv(s.RequiresEnv)) == "" {
+	// envctx.Get = per-request overrides (X-Tomoshi-Env from the MCP) first,
+	// process env second, so a client can supply keys without server config.
+	if s.RequiresEnv != "" && strings.TrimSpace(envctx.Get(ctx, s.RequiresEnv)) == "" {
 		return nil, fmt.Errorf("%w: set %s", ErrNotConfigured, s.RequiresEnv)
 	}
 	// Pace before the request budget applies: waiting for the gate is not
@@ -278,11 +282,11 @@ func (e *engineHTTP) fetch(ctx context.Context, q Query) ([]Result, error) {
 		q.Q = siteOperatorQuery(q.Q, q)
 	}
 
-	rawURL := renderURL(s.Request.URL, q)
-	body := renderURL(s.Request.Body, q)
+	rawURL := renderURL(ctx, s.Request.URL, q)
+	body := renderURL(ctx, s.Request.Body, q)
 	headers := make(map[string]string, len(s.Request.Headers))
 	for k, v := range s.Request.Headers {
-		headers[k] = expandEnv(v)
+		headers[k] = envctx.Expand(ctx, v)
 	}
 	method := s.Request.Method
 	if method == "" {
@@ -321,9 +325,12 @@ func (e *engineHTTP) fetch(ctx context.Context, q Query) ([]Result, error) {
 	return results, nil
 }
 
-// renderURL substitutes {{query}}/{{pageno}}/{{language}}/{{time_range}}
-// placeholders (query is URL-encoded) and expands ${ENV} references.
-func renderURL(tpl string, q Query) string {
+// renderURL substitutes {{query}}/{{query_json}}/{{pageno}}/{{language}}/
+// {{time_range}} placeholders and expands ${ENV} references through ctx, so
+// per-request overrides (X-Tomoshi-Env) win over the process env. {{query}}
+// is URL-encoded (URLs and form bodies); {{query_json}} is escaped as a JSON
+// string (POST JSON bodies — a URL-encoded query would arrive percent-laden).
+func renderURL(ctx context.Context, tpl string, q Query) string {
 	if tpl == "" {
 		return ""
 	}
@@ -333,16 +340,25 @@ func renderURL(tpl string, q Query) string {
 	}
 	out := strings.NewReplacer(
 		"{{query}}", url.QueryEscape(q.Q),
+		"{{query_json}}", jsonEscape(q.Q),
 		"{{pageno}}", fmt.Sprintf("%d", pageno),
 		"{{language}}", url.QueryEscape(q.Language),
 		"{{time_range}}", url.QueryEscape(q.TimeRange),
 	).Replace(tpl)
-	return expandEnv(out)
+	return envctx.Expand(ctx, out)
 }
 
-func expandEnv(s string) string {
-	if !strings.Contains(s, "$") {
+// jsonEscape renders s as the contents of a JSON string (no surrounding
+// quotes) with HTML escaping off, so "{"q":"…"}" bodies stay readable and
+// byte-accurate. Encode on a plain string cannot fail; if it somehow did,
+// degrading to the raw text beats emitting a broken substitution.
+func jsonEscape(s string) string {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(s); err != nil {
 		return s
 	}
-	return os.ExpandEnv(s)
+	out := bytes.TrimSpace(buf.Bytes()) // Encode appends a newline
+	return string(out[1 : len(out)-1])  // strip the wrapping quotes
 }

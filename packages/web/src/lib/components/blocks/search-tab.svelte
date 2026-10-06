@@ -165,7 +165,7 @@
       <span class="flex items-center gap-1.5">
         <Badge variant="outline" class="h-5 rounded px-1.5 text-[9px] uppercase"
           >Engine</Badge
-        > SearXNG → Brave fallback
+        > Native → SearXNG → Brave
       </span>
       {#if searchOptions.current.category}
         <span class="flex items-center gap-1.5"

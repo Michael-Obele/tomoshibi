@@ -61,6 +61,9 @@ Then add the MCP:
       "args": ["-y", "tomoshi"],
       "env": {
         "TOMOSHI_API_URL": "http://localhost:7431",
+        // optional: forwarded to the backend as a search API key on every
+        // request (X-Tomoshi-Env) — set keys here, not in the backend's .env
+        "BRAVE_SEARCH_API_KEY": "BSB-...",
       },
     },
   },
@@ -106,6 +109,8 @@ bun run build       # dist/ — what the published bin runs
 
 **Config** (see [.env.example](.env.example)): `TOMOSHI_API_URL` (required), `TOMOSHI_API_KEY`, `PORT`, `REDIS_URL` + `MCP_SESSION_MANAGER=redis` (sessions default to memory), `RATE_LIMIT_*`, `OAUTH_*`, `LOG_LEVEL`. Legacy `CINDER_API_URL` / `CINDER_API_KEY` still work.
 
+**Search key forwarding:** names the backend asks for (`GET /v1/env`, e.g. `BRAVE_SEARCH_API_KEY`) are forwarded from this server's env on every request as `X-Tomoshi-Env` — configure search API keys once, here. `TOMOSHI_FORWARD_ENV` tunes it: `""` = all requested names (default), `"false"` = off, or a comma list to restrict. The backend re-validates against its own allowlist and resolves the keys per request; it never stores them.
+
 ---
 
 ## Docker
@@ -140,7 +145,7 @@ docker run --rm -p 7433:7433 -e TOMOSHI_API_URL=http://host.docker.internal:7431
 | Tool               | `action`                                                             | What it does                                                       |
 | ------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `tomoshi_extract`  | `scrape` · `scrape_multi` (≤10) · `links` · `batch` · `batch_status` | Single/multi-page → markdown, link extraction, async batch (Redis) |
-| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                          | SearXNG search (Brave fallback), sitemap, async BFS crawl          |
+| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                          | Web search (native roster → SearXNG → Brave/Serper/Tavily), sitemap, async BFS crawl |
 | `tomoshi_monitor`  | `create` · `status` · `delete`                                       | Hash markdown, webhook on change                                   |
 
 Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status` until done.

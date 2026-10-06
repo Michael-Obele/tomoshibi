@@ -35,7 +35,7 @@ import {
 const DiscoverSearchShape = v.object({
   action: v.pipe(
     v.picklist(["search"]),
-    v.description("Web search via SearXNG (Brave fallback)"),
+    v.description("Web search via the native engine roster (SearXNG, Brave/Serper/Tavily fallbacks)"),
   ),
   query: v.pipe(
     v.string(),

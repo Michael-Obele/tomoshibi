@@ -14,7 +14,7 @@ The Go backend of [**Tomoshibi 灯火**](../../README.md) — a self-hosted, Fir
 One binary runs everything: the **Gin HTTP server** plus the **embedded Asynq worker** (crawl, batch, monitor). No separate worker process to deploy.
 
 - **Smart scraping** — Colly (static) first, Chromedp (JS rendering) only when the page needs it
-- **Search** — in-house engine roster → SearXNG → stealth → Brave fallback
+- **Search** — in-house 21-engine roster (keyless + keyed `brave`/`serper`/`tavily`) → SearXNG → stealth → Brave fallback
 - **Async jobs** — crawl / batch / monitor through Redis (optional; sync endpoints work with no Redis at all)
 - **Hobby-tier sized** — fits a 512 MB VM; Docker image ships Chromium included
 
@@ -143,6 +143,7 @@ Base URL `http://localhost:7431` — everything lives under `/v1`.
 | `POST` | `/v1/scrape` + `urls`      | multi-URL sync (max 10)                                                                   | No      |
 | `POST` | `/v1/map`                  | sitemap → robots.txt → link discovery                                                     | No      |
 | `POST` | `/v1/search`               | aggregated search (Native → SearXNG → Stealth → Brave)                                    | No      |
+| `GET`  | `/v1/env`                  | env var names a client may supply per request in `X-Tomoshi-Env` (see Search key forwarding below) | No |
 | `POST` | `/v1/crawl`                | async BFS crawl → `202` + job ID                                                          | **Yes** |
 | `GET`  | `/v1/crawl/:id`            | poll crawl status                                                                         | **Yes** |
 | `POST` | `/v1/batch/scrape`         | enqueue up to 20 URLs                                                                     | **Yes** |
@@ -152,6 +153,10 @@ Base URL `http://localhost:7431` — everything lives under `/v1`.
 | `GET`  | `/swagger/*`               | Swagger UI — **debug mode only**                                                          | No      |
 
 Full request/response reference: [`docs/guides/API_REFERENCE.md`](../../docs/guides/API_REFERENCE.md).
+
+### Search key forwarding
+
+A client may supply allowlisted search API keys **per request** in the `X-Tomoshi-Env` header (JSON object of name → value, e.g. `{"BRAVE_SEARCH_API_KEY":"BSB-..."}`). The middleware (`internal/api/middleware/request_env.go`) validates against the allowlist in `internal/search/envctx` and attaches the values to the request context; engines resolve `requires_env` and `${VAR}` through `envctx.Get`, so overrides apply to **that request only** — never process-global, never stored. `GET /v1/env` returns the accepted names so clients can discover them (the MCP forwards matching keys from its own env via `TOMOSHI_FORWARD_ENV`).
 
 ### Scrape modes
 
@@ -175,7 +180,9 @@ Copy `.env.example` to `.env` (loaded via Viper + godotenv, `AutomaticEnv`). Eve
 | `SERVER_MODE`                             | `debug`                 | `debug` = Swagger UI + `swag` regen on startup; `release` skips it                                               |
 | `REDIS_URL`                               | —                       | needed for crawl/batch/monitor; `rediss://`, `REDIS_HOST`/`PORT`/`PASSWORD` and Upstash REST vars also supported |
 | `SEARXNG_ENDPOINT`                        | `http://localhost:7435` | second step of the search chain                                                                                  |
-| `BRAVE_SEARCH_API_KEY`                    | —                       | fallback search (free $5/mo credit ≈ 1,000 searches)                                                             |
+| `BRAVE_SEARCH_API_KEY`                    | —                       | fallback search (free $5/mo credit ≈ 1,000 searches) — or skip server config entirely: a client may send it per request in `X-Tomoshi-Env` |
+| `SERPER_API_KEY`                          | —                       | optional keyed engine `serper` (Google results; 2,500 free queries, no card)                                                     |
+| `TAVILY_API_KEY`                          | —                       | optional keyed engine `tavily` (1,000 free credits/mo)                                                                           |
 | `SEARCH_NATIVE_ENABLED`                   | `true`                  | in-house engine roster (`internal/search/engines/registry.default.yaml`)                                         |
 | `SEARCH_COMPAT_ADDR`                      | —                       | e.g. `:7435` to expose a SearXNG-compatible JSON API                                                             |
 | `WEBSHARE_API_KEY` / `WEBSHARE_PROXY_URL` | —                       | proxy pool for the search engines                                                                                |

@@ -119,7 +119,7 @@ No `mode` needed — `smart` is default. `static` skips JS; `dynamic` always ren
 
 | Package | Path                           | Description                                                                                    | Install                                                |
 | ------- | ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + SearXNG                                             | `docker compose up` or `go run ./packages/api/cmd/api` |
+| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + native search roster (21 engines) | `docker compose up` or `go run ./packages/api/cmd/api` |
 | **mcp** | [`packages/mcp`](packages/mcp) | MCP server — 3 tools, `tomoshi`/`tomoshibi` bin ([npm](https://www.npmjs.com/package/tomoshi)) | `npx -y tomoshi`                                       |
 | **web** | [`packages/web`](packages/web) | Svelte 5 playground — scrape/crawl/search UI                                                   | `bun --cwd packages/web dev`                           |
 
@@ -194,6 +194,7 @@ Self-hosters pull the same images CI pushed: `docker pull ghcr.io/michael-obele/
 - **A new error string shows up in logs.** Start from `recent_errors[].trace_id` in `/v1/insights` and grep that id in `docker logs`. The chain explains itself: `search: backend failed, trying next`, `search: results concentrated on one domain` (weak-result gate firing), `proxy budget exhausted — engines degraded to direct egress`.
 - **My env var is ignored.** The api container takes an explicit `environment:` list (no `env_file`), and compose interpolation reads only the repo-root `.env` (gitignored). Add the var in **both** places, then `docker compose up -d` — use `--build` only when the code changed.
 - **401 on `/v1/*`.** New builds honor `APP_API_KEYS`/`API_KEYS`; Docker passes neither, so auth is off there. If you enable it, also set `TOMOSHI_API_KEY` in your MCP config — otherwise every MCP call 401s.
+- **Which search API keys do I need?** None — most engines are keyless. Optional quality boosts: `SERPER_API_KEY` (Google, 2,500 free), `TAVILY_API_KEY` (1,000 free/mo), `BRAVE_SEARCH_API_KEY` ($5/mo free credit). Set them in `packages/api/.env` **or** just in your MCP config — the MCP forwards whatever the backend asks for (`GET /v1/env`) on every request via `X-Tomoshi-Env`, so the key lives in one place (`TOMOSHI_FORWARD_ENV=false` opts out).
 - **Port 7431 already in use.** An older container or process holds it (`docker ps`). Experiments use `SERVER_PORT=7452`.
 - **`/v1/crawl`, `/v1/batch`, `/v1/monitor` return 503.** Redis is optional by design — scrape/search keep working; `docker compose up -d redis`.
 - **MCP tools fail with `{}` or a raw `Invalid arguments …` dump.** You're on `tomoshi` < 1.1.6, which published a root-level `oneOf` schema clients rendered as empty properties. Upgrade/restart the MCP — 1.1.6+ ships flat schemas and readable usage errors.
@@ -210,7 +211,8 @@ Base: `http://localhost:7431` — every endpoint under `/v1`.
 | `POST` | `/v1/scrape`          | Single page → markdown (smart/static/dynamic, screenshots, `extract_schema`) | No          |
 | `POST` | `/v1/scrape` + `urls` | Multi-URL sync (max 10, no Redis)                                            | No          |
 | `POST` | `/v1/map`             | Sitemap → robots.txt → link fallback                                         | No          |
-| `POST` | `/v1/search`          | SearXNG aggregated search (Brave fallback)                                   | No          |
+| `POST` | `/v1/search`          | Native 21-engine roster → SearXNG → stealth → Brave (keyed: brave/serper/tavily) | No   |
+| `GET`  | `/v1/env`             | env var names a client may send per request in `X-Tomoshi-Env` (MCP forwarding) | No       |
 | `POST` | `/v1/crawl`           | Async BFS crawl → `202` + job ID                                             | **Yes**     |
 | `GET`  | `/v1/crawl/:id`       | Poll crawl status                                                            | **Yes**     |
 | `POST` | `/v1/batch/scrape`    | Enqueue 20 URLs async                                                        | **Yes**     |
@@ -242,11 +244,18 @@ Client → Gin Router → Scraper (Colly / Chromedp + Readability)
     "tomoshi": {
       "command": "npx",
       "args": ["-y", "tomoshi"],
-      "env": { "TOMOSHI_API_URL": "http://localhost:7431" },
+      "env": {
+        "TOMOSHI_API_URL": "http://localhost:7431",
+        // optional search keys — forwarded to the backend on every request
+        // as X-Tomoshi-Env, so configure them HERE, not in the backend's .env
+        "BRAVE_SEARCH_API_KEY": "BSB-...", // or SERPER_API_KEY / TAVILY_API_KEY
+      },
     },
   },
 }
 ```
+
+The MCP asks the backend which key names it accepts (`GET /v1/env`) once, then forwards the matching ones from its own env on every call. `TOMOSHI_FORWARD_ENV` tunes it: `""` = all requested (default), `"false"` = off, or a comma list to restrict.
 
 Also: `npx tomoshibi` (alias, same package).
 

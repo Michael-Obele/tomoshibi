@@ -142,15 +142,20 @@ _(Note: If `screenshot` or `images` are requested, the response payload will als
 
 ## 2. Search
 
-Searches the web using the configured search provider (SearXNG primary, Brave fallback, Stealth chromedp fallback) and returns a list of matching results.
+Searches the web through the hybrid chain and returns a list of matching results.
 
 ### Search Backends (HybridService)
 
-Tomoshibi tries backends in order: **SearXNG (free, self-hosted) → Brave API (paid, 1 QPS) → Stealth (chromedp fallback, reuses shared allocator)**.
+Tomoshibi tries backends in order — first non-empty, non-weak result set wins:
 
-- `SEARXNG_ENDPOINT=http://searxng:8080` — primary, aggregates many engines
-- `BRAVE_SEARCH_API_KEY` — fallback when SearXNG 429/captcha
+**Native engine roster (21 entries, in-process) → SearXNG (free, self-hosted) → Stealth (chromedp) → Brave API**
+
+- `SEARCH_NATIVE_ENABLED=true` — the in-house roster in `internal/search/engines/registry.default.yaml`: keyless engines (ddg, bing, wikipedia, github, hn, …) plus three **keyed** ones that each skip cleanly when their key is absent: `brave`, `serper` (Google), `tavily`.
+- `SEARXNG_ENDPOINT=http://searxng:8080` — aggregates Google/Bing/DDG/… via the sidecar
 - `STEALTH_ENABLED=true` — enable chromedp fallback (reuses existing Chrome, no new container)
+- `BRAVE_SEARCH_API_KEY` — ~1,000 free searches/mo · `SERPER_API_KEY` — 2,500 free queries (no card) · `TAVILY_API_KEY` — 1,000 free credits/mo
+
+**Per-request keys (`X-Tomoshi-Env`):** a client may send allowlisted search keys on any `/v1/*` call as a JSON header, e.g. `{"SERPER_API_KEY":"…"}` — resolved for that request only, never stored. Names come from [`GET /v1/env`](#9-environment-key-forwarding-get-v1env) and the allowlist in `internal/search/envctx`. The MCP discovers the list and forwards matching keys from its own env (`TOMOSHI_FORWARD_ENV`), so keys are configured in one place.
 
 Stealth is last resort: it scrapes Brave Search HTML via the shared chromedp tab with `gofakeit` UA rotation and `disable-blink-features=AutomationControlled`.
 
@@ -491,6 +496,36 @@ curl -X POST http://localhost:8080/v1/scrape \
 ```
 
 When rate limiting is enabled, exceeding the limit returns `429` with `retry_after`. Redis-backed limiting is used when `REDIS_URL` is set; otherwise an in-memory limiter applies per instance.
+
+---
+
+## 9. Environment Key Forwarding
+
+A client may supply allowlisted search API keys **per request** so keys live in one place (the client's env) instead of also in the backend's `.env`.
+
+### Endpoint
+
+- `GET /v1/env` — lists the env var names this backend accepts per request
+
+### Request Header
+
+| Header         | Type   | Description                                                                                                                                                              |
+| -------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `X-Tomoshi-Env` | string | JSON object of env name → value, e.g. `{"BRAVE_SEARCH_API_KEY":"BSB-…","SERPER_API_KEY":"…"}`. Validated against the allowlist in `internal/search/envctx`; unknown names are dropped, a malformed header is ignored (never 4xx). |
+
+```bash
+# What may I send?
+curl http://localhost:8080/v1/env
+# {"header":"X-Tomoshi-Env","format":"JSON object of env var name to value","env":["BRAVE_SEARCH_API_KEY","SERPER_API_KEY","TAVILY_API_KEY"]}
+
+# Use it on a search (overrides the server env for THIS request only)
+curl -X POST http://localhost:8080/v1/search \
+  -H "Content-Type: application/json" \
+  -H "X-Tomoshi-Env: {\"SERPER_API_KEY\":\"…\"}" \
+  -d '{"query":"web scraping"}'
+```
+
+Values are read through `envctx.Get` at engine-fetch time (both the `requires_env` gate and `${VAR}` template expansion), so an override applies only to the request that carried it — unlike process env, it can never leak between clients. The MCP uses this endpoint for discovery: it fetches `GET /v1/env` once, then attaches the intersection of that list with its own environment (`TOMOSHI_FORWARD_ENV` = `""` auto, `"false"` off, comma list restricts) to every call.
 
 ---
 

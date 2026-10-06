@@ -19,7 +19,7 @@ Self-hosted Firecrawl/Exa alternative. **3 tools, not 17** — resource-oriented
 ## When to Use This Skill
 
 - User wants to **scrape** a URL to markdown, screenshot, images, or structured data
-- User wants to **search** the web (SearXNG + Brave fallback)
+- User wants to **search** the web (native 21-engine roster → SearXNG → Brave/Serper/Tavily fallbacks)
 - User wants to **map** a site (sitemap → robots.txt → link fallback)
 - User wants to **crawl** a site async (BFS, Redis-backed)
 - User wants to **batch** scrape 2–20 URLs async
@@ -57,6 +57,8 @@ MCP config (`.vscode/mcp.json` or Claude config):
 ```
 
 Aliases: `npx tomoshi`, `npx tomoshibi`, `npx tomoshibi-mcp` — same package.
+
+Optional search keys (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`) go in the same `env` block — the MCP asks the backend which names it accepts (`GET /v1/env`) once and forwards the matching ones on every request as `X-Tomoshi-Env`, so keys live in one place. `TOMOSHI_FORWARD_ENV="false"` opts out.
 
 ## Tools (3)
 
@@ -99,7 +101,7 @@ Aliases: `npx tomoshi`, `npx tomoshibi`, `npx tomoshibi-mcp` — same package.
 ### 2. tomoshi_discover — discovery resource
 
 ```ts
-// search (SearXNG, Brave fallback)
+// search (native roster → SearXNG → stealth → Brave; keyed brave/serper/tavily)
 { action: "search", query: "svelte 5 runes", limit: 10, offset: 0, category: "general" | "news" | "code", maxAge: 1|7|30, includeDomains: ["svelte.dev"], excludeDomains: ["spam.com"] }
 
 // map (sitemap discovery)

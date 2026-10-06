@@ -435,7 +435,7 @@ export const pages: Record<string, DocPage> = {
       {
         type: "text",
         content:
-          "Hybrid search: SearXNG (primary, free) → Brave API (fallback, 1 QPS) → Stealth (chromedp, reuses shared allocator, gofakeit UA). SEARXNG_ENDPOINT, BRAVE_SEARCH_API_KEY, STEALTH_ENABLED control backends.",
+          "Hybrid search: native 21-engine roster (keyless + keyed brave/serper/tavily) → SearXNG → stealth → Brave API. SEARCH_NATIVE_ENABLED, SEARXNG_ENDPOINT, STEALTH_ENABLED and BRAVE/SERPER/TAVILY_API_KEY pick the backends; keys can also arrive per request via X-Tomoshi-Env (MCP TOMOSHI_FORWARD_ENV).",
       },
       {
         type: "code",
