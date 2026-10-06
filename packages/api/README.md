@@ -299,6 +299,7 @@ Keep `SHUTDOWN_TIMEOUT` (default 20s) below `kill_timeout` so in-flight requests
 - [Repo README](../../README.md) — project overview, benchmarks, full-stack quick start
 - [API reference](../../docs/guides/API_REFERENCE.md) — every endpoint and parameter
 - [Search comparison](../../docs/SEARCH_COMPARISON.md) — benchmark vs Firecrawl
+- [SearXNG on Fly.io](../../docs/guides/SEARXNG_FLY.md) — optional sidecar, separate app
 - [MCP package](../mcp/README.md) · [Web playground](../web/README.md)
 
 ## License

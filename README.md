@@ -139,7 +139,7 @@ tomoshibi/
 │   ├── api/            # Go scraping API — Gin + Chromedp + Colly + embedded Asynq worker (7431)
 │   ├── mcp/            # MCP server — 3 tools over the API, npm package `tomoshi` (7433)
 │   └── web/            # Svelte 5 playground — scrape/crawl/search in the browser (7432)
-├── docs/               # API reference, search comparison (the rest is local-only)
+├── docs/               # API reference, search comparison, SearXNG Fly guide (the rest is local-only)
 ├── skills/             # agent skills published to skills.sh (mirrored to .agents/, .agent/)
 ├── plan/               # local design plans (gitignored)
 ├── test_reports/       # historical test runs (gitignored)
