@@ -161,7 +161,6 @@ Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status`
 | Option             | Command                                                     | Cost              |
 | ------------------ | ----------------------------------------------------------- | ----------------- |
 | **Docker Compose** | `docker compose -f packages/mcp/docker-compose.yml up -d`   | $0 (your machine) |
-| **Fly.io**         | `fly deploy` (in `packages/mcp`)                            | ~$5/mo (512 MB)   |
 | **From source**    | `bun run dev` (MCP) + `go run ./packages/api/cmd/api` (API) | $0 + Chromium     |
 
 API base: `http://localhost:7431` — all endpoints under `/v1` (`/scrape`, `/search`, `/crawl`, `/batch`, `/monitor`, `/map`).
@@ -189,7 +188,6 @@ packages/mcp/
 ├── dist/                   # build output — published to npm, backs the bins
 ├── Dockerfile              # deps stage → oven/bun:1-slim (non-root, wget healthcheck)
 ├── docker-compose.yml      # mcp on 7433, needs an API on 7431
-├── fly.toml                # Fly.io deploy
 ├── package.json            # bin: tomoshi / tomoshibi / tomoshibi-mcp → dist/stdio.js
 ├── tsconfig.json           # typecheck config (bun run check)
 ├── tsconfig.build.json     # build config → dist/
