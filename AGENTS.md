@@ -31,7 +31,7 @@ All paths relative to `packages/api/` unless prefixed with `packages/`.
 - `internal/{extract,image,sitemap,safeurl}/`: Support packages (schema extraction/summary/PII redaction, image pipeline, sitemap discovery, SSRF guard).
 - `pkg/logger/`: Centralized structured logging (slog).
 - `packages/mcp/`, `packages/web/`: TypeScript MCP server and Svelte 5 playground.
-- `docs/`: Local-only project documentation (gitignored except `SEARCH_COMPARISON.md`, `guides/API_REFERENCE.md`, `guides/SEARXNG_FLY.md`).
+- `docs/`: Local-only project documentation (gitignored except `SEARCH_COMPARISON.md`, `guides/API_REFERENCE.md`).
   Previously `cinder-js/` & `cinder-js-gpt/` — archived.
 - `plan/`: Local-only design plans (gitignored), incl. `plan/tomoshi-search/` (search backend plan + probe log).
 
@@ -153,7 +153,7 @@ Support package: `internal/extract` (deterministic CSS-selector schema extractio
 
 ## 📚 Docs
 
-`README.md` = API reference for endpoint, parameter, env var. Only three deeper docs stay tracked: `docs/guides/API_REFERENCE.md` (linked from the published skill), `docs/guides/SEARXNG_FLY.md` (linked from `packages/api/.env.example`), `docs/SEARCH_COMPARISON.md` (linked from README + web homepage). The rest of `docs/` (guides, features, design plans) and all of `plan/` are LOCAL-ONLY — gitignored; they still exist on disk but are not part of the public repo. `test_reports/` are historical and gitignored.
+`README.md` = API reference for endpoint, parameter, env var. Only two deeper docs stay tracked: `docs/guides/API_REFERENCE.md` (linked from the published skill), `docs/SEARCH_COMPARISON.md` (linked from README + web homepage). The rest of `docs/` (guides, features, design plans) and all of `plan/` are LOCAL-ONLY — gitignored; they still exist on disk but are not part of the public repo. `test_reports/` are historical and gitignored.
 
 ## 🗺️ Roadmap Focus
 

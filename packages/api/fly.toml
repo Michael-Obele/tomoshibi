@@ -10,6 +10,19 @@ kill_timeout = '25s'
 [build]
   dockerfile = 'Dockerfile'
 
+# API-only on Fly: no SearXNG sidecar (the native roster + keyed engines cover
+# search). Machine is shared-1x / 512 MB, the Chromium floor, and scales to
+# zero (min_machines_running = 0) because this deployment only serves the
+# occasional playground visitor; local dev runs the full compose stack.
+#
+# Secrets (fly secrets set --app tomoshibi ...):
+#   REDIS_URL                redis via env, no redis app on Fly
+#   BRAVE_SEARCH_API_KEY     free $5/mo credit
+#   SERPER_API_KEY           2,500 free queries, no card
+#   TAVILY_API_KEY           1,000 free credits/mo
+#   APP_RATE_LIMIT_RPM       optional (already set)
+# The MCP can also supply these per request (X-Tomoshi-Env) from its own env.
+
 [env]
   GIN_MODE = 'release'
   LOG_LEVEL = 'info'

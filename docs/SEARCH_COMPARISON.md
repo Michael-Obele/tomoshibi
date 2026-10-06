@@ -34,7 +34,7 @@ result metadata.
 
 > **Update (2026-10-05):** search now runs the in-house **native engine roster
 > first** (21 entries, `SEARCH_NATIVE_ENABLED=true`), with SearXNG demoted to
-> fallback — the benchmark above was measured against the SearXNG-primary
+> fallback; the benchmark above was measured against the SearXNG-primary
 > chain. Keyed engines `brave`/`serper`/`tavily` are optional boosts; see
 > [API Reference §2](guides/API_REFERENCE.md#2-search).
 

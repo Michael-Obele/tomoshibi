@@ -49,24 +49,24 @@ MCP config (`.vscode/mcp.json` or Claude config):
     "tomoshi": {
       "command": "npx",
       "args": ["-y", "tomoshi"],
-      "env": { "TOMOSHI_API_URL": "http://localhost:7431" }
+      "env": { "TOMOSHI_API_URL": "http://localhost:7431" },
       // legacy CINDER_API_URL also works
-    }
-  }
+    },
+  },
 }
 ```
 
 Aliases: `npx tomoshi`, `npx tomoshibi`, `npx tomoshibi-mcp` — same package.
 
-Optional search keys (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`) go in the same `env` block — the MCP asks the backend which names it accepts (`GET /v1/env`) once and forwards the matching ones on every request as `X-Tomoshi-Env`, so keys live in one place. `TOMOSHI_FORWARD_ENV="false"` opts out.
+Optional search keys (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`) go in the same `env` block; the MCP asks the backend which names it accepts (`GET /v1/env`) once and forwards the matching ones on every request as `X-Tomoshi-Env`, so keys live in one place. `TOMOSHI_FORWARD_ENV="false"` opts out.
 
 ## Tools (3)
 
-| Tool | `action` | Endpoint | Needs Redis |
-|------|----------|----------|-------------|
-| `tomoshi_extract` | `scrape` · `scrape_multi` · `links` · `batch` · `batch_status` | `/v1/scrape`, `/v1/batch` | `batch*` only |
-| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status` | `/v1/search`, `/v1/map`, `/v1/crawl` | `crawl*` only |
-| `tomoshi_monitor` | `create` · `status` · `delete` | `/v1/monitor` | Yes |
+| Tool               | `action`                                                       | Endpoint                             | Needs Redis   |
+| ------------------ | -------------------------------------------------------------- | ------------------------------------ | ------------- |
+| `tomoshi_extract`  | `scrape` · `scrape_multi` · `links` · `batch` · `batch_status` | `/v1/scrape`, `/v1/batch`            | `batch*` only |
+| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                    | `/v1/search`, `/v1/map`, `/v1/crawl` | `crawl*` only |
+| `tomoshi_monitor`  | `create` · `status` · `delete`                                 | `/v1/monitor`                        | Yes           |
 
 > Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status` until done.
 
@@ -123,6 +123,7 @@ Optional search keys (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`
 ## Workflows
 
 ### Research → scrape (most common)
+
 ```
 tomoshi_discover { action: "search", query: "svelte 5 runes", limit: 5 }
 → tomoshi_extract { action: "scrape_multi", urls: [top 3 urls] }
@@ -130,6 +131,7 @@ tomoshi_discover { action: "search", query: "svelte 5 runes", limit: 5 }
 ```
 
 ### Crawl a docs site
+
 ```
 tomoshi_discover { action: "map", url: "https://example.com", search: "/docs" }
 → tomoshi_discover { action: "crawl", url: "https://example.com", include_paths: ["/docs/*"], limit: 20 }
@@ -137,6 +139,7 @@ tomoshi_discover { action: "map", url: "https://example.com", search: "/docs" }
 ```
 
 ### Watch for changes
+
 ```
 tomoshi_monitor { action: "create", url: "https://example.com/changelog", interval_seconds: 3600 }
 → tomoshi_monitor { action: "status", id }

@@ -146,7 +146,7 @@ Searches the web through the hybrid chain and returns a list of matching results
 
 ### Search Backends (HybridService)
 
-Tomoshibi tries backends in order — first non-empty, non-weak result set wins:
+Tomoshibi tries backends in order, and the first non-empty, non-weak result set wins:
 
 **Native engine roster (21 entries, in-process) → SearXNG (free, self-hosted) → Stealth (chromedp) → Brave API**
 
@@ -155,7 +155,7 @@ Tomoshibi tries backends in order — first non-empty, non-weak result set wins:
 - `STEALTH_ENABLED=true` — enable chromedp fallback (reuses existing Chrome, no new container)
 - `BRAVE_SEARCH_API_KEY` — ~1,000 free searches/mo · `SERPER_API_KEY` — 2,500 free queries (no card) · `TAVILY_API_KEY` — 1,000 free credits/mo
 
-**Per-request keys (`X-Tomoshi-Env`):** a client may send allowlisted search keys on any `/v1/*` call as a JSON header, e.g. `{"SERPER_API_KEY":"…"}` — resolved for that request only, never stored. Names come from [`GET /v1/env`](#9-environment-key-forwarding-get-v1env) and the allowlist in `internal/search/envctx`. The MCP discovers the list and forwards matching keys from its own env (`TOMOSHI_FORWARD_ENV`), so keys are configured in one place.
+**Per-request keys (`X-Tomoshi-Env`):** a client may send allowlisted search keys on any `/v1/*` call as a JSON header, e.g. `{"SERPER_API_KEY":"…"}`, resolved for that request only, never stored. Names come from [`GET /v1/env`](#9-environment-key-forwarding-get-v1env) and the allowlist in `internal/search/envctx`. The MCP discovers the list and forwards matching keys from its own env (`TOMOSHI_FORWARD_ENV`), so keys are configured in one place.
 
 Stealth is last resort: it scrapes Brave Search HTML via the shared chromedp tab with `gofakeit` UA rotation and `disable-blink-features=AutomationControlled`.
 
@@ -509,8 +509,8 @@ A client may supply allowlisted search API keys **per request** so keys live in 
 
 ### Request Header
 
-| Header         | Type   | Description                                                                                                                                                              |
-| -------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Header          | Type   | Description                                                                                                                                                                                                                       |
+| --------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `X-Tomoshi-Env` | string | JSON object of env name → value, e.g. `{"BRAVE_SEARCH_API_KEY":"BSB-…","SERPER_API_KEY":"…"}`. Validated against the allowlist in `internal/search/envctx`; unknown names are dropped, a malformed header is ignored (never 4xx). |
 
 ```bash

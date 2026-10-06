@@ -119,7 +119,7 @@ packages/api/
 ├── pkg/logger/               # slog wrapper (logger.Log) — never fmt.Println
 ├── test/                     # integration tests — httptest, externals mocked
 ├── scripts/                  # search-bench.py, load-harness.go, fly-searxng.sh
-├── deploy/                   # searxng/ + searxng-fly/ configs for compose
+├── deploy/                   # searxng/ configs for local compose only
 ├── Dockerfile                # multi-stage: Go build → Alpine + Chromium + tini
 ├── docker-compose.yml        # api (7431) + redis (7434) + searxng (7435)
 ├── Makefile                  # make check · fmt · vet · staticcheck · lint · test
@@ -214,7 +214,7 @@ Roster changes need a live probe first:
 go test -tags=canary ./internal/search/engines/ -run TestCanary -v   # CANARY_ENGINES=ddg,bing to filter
 ```
 
-Never run the canary in CI. SearXNG on Fly.io: [`docs/guides/SEARXNG_FLY.md`](../../docs/guides/SEARXNG_FLY.md).
+Never run the canary in CI. SearXNG runs locally only (`docker compose up -d searxng`); Fly ships no sidecar, the native roster and keyed engines cover search there.
 
 ---
 
@@ -299,7 +299,6 @@ Keep `SHUTDOWN_TIMEOUT` (default 20s) below `kill_timeout` so in-flight requests
 - [Repo README](../../README.md) — project overview, benchmarks, full-stack quick start
 - [API reference](../../docs/guides/API_REFERENCE.md) — every endpoint and parameter
 - [Search comparison](../../docs/SEARCH_COMPARISON.md) — benchmark vs Firecrawl
-- [SearXNG on Fly.io](../../docs/guides/SEARXNG_FLY.md)
 - [MCP package](../mcp/README.md) · [Web playground](../web/README.md)
 
 ## License

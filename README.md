@@ -139,7 +139,7 @@ tomoshibi/
 │   ├── api/            # Go scraping API — Gin + Chromedp + Colly + embedded Asynq worker (7431)
 │   ├── mcp/            # MCP server — 3 tools over the API, npm package `tomoshi` (7433)
 │   └── web/            # Svelte 5 playground — scrape/crawl/search in the browser (7432)
-├── docs/               # API reference, search comparison, SearXNG guide (the rest is local-only)
+├── docs/               # API reference, search comparison (the rest is local-only)
 ├── skills/             # agent skills published to skills.sh (mirrored to .agents/, .agent/)
 ├── plan/               # local design plans (gitignored)
 ├── test_reports/       # historical test runs (gitignored)
@@ -194,7 +194,7 @@ Self-hosters pull the same images CI pushed: `docker pull ghcr.io/michael-obele/
 - **A new error string shows up in logs.** Start from `recent_errors[].trace_id` in `/v1/insights` and grep that id in `docker logs`. The chain explains itself: `search: backend failed, trying next`, `search: results concentrated on one domain` (weak-result gate firing), `proxy budget exhausted — engines degraded to direct egress`.
 - **My env var is ignored.** The api container takes an explicit `environment:` list (no `env_file`), and compose interpolation reads only the repo-root `.env` (gitignored). Add the var in **both** places, then `docker compose up -d` — use `--build` only when the code changed.
 - **401 on `/v1/*`.** New builds honor `APP_API_KEYS`/`API_KEYS`; Docker passes neither, so auth is off there. If you enable it, also set `TOMOSHI_API_KEY` in your MCP config — otherwise every MCP call 401s.
-- **Which search API keys do I need?** None — most engines are keyless. Optional quality boosts: `SERPER_API_KEY` (Google, 2,500 free), `TAVILY_API_KEY` (1,000 free/mo), `BRAVE_SEARCH_API_KEY` ($5/mo free credit). Set them in `packages/api/.env` **or** just in your MCP config — the MCP forwards whatever the backend asks for (`GET /v1/env`) on every request via `X-Tomoshi-Env`, so the key lives in one place (`TOMOSHI_FORWARD_ENV=false` opts out).
+- **Which search API keys do I need?** None; most engines are keyless. Optional quality boosts: `SERPER_API_KEY` (Google, 2,500 free), `TAVILY_API_KEY` (1,000 free/mo), `BRAVE_SEARCH_API_KEY` ($5/mo free credit). Set them in `packages/api/.env` **or** just in your MCP config; the MCP forwards whatever the backend asks for (`GET /v1/env`) on every request via `X-Tomoshi-Env`, so the key lives in one place (`TOMOSHI_FORWARD_ENV=false` opts out).
 - **Port 7431 already in use.** An older container or process holds it (`docker ps`). Experiments use `SERVER_PORT=7452`.
 - **`/v1/crawl`, `/v1/batch`, `/v1/monitor` return 503.** Redis is optional by design — scrape/search keep working; `docker compose up -d redis`.
 - **MCP tools fail with `{}` or a raw `Invalid arguments …` dump.** You're on `tomoshi` < 1.1.6, which published a root-level `oneOf` schema clients rendered as empty properties. Upgrade/restart the MCP — 1.1.6+ ships flat schemas and readable usage errors.

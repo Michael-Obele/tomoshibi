@@ -58,7 +58,7 @@ MCP config (`.vscode/mcp.json` or Claude config):
 
 Aliases: `npx tomoshi`, `npx tomoshibi`, `npx tomoshibi-mcp` — same package.
 
-Optional search keys (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`) go in the same `env` block — the MCP asks the backend which names it accepts (`GET /v1/env`) once and forwards the matching ones on every request as `X-Tomoshi-Env`, so keys live in one place. `TOMOSHI_FORWARD_ENV="false"` opts out.
+Optional search keys (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`) go in the same `env` block; the MCP asks the backend which names it accepts (`GET /v1/env`) once and forwards the matching ones on every request as `X-Tomoshi-Env`, so keys live in one place. `TOMOSHI_FORWARD_ENV="false"` opts out.
 
 ## Tools (3)
 

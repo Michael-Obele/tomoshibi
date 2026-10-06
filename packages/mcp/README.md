@@ -62,7 +62,7 @@ Then add the MCP:
       "env": {
         "TOMOSHI_API_URL": "http://localhost:7431",
         // optional: forwarded to the backend as a search API key on every
-        // request (X-Tomoshi-Env) — set keys here, not in the backend's .env
+        // request (X-Tomoshi-Env): set keys here, not in the backend's .env
         "BRAVE_SEARCH_API_KEY": "BSB-...",
       },
     },
@@ -109,7 +109,7 @@ bun run build       # dist/ — what the published bin runs
 
 **Config** (see [.env.example](.env.example)): `TOMOSHI_API_URL` (required), `TOMOSHI_API_KEY`, `PORT`, `REDIS_URL` + `MCP_SESSION_MANAGER=redis` (sessions default to memory), `RATE_LIMIT_*`, `OAUTH_*`, `LOG_LEVEL`. Legacy `CINDER_API_URL` / `CINDER_API_KEY` still work.
 
-**Search key forwarding:** names the backend asks for (`GET /v1/env`, e.g. `BRAVE_SEARCH_API_KEY`) are forwarded from this server's env on every request as `X-Tomoshi-Env` — configure search API keys once, here. `TOMOSHI_FORWARD_ENV` tunes it: `""` = all requested names (default), `"false"` = off, or a comma list to restrict. The backend re-validates against its own allowlist and resolves the keys per request; it never stores them.
+**Search key forwarding:** names the backend asks for (`GET /v1/env`, e.g. `BRAVE_SEARCH_API_KEY`) are forwarded from this server's env on every request as `X-Tomoshi-Env`, so search API keys are configured once, here. `TOMOSHI_FORWARD_ENV` tunes it: `""` = all requested names (default), `"false"` = off, or a comma list to restrict. The backend re-validates against its own allowlist and resolves the keys per request; it never stores them.
 
 ---
 
