@@ -121,7 +121,7 @@ packages/api/
 ├── scripts/                  # search-bench.py, load-harness.go, fly-searxng.sh
 ├── deploy/                   # searxng/ configs for local compose only
 ├── Dockerfile                # multi-stage: Go build → Alpine + Chromium + tini
-├── docker-compose.yml        # api (7431) + redis (7434) + searxng (7435)
+├── docker-compose.yml        # api (7431) + redis (7434) + searxng (7435, opt-in profile)
 ├── Makefile                  # make check · fmt · vet · staticcheck · lint · test
 ├── fly.toml / render.yaml    # deploy targets (Fly.io 512 MB, Render)
 ├── install_browser.sh        # install Chromium for local dynamic scraping
@@ -214,7 +214,7 @@ Roster changes need a live probe first:
 go test -tags=canary ./internal/search/engines/ -run TestCanary -v   # CANARY_ENGINES=ddg,bing to filter
 ```
 
-Never run the canary in CI. SearXNG runs locally only (`docker compose up -d searxng`); Fly ships no sidecar, the native roster and keyed engines cover search there.
+Never run the canary in CI. SearXNG is an **opt-in sidecar** (`docker compose --profile searxng up -d`); Fly ships none — the native roster and keyed engines cover search there.
 
 ---
 

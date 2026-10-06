@@ -46,7 +46,7 @@ Part of [**Tomoshibi 灯火**](https://github.com/Michael-Obele/tomoshibi) — G
 
 ```bash
 git clone https://github.com/Michael-Obele/tomoshibi.git && cd tomoshibi
-docker compose up -d  # api 7431 + redis 7434 + searxng 7435
+docker compose up -d  # api 7431 + redis 7434 (searxng: --profile searxng)
 # or: fly deploy (see tomoshibi README)
 ```
 

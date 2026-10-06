@@ -50,7 +50,7 @@ If you're paying Firecrawl/Exa by the token or spawning a Playwright per request
 
 ```bash
 git clone https://github.com/Michael-Obele/tomoshibi.git && cd tomoshibi
-docker compose up -d              # api (7431) + redis (7434) + searxng (7435)
+docker compose up -d              # api (7431) + redis (7434) — searxng opt-in: --profile searxng
 curl http://localhost:7431/health   # → {"status":"ok","service":"tomoshibi"}
 
 # optional front doors to the same API:
@@ -82,7 +82,7 @@ docker run --rm -p 7433:7433 -e TOMOSHI_API_URL=http://host.docker.internal:7431
 # compose file instead — that overrides the build arg: packages/web/docker-compose.yml
 
 # Or via compose per-package
-docker compose -f packages/api/docker-compose.yml up -d   # api + redis + searxng
+docker compose -f packages/api/docker-compose.yml up -d   # api + redis (searxng: --profile searxng)
 docker compose -f packages/mcp/docker-compose.yml up -d   # mcp (needs api)
 docker compose -f packages/web/docker-compose.yml up -d   # web (needs api)
 ```
@@ -144,7 +144,7 @@ tomoshibi/
 ├── plan/               # local design plans (gitignored)
 ├── test_reports/       # historical test runs (gitignored)
 ├── .github/workflows/  # CI — ci.yml, docker.yml (images), npm.yml (publish)
-├── docker-compose.yml  # full stack: api 7431 + redis 7434 + searxng 7435
+├── docker-compose.yml  # full stack: api 7431 + redis 7434 (+ searxng 7435 opt-in)
 ├── package.json        # bun workspaces — dev:api · dev:mcp · dev:web · check
 ├── AGENTS.md           # agent context source of truth (CLAUDE.md symlinks to it)
 ├── README.md           # this file

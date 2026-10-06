@@ -151,7 +151,7 @@ Tomoshibi tries backends in order, and the first non-empty, non-weak result set 
 **Native engine roster (21 entries, in-process) → SearXNG (free, self-hosted) → Stealth (chromedp) → Brave API**
 
 - `SEARCH_NATIVE_ENABLED=true` — the in-house roster in `internal/search/engines/registry.default.yaml`: keyless engines (ddg, bing, wikipedia, github, hn, …) plus three **keyed** ones that each skip cleanly when their key is absent: `brave`, `serper` (Google), `tavily`.
-- `SEARXNG_ENDPOINT=http://searxng:8080` — aggregates Google/Bing/DDG/… via the sidecar
+- `SEARXNG_ENDPOINT=http://searxng:8080` — optional sidecar (compose profile `searxng`, off by default); aggregates Google/Bing/DDG/… when enabled
 - `STEALTH_ENABLED=true` — enable chromedp fallback (reuses existing Chrome, no new container)
 - `BRAVE_SEARCH_API_KEY` — ~1,000 free searches/mo · `SERPER_API_KEY` — 2,500 free queries (no card) · `TAVILY_API_KEY` — 1,000 free credits/mo
 

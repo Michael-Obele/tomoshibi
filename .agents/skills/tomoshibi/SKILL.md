@@ -31,7 +31,7 @@ Self-hosted Firecrawl/Exa alternative. **3 tools, not 17** — resource-oriented
 A running Tomoshibi API is required. The MCP is a thin client over HTTP.
 
 ```bash
-# fastest — full stack (api 7431 + redis 7434 + searxng 7435 + mcp 7433 + web 7432)
+# fastest — full stack (api 7431 + redis 7434 + mcp 7433 + web 7432; searxng opt-in: --profile searxng)
 git clone https://github.com/Michael-Obele/tomoshibi.git && cd tomoshibi
 docker compose up -d
 curl http://localhost:7431/health  # → {"status":"ok"}

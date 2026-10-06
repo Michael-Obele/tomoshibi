@@ -1,9 +1,10 @@
-# Tomoshibi — API stack (api + redis + searxng)
+# Tomoshibi — API stack (api + redis; searxng opt-in)
 # Ports 7431/7434/7435 — uncommon block to avoid clashing with 3000/8000/8080.
-#   7431 api  ·  7434 redis  ·  7435 searxng
+#   7431 api  ·  7434 redis  ·  7435 searxng (profile: searxng)
 # (mcp/web run via npm/npx or per-package compose, not here)
-# Run everything:  docker compose up -d
-# API only:        docker compose up -d api redis searxng
+# Run stack:       docker compose up -d
+# With SearXNG:    docker compose --profile searxng up -d
+# API only:        docker compose up -d api redis
 
 # Tomoshibi runs as a MONOLITH: the `api` service embeds the Asynq worker
 # (DISABLE_WORKER defaults to false), so there is deliberately NO separate
@@ -39,6 +40,8 @@ services:
     environment:
       - SERVER_PORT=7431
       # Container-network addresses override anything in env_file.
+      # Safe when the searxng profile is off: the name fails to resolve and
+      # the chain falls through to the next backend in milliseconds.
       - REDIS_URL=redis://redis:6379
       - SERVER_MODE=release
       - SEARXNG_ENDPOINT=http://searxng:8080
@@ -77,9 +80,11 @@ services:
   #   docker compose -f packages/web/docker-compose.yml up -d
 
   # Self-hosted meta-search backend for /v1/search. Aggregates many engines
-  # (Google, Bing, DuckDuckGo, Brave, Mojeek, Wikipedia, ...), so Tomoshibi's
-  # search no longer depends on scraping one engine. Free and containerized.
+  # (Google, Bing, DuckDuckGo, Brave, Mojeek, Wikipedia, ...). OPT-IN: the
+  # native roster answers without it (telemetry: 58/58 native on 2026-10-05),
+  # so this only starts with --profile searxng (or `up -d searxng`).
   searxng:
+    profiles: ["searxng"]
     image: searxng/searxng:latest
     ports:
       - "7435:8080"
