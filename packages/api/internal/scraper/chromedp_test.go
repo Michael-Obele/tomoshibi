@@ -2,6 +2,7 @@ package scraper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -389,6 +390,41 @@ func TestViewportActionScale(t *testing.T) {
 			}
 			if first.DeviceScaleFactor != tc.wantScale {
 				t.Errorf("DeviceScaleFactor = %v, want %v", first.DeviceScaleFactor, tc.wantScale)
+			}
+		})
+	}
+}
+
+func TestDocumentStatusError(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		want   int // 0 means "no error"
+	}{
+		{"ok is not an error", 200, 0},
+		{"redirect is not an error", 302, 0},
+		{"last non-error status", 399, 0},
+		{"bad request surfaces", 400, 400},
+		{"forbidden surfaces", 403, 403},
+		{"not found surfaces", 404, 404},
+		{"server error surfaces", 500, 500},
+		{"unobserved status is not an error", 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := documentStatusError(tt.status)
+			if tt.want == 0 {
+				if err != nil {
+					t.Fatalf("status %d: got error %v, want nil", tt.status, err)
+				}
+				return
+			}
+			var se *StatusError
+			if !errors.As(err, &se) {
+				t.Fatalf("status %d: error %v is not a *StatusError", tt.status, err)
+			}
+			if se.StatusCode != tt.want {
+				t.Errorf("status = %d, want %d", se.StatusCode, tt.want)
 			}
 		})
 	}

@@ -711,6 +711,55 @@ func trackRequests(ctx context.Context) *requestTracker {
 	return t
 }
 
+// documentStatus records the HTTP status of the main document response during
+// a dynamic scrape so a target-side error (404, 403, 5xx) surfaces exactly as
+// it does in static mode, instead of coming back as a 200 whose markdown is the
+// target's error page.
+type documentStatus struct {
+	mu     sync.Mutex
+	status int
+}
+
+func (d *documentStatus) set(code int) {
+	d.mu.Lock()
+	d.status = code
+	d.mu.Unlock()
+}
+
+func (d *documentStatus) get() int {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.status
+}
+
+// trackDocumentStatus records the status code of the main document response.
+// Attach it before navigation so the response is observed; the Network domain
+// must be enabled in the same Run.
+func trackDocumentStatus(ctx context.Context) *documentStatus {
+	d := &documentStatus{}
+	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		e, ok := ev.(*network.EventResponseReceived)
+		if !ok {
+			return
+		}
+		if e.Type == network.ResourceTypeDocument && e.Response != nil {
+			d.set(int(e.Response.Status))
+		}
+	})
+	return d
+}
+
+// documentStatusError converts an observed document status into the same
+// *StatusError the static engine produces, so the HTTP handler maps it
+// (404 -> 404, other upstream failures -> 502). Statuses below 400 — and an
+// unobserved status of 0 — are not errors.
+func documentStatusError(status int) error {
+	if status < 400 {
+		return nil
+	}
+	return &StatusError{StatusCode: status, Err: fmt.Errorf("document returned status %d", status)}
+}
+
 func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.ScrapeOptions) (*domain.ScrapeResult, error) {
 	// Chrome makes the connection itself, so the dial-time guard used on our
 	// own http.Clients cannot reach it. Validate up front instead. This does
@@ -751,6 +800,9 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	logger.Log.Info("Chromedp Scraping", "url", url, "screenshot", opts.Screenshot)
 
 	// Navigate first, then run any requested page actions, then capture.
+	// Track the main document's HTTP status: a target-side error must surface
+	// in dynamic mode the same way it does in static mode.
+	docStatus := trackDocumentStatus(taskCtx)
 	navigation := []chromedp.Action{
 		emulation.SetUserAgentOverride(gofakeit.UserAgent()),
 	}
@@ -759,16 +811,20 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	if tracker != nil {
 		navigation = append(navigation,
 			chromedp.EmulateViewport(int64(shotParams.width), int64(shotParams.height)),
-			network.Enable(),
 		)
 	}
 	navigation = append(navigation,
+		network.Enable(),
 		chromedp.Navigate(url),
 		chromedp.WaitVisible("body", chromedp.ByQuery),
 	)
 	err := chromedp.Run(taskCtx, navigation...)
 	if err != nil {
 		return nil, fmt.Errorf("chromedp navigation failed: %w", err)
+	}
+
+	if statusErr := documentStatusError(docStatus.get()); statusErr != nil {
+		return nil, statusErr
 	}
 
 	// Page actions run in order; a failing action is logged and recorded but
