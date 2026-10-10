@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/chromedp"
 )
@@ -425,6 +426,50 @@ func TestDocumentStatusError(t *testing.T) {
 			}
 			if se.StatusCode != tt.want {
 				t.Errorf("status = %d, want %d", se.StatusCode, tt.want)
+			}
+		})
+	}
+}
+
+func TestDocumentStatus_MainFrameOnly(t *testing.T) {
+	tests := []struct {
+		name   string
+		events []struct {
+			frame cdp.FrameID
+			code  int
+		}
+		want int
+	}{
+		{
+			name: "iframe error does not fail a healthy page",
+			events: []struct {
+				frame cdp.FrameID
+				code  int
+			}{{"MAIN", 200}, {"IFRAME", 404}},
+			want: 200,
+		},
+		{
+			name: "iframe 200 does not mask a main-frame 404",
+			events: []struct {
+				frame cdp.FrameID
+				code  int
+			}{{"MAIN", 404}, {"IFRAME", 200}},
+			want: 404,
+		},
+		{
+			name:   "no events leaves the status unobserved",
+			events: nil,
+			want:   0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d := &documentStatus{}
+			for _, ev := range tt.events {
+				d.record(ev.frame, ev.code)
+			}
+			if got := d.get(); got != tt.want {
+				t.Errorf("status = %d, want %d", got, tt.want)
 			}
 		})
 	}

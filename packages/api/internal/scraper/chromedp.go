@@ -20,6 +20,7 @@ import (
 	"github.com/Michael-Obele/tomoshibi/internal/safeurl"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
 	"github.com/brianvoe/gofakeit/v6"
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
@@ -711,19 +712,29 @@ func trackRequests(ctx context.Context) *requestTracker {
 	return t
 }
 
-// documentStatus records the HTTP status of the main document response during
+// documentStatus records the HTTP status of the MAIN document response during
 // a dynamic scrape so a target-side error (404, 403, 5xx) surfaces exactly as
 // it does in static mode, instead of coming back as a 200 whose markdown is the
 // target's error page.
 type documentStatus struct {
-	mu     sync.Mutex
-	status int
+	mu        sync.Mutex
+	mainFrame cdp.FrameID
+	status    int
 }
 
-func (d *documentStatus) set(code int) {
+// record stores the status of the main frame's document response. The first
+// document response observed is the main frame's (a subframe cannot be
+// requested before the document that embeds it), so it latches that frame and
+// ignores document responses from every other frame.
+func (d *documentStatus) record(frameID cdp.FrameID, code int) {
 	d.mu.Lock()
-	d.status = code
-	d.mu.Unlock()
+	defer d.mu.Unlock()
+	if d.mainFrame == "" {
+		d.mainFrame = frameID
+	}
+	if frameID == d.mainFrame {
+		d.status = code
+	}
 }
 
 func (d *documentStatus) get() int {
@@ -739,12 +750,10 @@ func trackDocumentStatus(ctx context.Context) *documentStatus {
 	d := &documentStatus{}
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		e, ok := ev.(*network.EventResponseReceived)
-		if !ok {
+		if !ok || e.Type != network.ResourceTypeDocument || e.Response == nil {
 			return
 		}
-		if e.Type == network.ResourceTypeDocument && e.Response != nil {
-			d.set(int(e.Response.Status))
-		}
+		d.record(e.FrameID, int(e.Response.Status))
 	})
 	return d
 }
@@ -786,7 +795,8 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	defer cancelTimeout()
 
 	// Screenshot requests track network activity so the capture can wait for
-	// the page to go quiet; nothing else needs the network domain enabled.
+	// the page to go quiet; the document-status tracker observes the target's
+	// response. Both rely on the network domain enabled in the navigation Run.
 	var tracker *requestTracker
 	if opts.Screenshot {
 		tracker = trackRequests(taskCtx)
@@ -820,6 +830,9 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	)
 	err := chromedp.Run(taskCtx, navigation...)
 	if err != nil {
+		if statusErr := documentStatusError(docStatus.get()); statusErr != nil {
+			return nil, statusErr
+		}
 		return nil, fmt.Errorf("chromedp navigation failed: %w", err)
 	}
 
