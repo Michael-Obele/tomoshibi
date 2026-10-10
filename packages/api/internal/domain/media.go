@@ -49,6 +49,9 @@ type ScreenshotOptions struct {
 	Format       string `json:"format,omitempty"` // "jpeg" (default) or "png"
 	Quality      int    `json:"quality,omitempty"`
 	WaitSelector string `json:"wait_selector,omitempty"`
+	// Scale: "device" (default, native pixel density) or "css" (1x pixels —
+	// much smaller captures; prefer for LLM consumption).
+	Scale string `json:"scale,omitempty"`
 }
 
 // ImageTransportFormat controls how images are returned.
