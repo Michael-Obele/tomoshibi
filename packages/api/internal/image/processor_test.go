@@ -221,3 +221,30 @@ func TestNewProcessor(t *testing.T) {
 		t.Fatal("Processor client should not be nil")
 	}
 }
+
+// TestFetchAndEncode_SendsBrowserUserAgent locks in the fix for the blob
+// transport failing silently: image CDNs such as upload.wikimedia.org reject
+// Go's default "Go-http-client/1.1" User-Agent with a 403, which drops every
+// blob from the response. The fetch must send a browser User-Agent.
+func TestFetchAndEncode_SendsBrowserUserAgent(t *testing.T) {
+	uaCh := make(chan string, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uaCh <- r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "image/png")
+		w.Write([]byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A})
+	}))
+	defer server.Close()
+
+	p := NewProcessor()
+	if _, err := p.FetchAndEncode(server.URL + "/image.png"); err != nil {
+		t.Fatalf("FetchAndEncode failed: %v", err)
+	}
+
+	gotUA := <-uaCh
+	if gotUA == "" {
+		t.Fatal("no User-Agent was sent; a UA-blocking CDN would 403 this fetch")
+	}
+	if gotUA == "Go-http-client/1.1" {
+		t.Errorf("User-Agent = %q; the Go default is 403'd by image CDNs", gotUA)
+	}
+}

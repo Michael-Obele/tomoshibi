@@ -10,6 +10,7 @@ import (
 
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/safeurl"
+	"github.com/brianvoe/gofakeit/v6"
 )
 
 const (
@@ -88,7 +89,16 @@ func (p *Processor) FetchAndEncodeLimit(imageURL string, maxBytes int64) (*domai
 		maxBytes = MaxImageSize
 	}
 
-	resp, err := p.client.Get(imageURL)
+	req, err := http.NewRequest(http.MethodGet, imageURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	// Image CDNs (upload.wikimedia.org among them) answer Go's default
+	// "Go-http-client/1.1" User-Agent with a 403, which silently strips every
+	// blob from the response. Send a browser UA, as the scrapers do.
+	req.Header.Set("User-Agent", gofakeit.UserAgent())
+
+	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("fetch failed: %w", err)
 	}
