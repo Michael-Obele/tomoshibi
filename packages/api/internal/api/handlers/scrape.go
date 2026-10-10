@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -146,6 +147,24 @@ func mapActions(in []ActionReq) []domain.Action {
 		out = append(out, domain.Action{Type: a.Type, Selector: a.Selector, Ms: a.Ms, Script: a.Script})
 	}
 	return out
+}
+
+// scrapeErrorStatus maps a scrape failure to a truthful HTTP status. The
+// scraper carries the target's status in *scraper.StatusError; reporting every
+// failure as 500 hides caller-caused failures (a missing page, a WAF block)
+// behind a server fault and makes retry logic hammer permanent 404s. A target
+// 404 stays a 404; any other upstream failure becomes a 502, because we are the
+// gateway that received an invalid response. Everything else is an internal
+// error.
+func scrapeErrorStatus(err error) int {
+	var se *scraper.StatusError
+	if !errors.As(err, &se) {
+		return http.StatusInternalServerError
+	}
+	if se.StatusCode == http.StatusNotFound {
+		return http.StatusNotFound
+	}
+	return http.StatusBadGateway
 }
 
 // wordCount returns the number of whitespace-delimited words in the given text.
@@ -368,7 +387,7 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		}
 		if err := g.Wait(); err != nil {
 			logger.Log.Error("Multi-scrape aborted", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(scrapeErrorStatus(err), gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"results": results})
@@ -378,7 +397,7 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 	result, err := h.service.Scrape(c.Request.Context(), req.URL, mode, opts)
 	if err != nil {
 		logger.Log.Error("Scrape failed", "url", req.URL, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(scrapeErrorStatus(err), gin.H{"error": err.Error()})
 		return
 	}
 
