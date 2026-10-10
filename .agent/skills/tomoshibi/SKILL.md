@@ -89,14 +89,27 @@ Optional search keys (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`
 // common scrape options (all actions that scrape)
 {
   mode: "smart" | "static" | "dynamic", // static=Colly, dynamic=Chromedp, smart=auto
-  screenshot: true, screenshot_opts: { full_page: true, format: "jpeg", quality: 80 },
+  screenshot: true, screenshot_opts: { full_page: true, format: "jpeg", quality: 80, scale: "css" | "device" },
   images: true, image_format: "url" | "blob", max_images: 10,
   extract_schema: { title: { selector: "h1" }, price: { selector: ".price" } },
+  auto_extract: true,   // default: harvest embedded payloads → extracted_data
   summary: true, summary_sentences: 5,
   redact_pii: true, block_ads: true,
-  actions: [{ type: "wait_selector", selector: "#app" }, { type: "scroll_to_bottom" }]
+  // action types: wait_ms · wait_selector · click · scroll_down · scroll_to_bottom · wait_for_function · evaluate
+  actions: [
+    { type: "wait_selector", selector: "#app" }, { type: "scroll_to_bottom" },
+    { type: "wait_for_function", script: "() => !!window.__DATA__", ms: 5000 },
+    { type: "evaluate", script: "() => JSON.stringify(window.__CHART_DATA__ ?? null)" }
+  ]
 }
 ```
+
+**Images.** `images: true` extracts page images, quality-ranked `og:image > hero > content > avatar`.
+
+- `image_format: "url"` (default): metadata only, `{url, source, width, height, alt}`.
+- `image_format: "blob"`: also inlines the bytes as a base64 `data:` URI, `{blob, format, size_bytes}`. This grows the response by roughly the image size x1.33, so prefer `url` unless you need the bytes.
+- Caps: `max_images` (default 10) limits the count; `max_image_size_kb` (default 5120) caps each fetch. `image_process: { format: "jpeg"|"png", max_width, quality }` resizes or re-encodes blobs after the fetch.
+- An image whose host blocks the fetch comes back with `url` only (no `blob`); the scrape still succeeds.
 
 ### 2. tomoshi_discover — discovery resource
 
@@ -150,6 +163,7 @@ tomoshi_monitor { action: "create", url: "https://example.com/changelog", interv
 - **MUST** use `action` enum — there are only 3 tools. Do not invent `cinder_*` or `firecrawl_*` names.
 - **MUST** poll `*_status` for async jobs; they return `{ id }` immediately.
 - **MUST** respect limits: `scrape_multi` ≤10, `batch` ≤20, `map` ≤5000, `crawl` limit ≤100, depth ≤10.
+- **MUST** respect limits: actions ≤ 50/request; extracted_data ≤ 512 KB (8 sources × 128 KB); evaluate results ≤ 256 KB.
 - **MUST** handle Redis-optional degradation: without Redis, `crawl`/`batch`/`monitor` return 503 — fall back to `scrape`/`scrape_multi`/`map`/`search`.
 - **MUST NOT** hardcode `TOMOSHI_API_URL` — read from env/mcp config.
 

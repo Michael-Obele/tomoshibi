@@ -104,6 +104,13 @@ Optional search keys (`BRAVE_SEARCH_API_KEY`, `SERPER_API_KEY`, `TAVILY_API_KEY`
 }
 ```
 
+**Images.** `images: true` extracts page images, quality-ranked `og:image > hero > content > avatar`.
+
+- `image_format: "url"` (default): metadata only, `{url, source, width, height, alt}`.
+- `image_format: "blob"`: also inlines the bytes as a base64 `data:` URI, `{blob, format, size_bytes}`. This grows the response by roughly the image size x1.33, so prefer `url` unless you need the bytes.
+- Caps: `max_images` (default 10) limits the count; `max_image_size_kb` (default 5120) caps each fetch. `image_process: { format: "jpeg"|"png", max_width, quality }` resizes or re-encodes blobs after the fetch.
+- An image whose host blocks the fetch comes back with `url` only (no `blob`); the scrape still succeeds.
+
 ### 2. tomoshi_discover — discovery resource
 
 ```ts
