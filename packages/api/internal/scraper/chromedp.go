@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"image"
 	_ "image/jpeg"
@@ -265,8 +266,12 @@ func (s *ChromedpScraper) FetchHTML(ctx context.Context, url string) (string, er
 // maxScrollSettleIterations bounds the scroll_to_bottom settle loop.
 const maxScrollSettleIterations = 10
 
-// buildActionSteps converts a page action into chromedp steps.
-func buildActionSteps(a domain.Action) ([]chromedp.Action, error) {
+// maxEvaluateResultBytes caps one evaluate action's captured result.
+const maxEvaluateResultBytes = 256 << 10
+
+// buildActionSteps converts a page action into chromedp steps. out may be
+// nil; evaluate actions append their captured result to it in action order.
+func buildActionSteps(a domain.Action, out *[]domain.EvaluationResult) ([]chromedp.Action, error) {
 	switch a.Type {
 	case "wait_ms":
 		ms := a.Ms
@@ -286,6 +291,59 @@ func buildActionSteps(a domain.Action) ([]chromedp.Action, error) {
 		return []chromedp.Action{chromedp.Click(a.Selector, chromedp.NodeVisible)}, nil
 	case "scroll_down":
 		return []chromedp.Action{chromedp.Evaluate(`window.scrollBy(0, window.innerHeight)`, nil)}, nil
+	case "wait_for_function":
+		if a.Script == "" {
+			return nil, fmt.Errorf("wait_for_function requires a script")
+		}
+		timeoutMs := a.Ms
+		if timeoutMs <= 0 {
+			timeoutMs = 5000
+		}
+		if timeoutMs > 60000 {
+			timeoutMs = 60000
+		}
+		return []chromedp.Action{chromedp.ActionFunc(func(ctx context.Context) error {
+			deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
+			for {
+				var ok bool
+				if err := chromedp.Evaluate(a.Script, &ok).Do(ctx); err != nil {
+					return fmt.Errorf("wait_for_function evaluate: %w", err)
+				}
+				if ok {
+					return nil
+				}
+				if time.Now().After(deadline) {
+					return fmt.Errorf("wait_for_function timed out after %dms", timeoutMs)
+				}
+				select {
+				case <-time.After(250 * time.Millisecond):
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
+		})}, nil
+	case "evaluate":
+		if a.Script == "" {
+			return nil, fmt.Errorf("evaluate requires a script")
+		}
+		return []chromedp.Action{chromedp.ActionFunc(func(ctx context.Context) error {
+			entry := domain.EvaluationResult{Type: "evaluate"}
+			var val any
+			if err := chromedp.Evaluate(a.Script, &val).Do(ctx); err != nil {
+				entry.Error = err.Error()
+			} else if b, mErr := json.Marshal(val); mErr != nil {
+				entry.Error = fmt.Sprintf("marshal result: %v", mErr)
+			} else if len(b) > maxEvaluateResultBytes {
+				entry.Result = string(b[:maxEvaluateResultBytes])
+				entry.Truncated = true
+			} else {
+				entry.Result = val
+			}
+			if out != nil {
+				*out = append(*out, entry)
+			}
+			return nil
+		})}, nil
 	case "scroll_to_bottom":
 		// Scroll with a settle loop so lazy-loaded content has time to
 		// render before capture.
@@ -678,7 +736,7 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	if len(opts.Actions) > 0 {
 		steps := []chromedp.Action{}
 		for i, a := range opts.Actions {
-			as, err := buildActionSteps(a)
+			as, err := buildActionSteps(a, nil)
 			if err != nil {
 				return nil, fmt.Errorf("action %d invalid: %w", i, err)
 			}

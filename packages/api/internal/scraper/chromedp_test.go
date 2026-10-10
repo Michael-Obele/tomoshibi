@@ -135,25 +135,25 @@ func TestResolveScreenshotParams_IgnoresBadFormat(t *testing.T) {
 }
 
 func TestBuildActionSteps_UnknownType(t *testing.T) {
-	if _, err := buildActionSteps(domain.Action{Type: "explode"}); err == nil {
+	if _, err := buildActionSteps(domain.Action{Type: "explode"}, nil); err == nil {
 		t.Error("expected error for unknown action type")
 	}
 }
 
 func TestBuildActionSteps_WaitSelectorRequiresSelector(t *testing.T) {
-	if _, err := buildActionSteps(domain.Action{Type: "wait_selector"}); err == nil {
+	if _, err := buildActionSteps(domain.Action{Type: "wait_selector"}, nil); err == nil {
 		t.Error("expected error for missing selector")
 	}
 }
 
 func TestBuildActionSteps_ClickRequiresSelector(t *testing.T) {
-	if _, err := buildActionSteps(domain.Action{Type: "click"}); err == nil {
+	if _, err := buildActionSteps(domain.Action{Type: "click"}, nil); err == nil {
 		t.Error("expected error for missing selector")
 	}
 }
 
 func TestBuildActionSteps_WaitMs(t *testing.T) {
-	steps, err := buildActionSteps(domain.Action{Type: "wait_ms", Ms: 250})
+	steps, err := buildActionSteps(domain.Action{Type: "wait_ms", Ms: 250}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -163,7 +163,39 @@ func TestBuildActionSteps_WaitMs(t *testing.T) {
 }
 
 func TestBuildActionSteps_ScrollToBottom(t *testing.T) {
-	steps, err := buildActionSteps(domain.Action{Type: "scroll_to_bottom"})
+	steps, err := buildActionSteps(domain.Action{Type: "scroll_to_bottom"}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(steps) != 1 {
+		t.Errorf("expected 1 step, got %d", len(steps))
+	}
+}
+
+func TestBuildActionSteps_EvaluateRequiresScript(t *testing.T) {
+	if _, err := buildActionSteps(domain.Action{Type: "evaluate"}, nil); err == nil {
+		t.Error("expected error for missing script")
+	}
+}
+
+func TestBuildActionSteps_WaitForFunctionRequiresScript(t *testing.T) {
+	if _, err := buildActionSteps(domain.Action{Type: "wait_for_function"}, nil); err == nil {
+		t.Error("expected error for missing script")
+	}
+}
+
+func TestBuildActionSteps_EvaluateReturnsOneStep(t *testing.T) {
+	steps, err := buildActionSteps(domain.Action{Type: "evaluate", Script: "() => 1"}, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(steps) != 1 {
+		t.Errorf("expected 1 step, got %d", len(steps))
+	}
+}
+
+func TestBuildActionSteps_WaitForFunctionReturnsOneStep(t *testing.T) {
+	steps, err := buildActionSteps(domain.Action{Type: "wait_for_function", Script: "() => true", Ms: 100}, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
