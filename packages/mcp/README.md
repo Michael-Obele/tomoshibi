@@ -154,6 +154,22 @@ Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status`
 
 > `tomoshi_discover` `search` "svelte 5 runes" → `tomoshi_extract` `scrape_multi` on top 3 URLs → LLM-ready markdown
 
+### Scrape params for JS-rendered extraction (dynamic mode)
+
+| Param                   | Type               | Default | What it does                                                                                                            |
+| ----------------------- | ------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `auto_extract`          | boolean            | `true`  | Harvest embedded page payloads (Next.js flight/`__NEXT_DATA__`, Nuxt, JSON-LD) into `extracted_data`; set `false` to disable. |
+| `actions[].type`        | string             | -       | `wait_ms` · `wait_selector` · `click` · `scroll_down` · `scroll_to_bottom` · `wait_for_function` · `evaluate`.              |
+| `actions[].script`      | string             | -       | JS for `evaluate` (expression; return value captured) or `wait_for_function` (predicate returning truthy).                 |
+| `screenshot_opts.scale` | `"css" \| "device"` | `css`   | `css` = 1× device pixels (default, historical output); `device` = 2× device pixels (larger, crisper).                      |
+
+Dynamic-mode responses also carry (omitted when empty):
+
+- `evaluations` — `[{type, result, error, truncated}]`, one entry per `evaluate` action; a JS throw is recorded in `error` and the scrape continues (results > 256 KB are clipped).
+- `extracted_data` — `{sources, canvases, truncated}`; each source is `{source, data}` (`__next_data`, `next_flight`, `__nuxt__`, `__initial_state__`, `json_ld`), capped at 512 KB total (8 sources × 128 KB).
+
+Caps: actions ≤ 50/request; evaluate results ≤ 256 KB; extracted_data ≤ 512 KB (8 sources × 128 KB).
+
 ---
 
 ## Hosting

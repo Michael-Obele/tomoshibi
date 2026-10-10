@@ -795,6 +795,30 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.DataSource": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "source": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.EvaluationResult": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                },
+                "result": {},
+                "truncated": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.ExtractField": {
             "type": "object",
             "properties": {
@@ -807,6 +831,23 @@ const docTemplate = `{
                 },
                 "selector": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.ExtractedData": {
+            "type": "object",
+            "properties": {
+                "canvases": {
+                    "type": "integer"
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.DataSource"
+                    }
+                },
+                "truncated": {
+                    "type": "boolean"
                 }
             }
         },
@@ -859,10 +900,25 @@ const docTemplate = `{
         "domain.ScrapeResult": {
             "type": "object",
             "properties": {
+                "evaluations": {
+                    "description": "Evaluations holds results of evaluate page actions (dynamic only).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.EvaluationResult"
+                    }
+                },
                 "extracted": {
                     "description": "Extracted holds deterministic schema-extraction results.",
                     "type": "object",
                     "additionalProperties": {}
+                },
+                "extracted_data": {
+                    "description": "ExtractedData holds payloads harvested from the rendered page\n(dynamic only; omitted when empty).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ExtractedData"
+                        }
+                    ]
                 },
                 "html": {
                     "type": "string"
@@ -944,6 +1000,9 @@ const docTemplate = `{
             "properties": {
                 "ms": {
                     "type": "integer"
+                },
+                "script": {
+                    "type": "string"
                 },
                 "selector": {
                     "type": "string"
@@ -1187,9 +1246,24 @@ const docTemplate = `{
                 "error": {
                     "type": "string"
                 },
+                "evaluations": {
+                    "description": "Evaluations holds evaluate action results (dynamic only).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.EvaluationResult"
+                    }
+                },
                 "extracted": {
                     "type": "object",
                     "additionalProperties": {}
+                },
+                "extracted_data": {
+                    "description": "ExtractedData holds payloads harvested from the rendered page.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ExtractedData"
+                        }
+                    ]
                 },
                 "html": {
                     "type": "string"
@@ -1251,6 +1325,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/handlers.ActionReq"
                     }
+                },
+                "auto_extract": {
+                    "description": "AutoExtract defaults to on (nil or true): harvest embedded page payloads\ninto ExtractedData. Pointer so absent ≠ false.",
+                    "type": "boolean"
                 },
                 "block_ads": {
                     "type": "boolean"
@@ -1332,6 +1410,9 @@ const docTemplate = `{
                 },
                 "quality": {
                     "type": "integer"
+                },
+                "scale": {
+                    "type": "string"
                 },
                 "wait_selector": {
                     "type": "string"

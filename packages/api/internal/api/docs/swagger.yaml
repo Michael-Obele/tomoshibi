@@ -1,5 +1,21 @@
 basePath: /v1
 definitions:
+  domain.DataSource:
+    properties:
+      data: {}
+      source:
+        type: string
+    type: object
+  domain.EvaluationResult:
+    properties:
+      error:
+        type: string
+      result: {}
+      truncated:
+        type: boolean
+      type:
+        type: string
+    type: object
   domain.ExtractField:
     properties:
       attr:
@@ -9,6 +25,17 @@ definitions:
         type: boolean
       selector:
         type: string
+    type: object
+  domain.ExtractedData:
+    properties:
+      canvases:
+        type: integer
+      sources:
+        items:
+          $ref: '#/definitions/domain.DataSource'
+        type: array
+      truncated:
+        type: boolean
     type: object
   domain.ImageData:
     properties:
@@ -42,10 +69,21 @@ definitions:
     type: object
   domain.ScrapeResult:
     properties:
+      evaluations:
+        description: Evaluations holds results of evaluate page actions (dynamic only).
+        items:
+          $ref: '#/definitions/domain.EvaluationResult'
+        type: array
       extracted:
         additionalProperties: {}
         description: Extracted holds deterministic schema-extraction results.
         type: object
+      extracted_data:
+        allOf:
+        - $ref: '#/definitions/domain.ExtractedData'
+        description: |-
+          ExtractedData holds payloads harvested from the rendered page
+          (dynamic only; omitted when empty).
       html:
         type: string
       images:
@@ -102,6 +140,8 @@ definitions:
     properties:
       ms:
         type: integer
+      script:
+        type: string
       selector:
         type: string
       type:
@@ -261,9 +301,18 @@ definitions:
     properties:
       error:
         type: string
+      evaluations:
+        description: Evaluations holds evaluate action results (dynamic only).
+        items:
+          $ref: '#/definitions/domain.EvaluationResult'
+        type: array
       extracted:
         additionalProperties: {}
         type: object
+      extracted_data:
+        allOf:
+        - $ref: '#/definitions/domain.ExtractedData'
+        description: ExtractedData holds payloads harvested from the rendered page.
       html:
         type: string
       images:
@@ -304,6 +353,11 @@ definitions:
         items:
           $ref: '#/definitions/handlers.ActionReq'
         type: array
+      auto_extract:
+        description: |-
+          AutoExtract defaults to on (nil or true): harvest embedded page payloads
+          into ExtractedData. Pointer so absent ≠ false.
+        type: boolean
       block_ads:
         type: boolean
       extract_schema:
@@ -360,6 +414,8 @@ definitions:
         type: integer
       quality:
         type: integer
+      scale:
+        type: string
       wait_selector:
         type: string
       width:
