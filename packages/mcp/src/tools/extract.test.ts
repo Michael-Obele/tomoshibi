@@ -192,4 +192,37 @@ describe("tomoshi_extract handler", () => {
     expect(text).toContain("## Evaluations");
     expect(text).toContain("chars total");
   });
+
+  test("renders Extracted Data and Evaluations sections", async () => {
+    const { client } = stubClient();
+    const scrapeClient = {
+      ...client,
+      async scrape() {
+        return {
+          url: "https://example.com",
+          markdown: "# thin",
+          links: [],
+          extracted_data: {
+            sources: [
+              { source: "next_flight", data: 'self.__next_f.push([1,"x"])' },
+            ],
+            canvases: 3,
+          },
+          evaluations: [{ type: "evaluate", result: { iq: 60.24 } }],
+        };
+      },
+    };
+    const res = (await createExtractHandler(
+      scrapeClient as unknown as TomoshiClient,
+    )({
+      action: "scrape",
+      url: "https://example.com",
+    })) as Result;
+    const text = res.content[0].text;
+    expect(text).toContain("## Extracted Data");
+    expect(text).toContain("next_flight");
+    expect(text).toContain("Canvases:** 3");
+    expect(text).toContain("## Evaluations");
+    expect(text).toContain("60.24");
+  });
 });

@@ -141,7 +141,7 @@ _(Note: If `screenshot` or `images` are requested, the response payload will als
 
 Dynamic mode responses also carry (omitted when empty):
 
-- `evaluations` — one `{type, result, error, truncated}` entry per `evaluate` action, in action order. A JS throw is recorded in `error` (the scrape continues); results whose JSON encoding exceeds 256 KB are clipped with `truncated: true`.
+- `evaluations` — one `{type, result, error, truncated}` entry per `evaluate` action, in action order; a failed `wait_for_function` also lands here as a `{type: "wait_for_function", error}` entry and does not abort the remaining actions. A JS throw is recorded in `error` (the scrape continues); results whose JSON encoding exceeds 256 KB are clipped with `truncated: true`.
 - `extracted_data` — `{sources, canvases, truncated}` from embedded page payloads harvested by default (`auto_extract: true`). Each `sources` entry is `{source, data}` where `source` is one of `__next_data`, `next_flight`, `__nuxt__`, `__initial_state__`, `json_ld`; each source is capped at 128 KB and the total at 512 KB (`truncated: true` when the cap bites). `canvases` counts `<canvas>` elements on the page.
 
 ---

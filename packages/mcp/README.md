@@ -165,7 +165,7 @@ Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status`
 
 Dynamic-mode responses also carry (omitted when empty):
 
-- `evaluations` — `[{type, result, error, truncated}]`, one entry per `evaluate` action; a JS throw is recorded in `error` and the scrape continues (results > 256 KB are clipped).
+- `evaluations` — `[{type, result, error, truncated}]`, one entry per `evaluate` action (plus a `{type: "wait_for_function", error}` entry when a wait fails; the remaining actions still run); a JS throw is recorded in `error` and the scrape continues (results > 256 KB are clipped).
 - `extracted_data` — `{sources, canvases, truncated}`; each source is `{source, data}` (`__next_data`, `next_flight`, `__nuxt__`, `__initial_state__`, `json_ld`), capped at 512 KB total (8 sources × 128 KB).
 
 Caps: actions ≤ 50/request; evaluate results ≤ 256 KB; extracted_data ≤ 512 KB (8 sources × 128 KB).

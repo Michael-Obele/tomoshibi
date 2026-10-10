@@ -82,9 +82,10 @@ type Action struct {
 	Script string `json:"script,omitempty"`
 }
 
-// EvaluationResult captures the outcome of one evaluate page action. A JS
-// throw is recorded in Error instead of failing the scrape: reading a missing
-// global is data, not a transport failure.
+// EvaluationResult captures the outcome of one page action that produced a
+// value: an evaluate action, or a wait_for_function that failed. A JS throw is
+// recorded in Error instead of failing the scrape: reading a missing global is
+// data, not a transport failure.
 type EvaluationResult struct {
 	Type      string `json:"type"`
 	Result    any    `json:"result,omitempty"`
