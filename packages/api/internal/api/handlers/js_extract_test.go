@@ -78,6 +78,69 @@ func TestScrapeHandler_JSExtractionParams(t *testing.T) {
 	}
 }
 
+func TestScrapeHandler_OmitsEmptyExtractionFields(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name        string
+		result      *domain.ScrapeResult
+		wantPresent bool
+	}{
+		{
+			name: "ordinary page omits empty extraction fields",
+			result: &domain.ScrapeResult{
+				URL:      "https://example.com",
+				Markdown: "# hi",
+				HTML:     "<p>hi</p>",
+				Metadata: map[string]string{},
+			},
+			wantPresent: false,
+		},
+		{
+			name: "extraction page includes both fields",
+			result: &domain.ScrapeResult{
+				URL:           "https://example.com",
+				Markdown:      "# hi",
+				HTML:          "<p>hi</p>",
+				Metadata:      map[string]string{},
+				Evaluations:   []domain.EvaluationResult{{Type: "evaluate", Result: 42}},
+				ExtractedData: &domain.ExtractedData{Sources: []domain.DataSource{{Source: "json_ld", Data: "x"}}},
+			},
+			wantPresent: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := tt.result
+			svc := scraper.NewService(scraperCapture{fn: func(url string, opts domain.ScrapeOptions) (*domain.ScrapeResult, error) {
+				return res, nil
+			}}, nil, nil)
+			h := NewScrapeHandler(svc)
+
+			body := []byte(`{"url": "https://example.com", "mode": "static"}`)
+			req := httptest.NewRequest("POST", "/scrape", bytes.NewReader(body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+			h.Scrape(c)
+
+			if w.Code != http.StatusOK {
+				t.Fatalf("expected 200, got %d body %s", w.Code, w.Body.String())
+			}
+			hasEval := bytes.Contains(w.Body.Bytes(), []byte(`"evaluations"`))
+			hasData := bytes.Contains(w.Body.Bytes(), []byte(`"extracted_data"`))
+			if hasEval != tt.wantPresent {
+				t.Errorf("evaluations present = %v, want %v; body %s", hasEval, tt.wantPresent, w.Body.String())
+			}
+			if hasData != tt.wantPresent {
+				t.Errorf("extracted_data present = %v, want %v; body %s", hasData, tt.wantPresent, w.Body.String())
+			}
+		})
+	}
+}
+
 func TestScrapeHandler_TooManyActions(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	svc := scraper.NewService(scraperCapture{fn: func(url string, opts domain.ScrapeOptions) (*domain.ScrapeResult, error) {

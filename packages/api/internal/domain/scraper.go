@@ -75,10 +75,10 @@ type Action struct {
 	Type     string `json:"type"`
 	Selector string `json:"selector,omitempty"`
 	Ms       int    `json:"ms,omitempty"`
-	// Script carries the JS for wait_for_function (predicate) and evaluate
-	// (expression whose return value is captured). It must be a single JS
-	// expression — a bare expression (e.g. document.title) or an arrow function
-	// (e.g. () => window.__DATA__).
+	// Script carries the JS for wait_for_function (any truthy return value
+	// waits; e.g. () => !!window.__DATA__) and evaluate (expression whose return
+	// value is captured). It must be a single JS expression — a bare expression
+	// (e.g. document.title) or an arrow function (e.g. () => window.__DATA__).
 	Script string `json:"script,omitempty"`
 }
 

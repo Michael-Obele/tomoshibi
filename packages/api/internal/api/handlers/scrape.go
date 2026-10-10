@@ -388,19 +388,26 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		title = extractTitle(*result)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"url":            result.URL,
-		"title":          title,
-		"word_count":     wordCount(result.Markdown),
-		"markdown":       result.Markdown,
-		"html":           result.HTML,
-		"metadata":       result.Metadata,
-		"screenshot":     result.Screenshot,
-		"images":         result.Images,
-		"links":          result.Links,
-		"extracted":      result.Extracted,
-		"summary":        result.Summary,
-		"evaluations":    result.Evaluations,
-		"extracted_data": result.ExtractedData,
-	})
+	resp := gin.H{
+		"url":        result.URL,
+		"title":      title,
+		"word_count": wordCount(result.Markdown),
+		"markdown":   result.Markdown,
+		"html":       result.HTML,
+		"metadata":   result.Metadata,
+		"screenshot": result.Screenshot,
+		"images":     result.Images,
+		"links":      result.Links,
+		"extracted":  result.Extracted,
+		"summary":    result.Summary,
+	}
+	// Omit the new fields when empty so ordinary pages keep their pre-feature
+	// response shape (design: zero response change).
+	if len(result.Evaluations) > 0 {
+		resp["evaluations"] = result.Evaluations
+	}
+	if result.ExtractedData != nil {
+		resp["extracted_data"] = result.ExtractedData
+	}
+	c.JSON(http.StatusOK, resp)
 }

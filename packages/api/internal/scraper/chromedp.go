@@ -334,7 +334,7 @@ func buildActionSteps(a domain.Action, out *[]domain.EvaluationResult) ([]chrome
 			deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 			for {
 				var ok bool
-				if err := chromedp.Evaluate(wrapEvaluateScript(a.Script), &ok).Do(ctx); err != nil {
+				if err := chromedp.Evaluate("!!("+wrapEvaluateScript(a.Script)+")", &ok).Do(ctx); err != nil {
 					return fmt.Errorf("wait_for_function evaluate: %w", err)
 				}
 				if ok {
@@ -771,20 +771,20 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 		return nil, fmt.Errorf("chromedp navigation failed: %w", err)
 	}
 
-	// Page actions (wait/click/scroll/evaluate) run before HTML capture so
-	// interaction-driven content is included.
+	// Page actions run in order; a failing action is logged and recorded but
+	// does not abort the remaining actions, matching the warn-and-continue
+	// policy for action failures.
 	var evaluations []domain.EvaluationResult
-	if len(opts.Actions) > 0 {
-		steps := []chromedp.Action{}
-		for i, a := range opts.Actions {
-			as, err := buildActionSteps(a, &evaluations)
-			if err != nil {
-				return nil, fmt.Errorf("action %d invalid: %w", i, err)
-			}
-			steps = append(steps, as...)
+	for i, a := range opts.Actions {
+		as, err := buildActionSteps(a, &evaluations)
+		if err != nil {
+			return nil, fmt.Errorf("action %d invalid: %w", i, err)
 		}
-		if err := chromedp.Run(taskCtx, steps...); err != nil {
-			logger.Log.Warn("Page actions failed, continuing with current DOM", "url", url, "error", err)
+		if err := chromedp.Run(taskCtx, as...); err != nil {
+			logger.Log.Warn("Page action failed, continuing", "url", url, "action", a.Type, "error", err)
+			if a.Type == "wait_for_function" {
+				evaluations = append(evaluations, domain.EvaluationResult{Type: "wait_for_function", Error: err.Error()})
+			}
 		}
 	}
 

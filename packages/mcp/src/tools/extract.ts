@@ -159,7 +159,7 @@ const ExtractScrapeShape = v.object({
             v.pipe(
               v.string(),
               v.description(
-                "JS for evaluate (expression; return value captured) or wait_for_function (predicate returning boolean)",
+                "JS for evaluate (expression; return value captured) or wait_for_function (predicate — any truthy return value waits; e.g. () => !!window.__DATA__)",
               ),
             ),
           ),
@@ -339,7 +339,7 @@ const ExtractMultiScrapeShape = v.object({
             v.pipe(
               v.string(),
               v.description(
-                "JS for evaluate (expression; return value captured) or wait_for_function (predicate returning boolean)",
+                "JS for evaluate (expression; return value captured) or wait_for_function (predicate — any truthy return value waits; e.g. () => !!window.__DATA__)",
               ),
             ),
           ),
@@ -650,7 +650,14 @@ export function createExtractHandler(client: TomoshiClient) {
               "",
             );
             if (ev.error) lines.push("```", ev.error, "```", "");
-            else lines.push("```json", JSON.stringify(ev.result ?? null), "```", "");
+            else {
+              const text = JSON.stringify(ev.result ?? null);
+              const clipped =
+                text.length > 4000
+                  ? `${text.slice(0, 4000)}\n… (${text.length} chars total)`
+                  : text;
+              lines.push("```json", clipped, "```", "");
+            }
           }
         }
         if (result.metadata && Object.keys(result.metadata).length > 0) {
@@ -783,13 +790,14 @@ export function createExtractHandler(client: TomoshiClient) {
                 "",
               );
               if (ev.error) lines.push("```", ev.error, "```", "");
-              else
-                lines.push(
-                  "```json",
-                  JSON.stringify(ev.result ?? null),
-                  "```",
-                  "",
-                );
+              else {
+                const text = JSON.stringify(ev.result ?? null);
+                const clipped =
+                  text.length > 4000
+                    ? `${text.slice(0, 4000)}\n… (${text.length} chars total)`
+                    : text;
+                lines.push("```json", clipped, "```", "");
+              }
             }
           }
           if (item.metadata && Object.keys(item.metadata).length > 0) {
