@@ -415,7 +415,7 @@ type screenshotParams struct {
 	quality      int
 	fullPage     bool
 	waitSelector string
-	scale        string // "device" (default) or "css"
+	scale        string // "css" (default, 1x) or "device" (2x)
 }
 
 // resolveScreenshotParams applies defaults and clamps values from the
@@ -423,7 +423,7 @@ type screenshotParams struct {
 // full page; full-page capture is the default and must be opted out of with
 // an explicit full_page=false.
 func resolveScreenshotParams(opts *domain.ScreenshotOptions) screenshotParams {
-	p := screenshotParams{width: 1920, height: 1080, format: "jpeg", quality: 90, fullPage: true, scale: "device"}
+	p := screenshotParams{width: 1920, height: 1080, format: "jpeg", quality: 90, fullPage: true, scale: "css"}
 	if opts == nil {
 		return p
 	}
@@ -448,8 +448,8 @@ func resolveScreenshotParams(opts *domain.ScreenshotOptions) screenshotParams {
 		p.fullPage = *opts.FullPage
 	}
 	p.waitSelector = opts.WaitSelector
-	if opts.Scale == "css" {
-		p.scale = "css"
+	if opts != nil && opts.Scale == "device" {
+		p.scale = "device"
 	}
 	return p
 }
@@ -475,12 +475,15 @@ func (s *ChromedpScraper) prepareScreenshot(ctx context.Context, p screenshotPar
 	}))
 }
 
-// viewportAction picks the capture emulation by scale: "css" forces 1x device
-// pixels (much smaller captures for LLM consumption); "device" keeps the
-// historical native-density default.
+// viewportAction picks the capture emulation by scale: "device" captures at
+// 2x device pixels (larger, crisper); the default "css" captures at 1x, which
+// is the historical behaviour and the smaller payload.
 func viewportAction(p screenshotParams) chromedp.Action {
-	if p.scale == "css" {
-		return emulation.SetDeviceMetricsOverride(int64(p.width), int64(p.height), 1, false)
+	if p.scale == "device" {
+		return chromedp.Tasks{
+			emulation.SetDeviceMetricsOverride(int64(p.width), int64(p.height), 2, false),
+			emulation.SetTouchEmulationEnabled(false),
+		}
 	}
 	return chromedp.EmulateViewport(int64(p.width), int64(p.height))
 }

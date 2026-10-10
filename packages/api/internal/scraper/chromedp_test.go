@@ -10,6 +10,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/chromedp/cdproto/emulation"
+	"github.com/chromedp/chromedp"
 )
 
 func TestResolveScreenshotParams_Defaults(t *testing.T) {
@@ -346,15 +348,47 @@ func TestResolveScreenshotParams_Scale(t *testing.T) {
 		opts *domain.ScreenshotOptions
 		want string
 	}{
-		{"nil defaults to device", nil, "device"},
-		{"empty defaults to device", &domain.ScreenshotOptions{}, "device"},
+		{"nil defaults to css", nil, "css"},
+		{"empty defaults to css", &domain.ScreenshotOptions{}, "css"},
 		{"css passes through", &domain.ScreenshotOptions{Scale: "css"}, "css"},
-		{"unknown value falls back to device", &domain.ScreenshotOptions{Scale: "retina"}, "device"},
+		{"device opt-in passes through", &domain.ScreenshotOptions{Scale: "device"}, "device"},
+		{"unknown value falls back to css", &domain.ScreenshotOptions{Scale: "retina"}, "css"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := resolveScreenshotParams(tt.opts).scale; got != tt.want {
 				t.Errorf("scale = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestViewportActionScale pins the capture emulation each scale selects: the
+// default "css" branch keeps the historical 1x viewport, while "device" opts
+// into 2x device pixels. Both branches return chromedp.Tasks whose first
+// action is a *emulation.SetDeviceMetricsOverrideParams; the asserted field is
+// DeviceScaleFactor, which is what carries the 1x/2x choice (the type's
+// unrelated Scale field is left at its zero value by both branches).
+func TestViewportActionScale(t *testing.T) {
+	tests := []struct {
+		scale     string
+		wantScale float64
+	}{
+		{"css", 1.0},
+		{"device", 2.0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.scale, func(t *testing.T) {
+			tasks, ok := viewportAction(screenshotParams{width: 800, height: 600, scale: tc.scale}).(chromedp.Tasks)
+			if !ok {
+				t.Fatalf("viewportAction(%q) is not chromedp.Tasks", tc.scale)
+			}
+			first, ok := tasks[0].(*emulation.SetDeviceMetricsOverrideParams)
+			if !ok {
+				t.Fatalf("first task = %T, want *emulation.SetDeviceMetricsOverrideParams", tasks[0])
+			}
+			if first.DeviceScaleFactor != tc.wantScale {
+				t.Errorf("DeviceScaleFactor = %v, want %v", first.DeviceScaleFactor, tc.wantScale)
 			}
 		})
 	}
