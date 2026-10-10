@@ -415,6 +415,7 @@ type screenshotParams struct {
 	quality      int
 	fullPage     bool
 	waitSelector string
+	scale        string // "device" (default) or "css"
 }
 
 // resolveScreenshotParams applies defaults and clamps values from the
@@ -422,7 +423,7 @@ type screenshotParams struct {
 // full page; full-page capture is the default and must be opted out of with
 // an explicit full_page=false.
 func resolveScreenshotParams(opts *domain.ScreenshotOptions) screenshotParams {
-	p := screenshotParams{width: 1920, height: 1080, format: "jpeg", quality: 90, fullPage: true}
+	p := screenshotParams{width: 1920, height: 1080, format: "jpeg", quality: 90, fullPage: true, scale: "device"}
 	if opts == nil {
 		return p
 	}
@@ -447,6 +448,9 @@ func resolveScreenshotParams(opts *domain.ScreenshotOptions) screenshotParams {
 		p.fullPage = *opts.FullPage
 	}
 	p.waitSelector = opts.WaitSelector
+	if opts.Scale == "css" {
+		p.scale = "css"
+	}
 	return p
 }
 
@@ -471,6 +475,16 @@ func (s *ChromedpScraper) prepareScreenshot(ctx context.Context, p screenshotPar
 	}))
 }
 
+// viewportAction picks the capture emulation by scale: "css" forces 1x device
+// pixels (much smaller captures for LLM consumption); "device" keeps the
+// historical native-density default.
+func viewportAction(p screenshotParams) chromedp.Action {
+	if p.scale == "css" {
+		return emulation.SetDeviceMetricsOverride(int64(p.width), int64(p.height), 1, false)
+	}
+	return chromedp.EmulateViewport(int64(p.width), int64(p.height))
+}
+
 // takeScreenshot captures the page. Failures are logged and reported as an
 // empty capture — a scrape must not fail because its screenshot did.
 func (s *ChromedpScraper) takeScreenshot(ctx context.Context, p screenshotParams, url string) ([]byte, bool) {
@@ -482,7 +496,7 @@ func (s *ChromedpScraper) takeScreenshot(ctx context.Context, p screenshotParams
 	var buf []byte
 	var truncated bool
 	actions = append(actions,
-		chromedp.EmulateViewport(int64(p.width), int64(p.height)),
+		viewportAction(p),
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			var err error
 			buf, truncated, err = capturePage(ctx, p, s.screenshotMaxHeight)

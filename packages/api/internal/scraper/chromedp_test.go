@@ -339,3 +339,23 @@ func TestBeginScrape_RecyclesAllocator(t *testing.T) {
 		t.Errorf("no further recreation expected below threshold, got %d calls", c)
 	}
 }
+
+func TestResolveScreenshotParams_Scale(t *testing.T) {
+	tests := []struct {
+		name string
+		opts *domain.ScreenshotOptions
+		want string
+	}{
+		{"nil defaults to device", nil, "device"},
+		{"empty defaults to device", &domain.ScreenshotOptions{}, "device"},
+		{"css passes through", &domain.ScreenshotOptions{Scale: "css"}, "css"},
+		{"unknown value falls back to device", &domain.ScreenshotOptions{Scale: "retina"}, "device"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resolveScreenshotParams(tt.opts).scale; got != tt.want {
+				t.Errorf("scale = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

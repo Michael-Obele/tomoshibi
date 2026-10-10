@@ -69,6 +69,7 @@ type ScreenshotOpts struct {
 	Format       string `json:"format,omitempty"`
 	Quality      int    `json:"quality,omitempty"`
 	WaitSelector string `json:"wait_selector,omitempty"`
+	Scale        string `json:"scale,omitempty"`
 }
 
 // ImageProcessReq is the wire format for image resizing/re-encoding.
@@ -106,6 +107,7 @@ func mapScreenshotOpts(in *ScreenshotOpts) *domain.ScreenshotOptions {
 		Format:       in.Format,
 		Quality:      in.Quality,
 		WaitSelector: in.WaitSelector,
+		Scale:        in.Scale,
 	}
 }
 
