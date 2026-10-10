@@ -19,6 +19,12 @@ import (
 // SignatureHeader is the header carrying the HMAC-SHA256 webhook signature.
 const SignatureHeader = "X-Tomoshibi-Signature"
 
+// webhookUserAgent identifies Tomoshibi to webhook receivers. A webhook is a
+// service-to-service callback, not a stealth scrape, so it is a fixed product
+// token (the same convention as sitemap.go) rather than a rotating browser UA;
+// some receivers reject Go's default "Go-http-client/1.1".
+const webhookUserAgent = "Tomoshibi-Webhook/1.0 (+https://github.com/Michael-Obele/tomoshibi)"
+
 // webhookAttempts is the number of delivery attempts before giving up.
 const webhookAttempts = 3
 
@@ -71,6 +77,7 @@ func Deliver(ctx context.Context, webhookURL, secret string, payload []byte) err
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set(SignatureHeader, "sha256="+signPayload(secret, payload))
+		req.Header.Set("User-Agent", webhookUserAgent)
 
 		resp, err := client.Do(req)
 		if err != nil {

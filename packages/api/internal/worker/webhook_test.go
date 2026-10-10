@@ -55,6 +55,28 @@ func TestDeliver_SignsAndPosts(t *testing.T) {
 	}
 }
 
+// TestDeliver_SendsUserAgent pins the identifying User-Agent. Without it the POST
+// goes out as "Go-http-client/1.1", which receivers cannot attribute to
+// Tomoshibi and some services reject outright.
+func TestDeliver_SendsUserAgent(t *testing.T) {
+	var gotUA string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUA = r.Header.Get("User-Agent")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	if err := Deliver(context.Background(), srv.URL, "hunter2", []byte(`{}`)); err != nil {
+		t.Fatalf("deliver failed: %v", err)
+	}
+	if gotUA != webhookUserAgent {
+		t.Errorf("User-Agent = %q, want %q", gotUA, webhookUserAgent)
+	}
+	if gotUA == "" || gotUA == "Go-http-client/1.1" {
+		t.Errorf("User-Agent = %q; receivers cannot identify Tomoshibi", gotUA)
+	}
+}
+
 func TestDeliver_RetriesTransient(t *testing.T) {
 	attempts := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
