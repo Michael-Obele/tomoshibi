@@ -51,6 +51,15 @@ const ExtractScrapeShape = v.object({
     ),
     "smart",
   ),
+  auto_extract: v.optional(
+    v.pipe(
+      v.boolean(),
+      v.description(
+        "Harvest embedded page payloads (Next.js flight/__NEXT_DATA__, Nuxt, JSON-LD) into extracted_data — default true; set false to disable",
+      ),
+    ),
+    true,
+  ),
   screenshot: v.optional(
     v.pipe(
       v.boolean(),
@@ -74,6 +83,15 @@ const ExtractScrapeShape = v.object({
         format: v.optional(v.picklist(["jpeg", "png"])),
         quality: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(100))),
         wait_selector: v.optional(v.string()),
+        scale: v.optional(
+          v.pipe(
+            v.picklist(["device", "css"]),
+            v.description(
+              "css = 1x pixels (default, smaller captures); device = 2x device pixels (larger, crisper)",
+            ),
+          ),
+          "css",
+        ),
       }),
       v.description(
         "Screenshot configuration (width, height, full_page — default true, format, quality, wait_selector)",
@@ -132,9 +150,19 @@ const ExtractScrapeShape = v.object({
             "click",
             "scroll_down",
             "scroll_to_bottom",
+            "wait_for_function",
+            "evaluate",
           ]),
           ms: v.optional(v.number()),
           selector: v.optional(v.string()),
+          script: v.optional(
+            v.pipe(
+              v.string(),
+              v.description(
+                "JS for evaluate (expression; return value captured) or wait_for_function (predicate returning boolean)",
+              ),
+            ),
+          ),
         }),
       ),
       v.description("Page interactions before capture (dynamic mode only)"),
@@ -229,6 +257,15 @@ const ExtractMultiScrapeShape = v.object({
     ),
     "smart",
   ),
+  auto_extract: v.optional(
+    v.pipe(
+      v.boolean(),
+      v.description(
+        "Harvest embedded page payloads (Next.js flight/__NEXT_DATA__, Nuxt, JSON-LD) into extracted_data — default true; set false to disable",
+      ),
+    ),
+    true,
+  ),
   screenshot: v.optional(
     v.pipe(
       v.boolean(),
@@ -247,6 +284,15 @@ const ExtractMultiScrapeShape = v.object({
         format: v.optional(v.picklist(["jpeg", "png"])),
         quality: v.optional(v.pipe(v.number(), v.minValue(1), v.maxValue(100))),
         wait_selector: v.optional(v.string()),
+        scale: v.optional(
+          v.pipe(
+            v.picklist(["device", "css"]),
+            v.description(
+              "css = 1x pixels (default, smaller captures); device = 2x device pixels (larger, crisper)",
+            ),
+          ),
+          "css",
+        ),
       }),
       v.description("Screenshot configuration (full_page defaults to true)"),
     ),
@@ -284,9 +330,19 @@ const ExtractMultiScrapeShape = v.object({
             "click",
             "scroll_down",
             "scroll_to_bottom",
+            "wait_for_function",
+            "evaluate",
           ]),
           ms: v.optional(v.number()),
           selector: v.optional(v.string()),
+          script: v.optional(
+            v.pipe(
+              v.string(),
+              v.description(
+                "JS for evaluate (expression; return value captured) or wait_for_function (predicate returning boolean)",
+              ),
+            ),
+          ),
         }),
       ),
       v.description("Page interactions before capture (dynamic mode only)"),
@@ -494,6 +550,7 @@ const EXTRACT_SHAPE = {
     "block_ads",
     "remove_base64_images",
     "include_links",
+    "auto_extract",
     "render",
   ],
   json: [
@@ -566,6 +623,34 @@ export function createExtractHandler(client: TomoshiClient) {
             lines.push(
               `- screenshot captured (base64 ${shot.format ?? ""}${dims}${shot.size_bytes ? `, ${shot.size_bytes} bytes` : ""}${clipped})`,
             );
+          }
+        }
+        if (result.extracted_data && result.extracted_data.sources.length > 0) {
+          const ed = result.extracted_data;
+          lines.push("", "---", "", "## Extracted Data", "");
+          const bits = [`**Sources:** ${ed.sources.length}`];
+          if (ed.canvases) bits.push(`**Canvases:** ${ed.canvases}`);
+          if (ed.truncated) bits.push("**truncated**");
+          lines.push(bits.join(" · "), "");
+          for (const src of ed.sources) {
+            const text =
+              typeof src.data === "string" ? src.data : JSON.stringify(src.data);
+            const clippedText =
+              text.length > 4000
+                ? `${text.slice(0, 4000)}\n… (${text.length} chars total)`
+                : text;
+            lines.push(`### \`${src.source}\``, "", "```json", clippedText, "```");
+          }
+        }
+        if (result.evaluations && result.evaluations.length > 0) {
+          lines.push("", "---", "", "## Evaluations", "");
+          for (const ev of result.evaluations) {
+            lines.push(
+              `### ${ev.type}${ev.error ? " — error" : ""}${ev.truncated ? " (truncated)" : ""}`,
+              "",
+            );
+            if (ev.error) lines.push("```", ev.error, "```", "");
+            else lines.push("```json", JSON.stringify(ev.result ?? null), "```", "");
           }
         }
         if (result.metadata && Object.keys(result.metadata).length > 0) {
@@ -663,6 +748,48 @@ export function createExtractHandler(client: TomoshiClient) {
               lines.push(
                 `- screenshot captured (base64 ${shot.format ?? ""}${dims}${shot.size_bytes ? `, ${shot.size_bytes} bytes` : ""}${clipped})`,
               );
+            }
+          }
+          if (item.extracted_data && item.extracted_data.sources.length > 0) {
+            const ed = item.extracted_data;
+            lines.push("", "### Extracted Data", "");
+            const bits = [`**Sources:** ${ed.sources.length}`];
+            if (ed.canvases) bits.push(`**Canvases:** ${ed.canvases}`);
+            if (ed.truncated) bits.push("**truncated**");
+            lines.push(bits.join(" · "), "");
+            for (const src of ed.sources) {
+              const text =
+                typeof src.data === "string"
+                  ? src.data
+                  : JSON.stringify(src.data);
+              const clippedText =
+                text.length > 4000
+                  ? `${text.slice(0, 4000)}\n… (${text.length} chars total)`
+                  : text;
+              lines.push(
+                `#### \`${src.source}\``,
+                "",
+                "```json",
+                clippedText,
+                "```",
+              );
+            }
+          }
+          if (item.evaluations && item.evaluations.length > 0) {
+            lines.push("", "### Evaluations", "");
+            for (const ev of item.evaluations) {
+              lines.push(
+                `#### ${ev.type}${ev.error ? " — error" : ""}${ev.truncated ? " (truncated)" : ""}`,
+                "",
+              );
+              if (ev.error) lines.push("```", ev.error, "```", "");
+              else
+                lines.push(
+                  "```json",
+                  JSON.stringify(ev.result ?? null),
+                  "```",
+                  "",
+                );
             }
           }
           if (item.metadata && Object.keys(item.metadata).length > 0) {

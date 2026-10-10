@@ -16,6 +16,7 @@ export interface ScreenshotOpts {
   format?: "jpeg" | "png";
   quality?: number;
   wait_selector?: string;
+  scale?: "device" | "css";
 }
 
 export interface ImageProcessOpts {
@@ -29,12 +30,16 @@ export type ScrapeActionType =
   | "wait_selector"
   | "click"
   | "scroll_down"
-  | "scroll_to_bottom";
+  | "scroll_to_bottom"
+  | "wait_for_function"
+  | "evaluate";
 
 export interface ScrapeAction {
   type: ScrapeActionType;
   ms?: number;
   selector?: string;
+  /** JS for evaluate (expression) or wait_for_function (predicate). */
+  script?: string;
 }
 
 export interface ExtractField {
@@ -86,8 +91,27 @@ export interface ScrapeParams {
   block_ads?: boolean;
   remove_base64_images?: boolean;
   include_links?: boolean;
+  auto_extract?: boolean;
   /** @deprecated Use `mode: "dynamic"` instead. */
   render?: boolean;
+}
+
+export interface EvaluationResult {
+  type: string;
+  result?: unknown;
+  error?: string;
+  truncated?: boolean;
+}
+
+export interface DataSource {
+  source: string;
+  data: unknown;
+}
+
+export interface ExtractedData {
+  sources: DataSource[];
+  canvases?: number;
+  truncated?: boolean;
 }
 
 export interface ScrapeResult {
@@ -100,6 +124,8 @@ export interface ScrapeResult {
   summary?: string;
   extracted?: Record<string, unknown>;
   links?: LinkData[];
+  evaluations?: EvaluationResult[];
+  extracted_data?: ExtractedData;
 }
 
 export interface MultiScrapeParams {
@@ -120,6 +146,7 @@ export interface MultiScrapeParams {
   block_ads?: boolean;
   remove_base64_images?: boolean;
   include_links?: boolean;
+  auto_extract?: boolean;
   /** @deprecated Use `mode: "dynamic"` instead. */
   render?: boolean;
 }
@@ -137,6 +164,8 @@ export interface MultiScrapeItem {
   extracted?: Record<string, unknown>;
   summary?: string;
   error?: string;
+  evaluations?: EvaluationResult[];
+  extracted_data?: ExtractedData;
 }
 
 export interface MultiScrapeResponse {

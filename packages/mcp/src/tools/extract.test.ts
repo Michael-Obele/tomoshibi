@@ -138,4 +138,67 @@ describe("tomoshi_extract handler", () => {
       "https://b.com",
     ]);
   });
+
+  test("accepts evaluate actions and auto_extract pass-through", async () => {
+    const { client, calls } = stubClient();
+    const res = (await createExtractHandler(client)({
+      action: "scrape",
+      url: "https://example.com",
+      actions: [{ type: "evaluate", script: "() => 1" }],
+      auto_extract: false,
+      screenshot_opts: { scale: "css" },
+    })) as Result;
+    expect(res.isError).toBeUndefined();
+    const params = calls[0].params as Record<string, unknown>;
+    expect(params.actions).toEqual([{ type: "evaluate", script: "() => 1" }]);
+    expect(params.auto_extract).toBe(false);
+    expect((params.screenshot_opts as { scale: string }).scale).toBe("css");
+  });
+
+  test("schema exposes new action types, script and auto_extract", async () => {
+    const json = (await adapter.toJsonSchema(ExtractSchema)) as any;
+    expect(json.properties.auto_extract).toMatchObject({ type: "boolean" });
+    expect(json.properties.actions.items.properties.script).toMatchObject({
+      type: "string",
+    });
+    expect(json.properties.actions.items.properties.type.enum).toContain(
+      "evaluate",
+    );
+    expect(json.properties.actions.items.properties.type.enum).toContain(
+      "wait_for_function",
+    );
+  });
+
+  test("renders Extracted Data and Evaluations sections", async () => {
+    const { client } = stubClient();
+    const scrapeClient = {
+      ...client,
+      async scrape() {
+        return {
+          url: "https://example.com",
+          markdown: "# thin",
+          links: [],
+          extracted_data: {
+            sources: [
+              { source: "next_flight", data: 'self.__next_f.push([1,"x"])' },
+            ],
+            canvases: 3,
+          },
+          evaluations: [{ type: "evaluate", result: { iq: 60.24 } }],
+        };
+      },
+    };
+    const res = (await createExtractHandler(
+      scrapeClient as unknown as TomoshiClient,
+    )({
+      action: "scrape",
+      url: "https://example.com",
+    })) as Result;
+    const text = res.content[0].text;
+    expect(text).toContain("## Extracted Data");
+    expect(text).toContain("next_flight");
+    expect(text).toContain("Canvases:** 3");
+    expect(text).toContain("## Evaluations");
+    expect(text).toContain("60.24");
+  });
 });

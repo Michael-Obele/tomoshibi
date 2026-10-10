@@ -39,6 +39,9 @@ export function createServer(): McpServer {
         "- Use `tomoshi_extract` action=links for lightweight hyperlink extraction (no markdown).",
         "- Use `tomoshi_extract` action=scrape_multi for 2–10 URLs in one call (no Redis, mirrors web_fetch_exa).",
         "- Async actions (crawl/crawl_status, batch/batch_status, monitor) require Redis-backed Tomoshibi — poll their status actions until done.",
+        "- JS-heavy or canvas/chart pages: set screenshot: true (the default \"css\" scale captures at 1x and stays small; \"device\" = 2x crisper) and/or images: true — markdown alone may miss chart values.",
+        "- Need data a page keeps in JS (chart state, globals)? Add an `evaluate` action with a script; its return value comes back under `evaluations`. Use `wait_for_function` to wait for hydration.",
+        "- `extracted_data` (auto_extract, default on) returns embedded page payloads (Next.js flight/__NEXT_DATA__, Nuxt, JSON-LD) when the page has them.",
       ].join("\n"),
     },
   );
@@ -49,7 +52,7 @@ export function createServer(): McpServer {
     {
       name: "tomoshi_extract",
       description:
-        "Extraction resource (5 actions): `scrape` (single page → markdown, screenshots/images/summary/schema), `scrape_multi` (sync multi-URL max 10, no Redis, mirrors web_fetch_exa), `links` (hyperlinks only, no markdown), `batch` (enqueue 20 URLs async, Redis), `batch_status` (poll batch). Replaces cinder_scrape/cinder_links/cinder_batch_scrape. Requires `action` + per-action params: scrape→url, scrape_multi→urls, links→url, batch→urls, batch_status→batch_id.",
+        "Extraction resource (5 actions): `scrape` (single page → markdown, screenshots/images/summary/schema), `scrape_multi` (sync multi-URL max 10, no Redis, mirrors web_fetch_exa), `links` (hyperlinks only, no markdown), `batch` (enqueue 20 URLs async, Redis), `batch_status` (poll batch). Replaces cinder_scrape/cinder_links/cinder_batch_scrape. Requires `action` + per-action params: scrape→url, scrape_multi→urls, links→url, batch→urls, batch_status→batch_id. When markdown is thin or the page renders charts on canvas, ALSO set screenshot: true (the default \"css\" scale is 1x and small; use \"device\" only for crisper 2x images) and/or images: true; for JS-held data use actions evaluate/wait_for_function; auto_extract (default on) returns embedded payloads in extracted_data.",
       schema: ExtractSchema,
       annotations: {
         readOnlyHint: false,
