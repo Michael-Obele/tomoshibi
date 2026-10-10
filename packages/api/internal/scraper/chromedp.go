@@ -754,12 +754,13 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 		return nil, fmt.Errorf("chromedp navigation failed: %w", err)
 	}
 
-	// Page actions (wait/click/scroll) run before HTML capture so
+	// Page actions (wait/click/scroll/evaluate) run before HTML capture so
 	// interaction-driven content is included.
+	var evaluations []domain.EvaluationResult
 	if len(opts.Actions) > 0 {
 		steps := []chromedp.Action{}
 		for i, a := range opts.Actions {
-			as, err := buildActionSteps(a, nil)
+			as, err := buildActionSteps(a, &evaluations)
 			if err != nil {
 				return nil, fmt.Errorf("action %d invalid: %w", i, err)
 			}
@@ -784,6 +785,18 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	// on SPAs that replace the DOM after the initial page load.
 	if err := chromedp.Run(taskCtx, chromedp.Evaluate(`document.documentElement.outerHTML`, &htmlContent)); err != nil {
 		return nil, fmt.Errorf("chromedp HTML capture failed: %w", err)
+	}
+
+	// Auto-harvest embedded payloads (default on, presence-gated): one
+	// in-page collection pass; nil when the page exposes no candidates.
+	var extracted *domain.ExtractedData
+	if opts.AutoExtract == nil || *opts.AutoExtract {
+		var raw string
+		if err := chromedp.Run(taskCtx, chromedp.Evaluate(harvestScript, &raw)); err != nil {
+			logger.Log.Warn("Auto-extract harvest failed; continuing", "url", url, "error", err)
+		} else {
+			extracted = parseHarvest(raw)
+		}
 	}
 
 	// If screenshot is requested, do it in a separate Run call so the
@@ -825,11 +838,13 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	}
 
 	result := &domain.ScrapeResult{
-		URL:      url,
-		Markdown: markdown,
-		HTML:     htmlContent,
-		Metadata: metadata,
-		Links:    links,
+		URL:           url,
+		Markdown:      markdown,
+		HTML:          htmlContent,
+		Metadata:      metadata,
+		Links:         links,
+		Evaluations:   evaluations,
+		ExtractedData: extracted,
 	}
 
 	if opts.Screenshot && len(screenshotBuf) > 0 {
