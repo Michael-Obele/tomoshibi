@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	md "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
@@ -269,6 +270,33 @@ const maxScrollSettleIterations = 10
 // maxEvaluateResultBytes caps one evaluate action's captured result.
 const maxEvaluateResultBytes = 256 << 10
 
+// wrapEvaluateScript normalizes a caller script into an expression chromedp
+// can evaluate directly. chromedp.Evaluate does not invoke function
+// expressions — an arrow function would evaluate to a function object — so a
+// function result is invoked here. Scripts must be a single JS expression
+// (bare expression or arrow function); statement blocks are not supported.
+func wrapEvaluateScript(script string) string {
+	return "(() => { const v = (" + script + "); return typeof v === \"function\" ? v() : v; })()"
+}
+
+// capEvaluateResult applies the evaluate result cap. Values whose JSON
+// encoding exceeds maxEvaluateResultBytes are replaced with a rune-safe
+// string preview of that encoding; the bool reports truncation.
+func capEvaluateResult(val any) (any, bool) {
+	b, err := json.Marshal(val)
+	if err != nil {
+		return fmt.Sprintf("marshal result: %v", err), false
+	}
+	if len(b) <= maxEvaluateResultBytes {
+		return val, false
+	}
+	preview := string(b[:maxEvaluateResultBytes])
+	for len(preview) > 0 && !utf8.ValidString(preview) {
+		preview = preview[:len(preview)-1]
+	}
+	return preview, true
+}
+
 // buildActionSteps converts a page action into chromedp steps. out may be
 // nil; evaluate actions append their captured result to it in action order.
 func buildActionSteps(a domain.Action, out *[]domain.EvaluationResult) ([]chromedp.Action, error) {
@@ -306,7 +334,7 @@ func buildActionSteps(a domain.Action, out *[]domain.EvaluationResult) ([]chrome
 			deadline := time.Now().Add(time.Duration(timeoutMs) * time.Millisecond)
 			for {
 				var ok bool
-				if err := chromedp.Evaluate(a.Script, &ok).Do(ctx); err != nil {
+				if err := chromedp.Evaluate(wrapEvaluateScript(a.Script), &ok).Do(ctx); err != nil {
 					return fmt.Errorf("wait_for_function evaluate: %w", err)
 				}
 				if ok {
@@ -329,15 +357,10 @@ func buildActionSteps(a domain.Action, out *[]domain.EvaluationResult) ([]chrome
 		return []chromedp.Action{chromedp.ActionFunc(func(ctx context.Context) error {
 			entry := domain.EvaluationResult{Type: "evaluate"}
 			var val any
-			if err := chromedp.Evaluate(a.Script, &val).Do(ctx); err != nil {
+			if err := chromedp.Evaluate(wrapEvaluateScript(a.Script), &val).Do(ctx); err != nil {
 				entry.Error = err.Error()
-			} else if b, mErr := json.Marshal(val); mErr != nil {
-				entry.Error = fmt.Sprintf("marshal result: %v", mErr)
-			} else if len(b) > maxEvaluateResultBytes {
-				entry.Result = string(b[:maxEvaluateResultBytes])
-				entry.Truncated = true
 			} else {
-				entry.Result = val
+				entry.Result, entry.Truncated = capEvaluateResult(val)
 			}
 			if out != nil {
 				*out = append(*out, entry)

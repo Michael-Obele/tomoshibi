@@ -3,8 +3,11 @@ package scraper
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 )
@@ -202,6 +205,60 @@ func TestBuildActionSteps_WaitForFunctionReturnsOneStep(t *testing.T) {
 	if len(steps) != 1 {
 		t.Errorf("expected 1 step, got %d", len(steps))
 	}
+}
+
+func TestWrapEvaluateScript(t *testing.T) {
+	tests := []struct {
+		name   string
+		script string
+	}{
+		{"bare expression", "document.title"},
+		{"arrow function", "() => window.__DATA__"},
+		{"multi-line arrow function", "() => {\n\treturn window.__DATA__;\n}"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := wrapEvaluateScript(tt.script)
+			if !strings.Contains(got, "("+tt.script+")") {
+				t.Errorf("wrapped script should embed the original verbatim; got %q", got)
+			}
+			if !strings.Contains(got, `typeof v === "function"`) {
+				t.Errorf("wrapped script should contain the function-invoke guard; got %q", got)
+			}
+		})
+	}
+}
+
+func TestCapEvaluateResult(t *testing.T) {
+	t.Run("small JSON value passes through", func(t *testing.T) {
+		val := map[string]any{"title": "hi"}
+		got, truncated := capEvaluateResult(val)
+		if truncated {
+			t.Error("small value should not be marked truncated")
+		}
+		if !reflect.DeepEqual(got, val) {
+			t.Errorf("small value should pass through unchanged, got %#v", got)
+		}
+	})
+
+	t.Run("oversized value is truncated to a rune-safe string preview", func(t *testing.T) {
+		long := strings.Repeat("a", maxEvaluateResultBytes+10)
+		got, truncated := capEvaluateResult(long)
+		if !truncated {
+			t.Error("oversized value should be marked truncated")
+		}
+		s, ok := got.(string)
+		if !ok {
+			t.Fatalf("truncated result should be a string, got %T", got)
+		}
+		if len(s) > maxEvaluateResultBytes {
+			t.Errorf("preview length %d exceeds cap %d", len(s), maxEvaluateResultBytes)
+		}
+		if !utf8.ValidString(s) {
+			t.Error("preview should be valid UTF-8")
+		}
+	})
 }
 
 // TestService_RejectsActionsInStaticMode verifies actions force dynamic mode
