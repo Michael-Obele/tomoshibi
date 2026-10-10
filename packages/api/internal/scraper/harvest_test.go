@@ -120,3 +120,42 @@ func TestParseHarvest(t *testing.T) {
 		})
 	}
 }
+
+// TestHarvestScript pins the in-page collector's contract. The script is
+// exercised in production by the chromedp path; referencing it here both
+// documents what it must collect and keeps it from being dead code.
+func TestHarvestScript(t *testing.T) {
+	tests := []struct {
+		name    string
+		needle  string
+		because string
+	}{
+		{
+			name:    "flight chunk marker",
+			needle:  "self.__next_f.push",
+			because: "Next.js App Router flight chunks are matched by this marker",
+		},
+		{
+			name:    "json-ld selector",
+			needle:  "application/ld+json",
+			because: "JSON-LD blocks are located by this script type selector",
+		},
+		{
+			name:    "next data lookup",
+			needle:  "__NEXT_DATA__",
+			because: "Pages Router state is read from the __NEXT_DATA__ element id",
+		},
+		{
+			name:    "canvas count",
+			needle:  `querySelectorAll("canvas")`,
+			because: "the canvas count reports how many chart surfaces rendered",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if !strings.Contains(harvestScript, tt.needle) {
+				t.Errorf("harvestScript must contain %q (%s), but it does not", tt.needle, tt.because)
+			}
+		})
+	}
+}
