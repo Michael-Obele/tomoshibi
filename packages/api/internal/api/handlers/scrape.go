@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -33,10 +34,16 @@ type ScrapeRequest struct {
 	BlockAds           *bool                          `json:"block_ads,omitempty"`
 	RemoveBase64Images *bool                          `json:"remove_base64_images,omitempty"`
 	IncludeLinks       *bool                          `json:"include_links,omitempty"`
+	// AutoExtract defaults to on (nil or true): harvest embedded page payloads
+	// into ExtractedData. Pointer so absent ≠ false.
+	AutoExtract *bool `json:"auto_extract,omitempty"`
 }
 
 // maxMultiScrapeURLs caps sync multi-URL scrape, mirroring web_fetch_exa.
 const maxMultiScrapeURLs = 10
+
+// maxActionsPerRequest caps page actions per request.
+const maxActionsPerRequest = 50
 
 // MultiScrapeItem is one entry in a multi-URL scrape response.
 // It mirrors the single-URL response shape so callers can treat each item uniformly.
@@ -52,7 +59,11 @@ type MultiScrapeItem struct {
 	Links      []domain.LinkData      `json:"links,omitempty"`
 	Extracted  map[string]any         `json:"extracted,omitempty"`
 	Summary    string                 `json:"summary,omitempty"`
-	Error      string                 `json:"error,omitempty"`
+	// Evaluations holds evaluate action results (dynamic only).
+	Evaluations []domain.EvaluationResult `json:"evaluations,omitempty"`
+	// ExtractedData holds payloads harvested from the rendered page.
+	ExtractedData *domain.ExtractedData `json:"extracted_data,omitempty"`
+	Error         string                `json:"error,omitempty"`
 }
 
 // MultiScrapeResponse is returned when `urls` is used.
@@ -84,6 +95,7 @@ type ActionReq struct {
 	Type     string `json:"type"`
 	Selector string `json:"selector,omitempty"`
 	Ms       int    `json:"ms,omitempty"`
+	Script   string `json:"script,omitempty"`
 }
 
 type ScrapeHandler struct {
@@ -131,7 +143,7 @@ func mapActions(in []ActionReq) []domain.Action {
 	}
 	out := make([]domain.Action, 0, len(in))
 	for _, a := range in {
-		out = append(out, domain.Action{Type: a.Type, Selector: a.Selector, Ms: a.Ms})
+		out = append(out, domain.Action{Type: a.Type, Selector: a.Selector, Ms: a.Ms, Script: a.Script})
 	}
 	return out
 }
@@ -267,6 +279,11 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		}
 	}
 
+	if len(req.Actions) > maxActionsPerRequest {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("too many actions (max %d)", maxActionsPerRequest)})
+		return
+	}
+
 	// Backward compatibility mapping
 	mode := req.Mode
 	if req.Render {
@@ -306,6 +323,7 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		BlockAds:           req.BlockAds,
 		RemoveBase64Images: req.RemoveBase64Images,
 		IncludeLinks:       req.IncludeLinks,
+		AutoExtract:        req.AutoExtract,
 	}
 
 	// Multi-URL sync path (sync, errgroup limit 5, reuse Service.Scrape)
@@ -331,17 +349,19 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 					title = extractTitle(*res)
 				}
 				results[i] = MultiScrapeItem{
-					URL:        res.URL,
-					Title:      title,
-					WordCount:  wordCount(res.Markdown),
-					Markdown:   res.Markdown,
-					HTML:       res.HTML,
-					Metadata:   res.Metadata,
-					Screenshot: res.Screenshot,
-					Images:     res.Images,
-					Links:      res.Links,
-					Extracted:  res.Extracted,
-					Summary:    res.Summary,
+					URL:           res.URL,
+					Title:         title,
+					WordCount:     wordCount(res.Markdown),
+					Markdown:      res.Markdown,
+					HTML:          res.HTML,
+					Metadata:      res.Metadata,
+					Screenshot:    res.Screenshot,
+					Images:        res.Images,
+					Links:         res.Links,
+					Extracted:     res.Extracted,
+					Summary:       res.Summary,
+					Evaluations:   res.Evaluations,
+					ExtractedData: res.ExtractedData,
 				}
 				return nil
 			})
@@ -369,16 +389,18 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"url":        result.URL,
-		"title":      title,
-		"word_count": wordCount(result.Markdown),
-		"markdown":   result.Markdown,
-		"html":       result.HTML,
-		"metadata":   result.Metadata,
-		"screenshot": result.Screenshot,
-		"images":     result.Images,
-		"links":      result.Links,
-		"extracted":  result.Extracted,
-		"summary":    result.Summary,
+		"url":            result.URL,
+		"title":          title,
+		"word_count":     wordCount(result.Markdown),
+		"markdown":       result.Markdown,
+		"html":           result.HTML,
+		"metadata":       result.Metadata,
+		"screenshot":     result.Screenshot,
+		"images":         result.Images,
+		"links":          result.Links,
+		"extracted":      result.Extracted,
+		"summary":        result.Summary,
+		"evaluations":    result.Evaluations,
+		"extracted_data": result.ExtractedData,
 	})
 }
