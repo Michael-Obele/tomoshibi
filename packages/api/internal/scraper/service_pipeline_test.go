@@ -243,3 +243,73 @@ func TestScrape_SmartFallsBackToThinStaticResult(t *testing.T) {
 		t.Errorf("the browser ran %d time(s), want exactly 1", n)
 	}
 }
+
+// TestScrape_SmartChallengeStatusSurfaces locks in the accepted behaviour that a
+// bot-block or challenge page is never returned as a 200 in smart mode. The
+// static attempt fails with a retryable upstream status (403/503), and the
+// caller must receive an error carrying the static (original) status — which the
+// HTTP handler maps to 404/502 — rather than the interstitial page as a
+// successful result. When both engines fail the caller receives the static
+// error, so the two retryable cases use distinct static/dynamic statuses to pin
+// which one propagates.
+func TestScrape_SmartChallengeStatusSurfaces(t *testing.T) {
+	tests := []struct {
+		name            string
+		staticErr       error
+		dynamicErr      error
+		wantStatus      int
+		wantBrowserRuns int32
+	}{
+		{
+			// The dynamic status deliberately differs from the static one: the
+			// static failure is the original cause, so it is the status the
+			// caller sees even though the browser observed a different code.
+			name:            "a WAF 403 block that survives the retry stays a 403",
+			staticErr:       &StatusError{StatusCode: http.StatusForbidden, Err: errors.New("cloudflare")},
+			dynamicErr:      &StatusError{StatusCode: http.StatusTooManyRequests, Err: errors.New("rate limited")},
+			wantStatus:      http.StatusForbidden,
+			wantBrowserRuns: 1,
+		},
+		{
+			name:            "a 503 challenge page that survives the retry stays a 503",
+			staticErr:       &StatusError{StatusCode: http.StatusServiceUnavailable, Err: errors.New("challenge")},
+			dynamicErr:      &StatusError{StatusCode: http.StatusForbidden, Err: errors.New("challenge")},
+			wantStatus:      http.StatusServiceUnavailable,
+			wantBrowserRuns: 1,
+		},
+		{
+			name:            "a permanent 404 never earns a browser retry",
+			staticErr:       &StatusError{StatusCode: http.StatusNotFound, Err: errors.New("missing")},
+			dynamicErr:      &StatusError{StatusCode: http.StatusNotFound, Err: errors.New("missing")},
+			wantStatus:      http.StatusNotFound,
+			wantBrowserRuns: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			colly := &countingScraper{err: tt.staticErr}
+			chromedp := &countingScraper{err: tt.dynamicErr}
+			svc := NewService(colly, chromedp, nil)
+
+			result, err := svc.Scrape(context.Background(), "https://example.com", "smart", domain.ScrapeOptions{})
+			if err == nil {
+				t.Fatal("smart mode returned a result for a blocked target; a challenge page must not be a 200")
+			}
+			if result != nil {
+				t.Fatalf("smart mode returned a result alongside the error: %+v", result)
+			}
+
+			var se *StatusError
+			if !errors.As(err, &se) {
+				t.Fatalf("error %v is not a *StatusError; the handler would map it to 500 instead of 404/502", err)
+			}
+			if se.StatusCode != tt.wantStatus {
+				t.Errorf("status = %d, want %d", se.StatusCode, tt.wantStatus)
+			}
+			if n := chromedp.calls.Load(); n != tt.wantBrowserRuns {
+				t.Errorf("the browser ran %d time(s), want %d", n, tt.wantBrowserRuns)
+			}
+		})
+	}
+}
