@@ -57,10 +57,11 @@ engines:
   # ---------------------------------------------------------------- general
   - name: ddg
     categories: [general]
-    weight: 70
+    weight: 60
     timeout_ms: 5000
     min_interval_ms: 4000 # anomaly page fires on fast repeats (T0 2026-09-26)
     profile: chrome
+    proxy: webshare # telemetry 23% blocked (164 anomaly-modal) from datacenter egress - needs proxy
     site_operator: true # documented operator; egress was anomaly-blocked 2026-10-04
     block_markers: ["detected unusual traffic", "anomaly-modal"]
     request:
@@ -114,8 +115,9 @@ engines:
 
   - name: wikidata
     categories: [general]
-    weight: 55
+    weight: 20
     timeout_ms: 4000
+    enabled: false # demoted 2026-10-14: 1.7% ok (12/709), 79% empty - telemetry shows low value, opt-in only
     request:
       url: "https://www.wikidata.org/w/api.php?action=wbsearchentities&search={{query}}&language=en&format=json&limit=20"
       headers:
@@ -131,8 +133,11 @@ engines:
 
   - name: marginalia
     categories: [general]
-    weight: 50
-    timeout_ms: 6000
+    weight: 30
+    timeout_ms: 8000
+    min_interval_ms: 2000
+    profile: chrome
+    proxy: webshare # telemetry 62% blocked (441 barraged) from datacenter egress - needs proxy
     site_operator: true # measured 7/7 in-domain 2026-10-04; 200-but-throttled on repeat
     block_markers: ["barraged by queries", "Wait For A Moment"] # 200-but-throttled interstitial
     request:
@@ -147,10 +152,12 @@ engines:
 
   - name: mwmbl
     categories: [general]
-    weight: 45
+    weight: 20
     # 8s: canary showed a 5004ms spike against otherwise 399–1123ms answers,
     # and the scorecard had 5/8 timeouts under real load (2026-09-27).
+    # Demoted 2026-10-14: 12.8% ok (91/709), 52% empty, 35% timeout - opt-in only.
     timeout_ms: 8000
+    enabled: false
     request:
       url: "https://api.mwmbl.org/search/?s={{query}}"
       headers:
@@ -166,7 +173,8 @@ engines:
   - name: brave
     categories: [general]
     weight: 75
-    timeout_ms: 5000
+    timeout_ms: 6000 # was 5000 - telemetry 26% blocked 187x429 + 15% timeout, add headroom
+    min_interval_ms: 1000 # throttle to respect Brave rate limit; serper (90) is primary
     requires_env: BRAVE_SEARCH_API_KEY
     site_operator: true # measured 20/20 in-domain 2026-10-04
     request:
@@ -213,7 +221,7 @@ engines:
   - name: tavily
     categories: [general]
     weight: 70
-    timeout_ms: 6000
+    timeout_ms: 10000 # was 6000 - telemetry 25.6% timeout at 6s p95 5703ms, docs suggest 10s cap
     requires_env: TAVILY_API_KEY
     # site_operator OFF: Tavily documents include/exclude_domains params,
     # not `site:` in the raw query.
