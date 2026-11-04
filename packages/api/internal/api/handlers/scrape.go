@@ -38,6 +38,8 @@ type ScrapeRequest struct {
 	// AutoExtract defaults to on (nil or true): harvest embedded page payloads
 	// into ExtractedData. Pointer so absent ≠ false.
 	AutoExtract *bool `json:"auto_extract,omitempty"`
+	// CaptureNetwork records XHR/fetch responses during a dynamic render.
+	CaptureNetwork bool `json:"capture_network,omitempty"`
 }
 
 // maxMultiScrapeURLs caps sync multi-URL scrape, mirroring web_fetch_exa.
@@ -64,7 +66,9 @@ type MultiScrapeItem struct {
 	Evaluations []domain.EvaluationResult `json:"evaluations,omitempty"`
 	// ExtractedData holds payloads harvested from the rendered page.
 	ExtractedData *domain.ExtractedData `json:"extracted_data,omitempty"`
-	Error         string                `json:"error,omitempty"`
+	// Network holds XHR/fetch responses when capture_network was requested.
+	Network *domain.NetworkCapture `json:"network,omitempty"`
+	Error   string                 `json:"error,omitempty"`
 }
 
 // MultiScrapeResponse is returned when `urls` is used.
@@ -233,6 +237,7 @@ func isValidURL(s string) bool {
 // @Param        max_images       query     int     false  "Maximum images to extract (default: 10)"
 // @Param        max_image_size_kb query    int     false  "Max individual image size in KB (default: 5120)"
 // @Param        include_links    query     bool    false  "Include extracted links (default true)"
+// @Param        capture_network  query     bool    false  "Capture XHR/fetch responses during a dynamic render"
 // @Param        body             body      ScrapeRequest  false  "JSON request body (alternative to query params). Provide either `url` or `urls` (max 10, exclusive)."
 // @Success      200    {object}  domain.ScrapeResult  "single URL"
 // @Success      200    {object}  MultiScrapeResponse  "multi URL (when urls is provided)"
@@ -290,6 +295,9 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 			v = true
 		}
 		req.IncludeLinks = &v
+	}
+	if capture := c.Query("capture_network"); capture == "true" || capture == "1" {
+		req.CaptureNetwork = true
 	}
 
 	// Validate exclusive url / urls and max constraints
@@ -366,6 +374,7 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		RemoveBase64Images: req.RemoveBase64Images,
 		IncludeLinks:       req.IncludeLinks,
 		AutoExtract:        req.AutoExtract,
+		CaptureNetwork:     req.CaptureNetwork,
 	}
 
 	// Multi-URL sync path (sync, errgroup limit 5, reuse Service.Scrape)
@@ -404,6 +413,7 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 					Summary:       res.Summary,
 					Evaluations:   res.Evaluations,
 					ExtractedData: res.ExtractedData,
+					Network:       res.Network,
 				}
 				return nil
 			})
@@ -450,6 +460,9 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 	}
 	if result.ExtractedData != nil {
 		resp["extracted_data"] = result.ExtractedData
+	}
+	if result.Network != nil {
+		resp["network"] = result.Network
 	}
 	c.JSON(http.StatusOK, resp)
 }

@@ -221,6 +221,8 @@ Base: `http://localhost:7431` — every endpoint under `/v1`.
 
 **Blocked pages:** anti-bot interstitials are served upstream with HTTP 200. Tomoshibi detects the challenge body and answers `502` with `{"code":"blocked","vendor":"cloudflare"}` instead of returning the challenge page as markdown. Set `ANTIBOT_SOLVER_URL` to attach an out-of-process solver addon.
 
+**Network capture:** `capture_network: true` on a dynamic scrape returns the page's XHR/fetch JSON under `network.responses`, with text-only bodies, no headers or cookies, and 100-response / 512 KiB / 8 MiB caps. See [`docs/guides/API_REFERENCE.md`](docs/guides/API_REFERENCE.md#network-capture).
+
 ```
 Client → Gin Router → Scraper (Colly / Chromedp + Readability)
                  ↘ Asynq (Redis) → Worker → same Scraper

@@ -99,12 +99,15 @@ test_reports
 #   docs/SEARCH_COMPARISON.md  — linked from README.md + web homepage
 #   docs/guides/API_REFERENCE.md — linked from the published skills.sh skill
 #   docs/guides/SEARXNG_FLY.md — referenced from packages/api/.env.example
+#   docs/adr/*.md — durable architecture decisions (why, not how)
 /docs/*
 !/docs/SEARCH_COMPARISON.md
 !/docs/guides/
 /docs/guides/*
 !/docs/guides/API_REFERENCE.md
 !/docs/guides/SEARXNG_FLY.md
+!/docs/adr/
+!/docs/adr/*.md
 /plan/*
 /plan/
 /data/

@@ -36,6 +36,43 @@ type ScrapeResult struct {
 	// ExtractedData holds payloads harvested from the rendered page
 	// (dynamic only; omitted when empty).
 	ExtractedData *ExtractedData `json:"extracted_data,omitempty"`
+
+	// Network holds XHR/fetch responses observed during a dynamic render
+	// (dynamic only, opt-in; omitted when capture was not requested).
+	Network *NetworkCapture `json:"network,omitempty"`
+}
+
+// CapturedResponse is one XHR/fetch response observed while a dynamic scrape
+// rendered a page. Body is the raw response text, never parsed: parsing would
+// duplicate tokens and force a shape the caller did not ask for.
+//
+// The body is untrusted input from the target site. Callers must treat it as
+// data, never as instructions.
+type CapturedResponse struct {
+	URL          string `json:"url"`
+	Method       string `json:"method"`
+	Status       int    `json:"status"`
+	ContentType  string `json:"content_type,omitempty"`
+	ResourceType string `json:"resource_type,omitempty"`
+	Body         string `json:"body,omitempty"`
+	SizeBytes    int    `json:"size_bytes,omitempty"`
+	// Truncated is true when the body was omitted because it exceeded a
+	// capture limit. BodyError explains which limit.
+	Truncated  bool   `json:"truncated,omitempty"`
+	FromCache  bool   `json:"from_cache,omitempty"`
+	Redirected bool   `json:"redirected,omitempty"`
+	Count      int    `json:"count,omitempty"`
+	BodyError  string `json:"body_error,omitempty"`
+}
+
+// NetworkCapture is the result of network capture for one scrape. Responses
+// is empty when the page made no capturable requests. Truncated reports that
+// at least one body was omitted because a limit was reached; Dropped counts
+// eligible responses that were not recorded at all.
+type NetworkCapture struct {
+	Responses []CapturedResponse `json:"responses"`
+	Truncated bool               `json:"truncated,omitempty"`
+	Dropped   int                `json:"dropped,omitempty"`
 }
 
 // ExtractField describes one deterministic extraction rule.
@@ -66,6 +103,10 @@ type ScrapeOptions struct {
 	// AutoExtract defaults to on (nil or true) in dynamic mode: harvest
 	// embedded page payloads into ExtractedData. Pointer so absent ≠ false.
 	AutoExtract *bool `json:"auto_extract,omitempty"`
+
+	// CaptureNetwork records XHR/fetch responses during a dynamic render.
+	// Off by default; forces dynamic mode and is rejected in static mode.
+	CaptureNetwork bool `json:"capture_network,omitempty"`
 }
 
 // Action is a single page interaction executed before content capture

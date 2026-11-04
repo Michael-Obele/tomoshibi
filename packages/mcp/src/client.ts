@@ -92,6 +92,7 @@ export interface ScrapeParams {
   remove_base64_images?: boolean;
   include_links?: boolean;
   auto_extract?: boolean;
+  capture_network?: boolean;
   /** @deprecated Use `mode: "dynamic"` instead. */
   render?: boolean;
 }
@@ -114,6 +115,27 @@ export interface ExtractedData {
   truncated?: boolean;
 }
 
+export interface CapturedResponse {
+  url: string;
+  method: string;
+  status: number;
+  content_type?: string;
+  resource_type?: string;
+  body?: string;
+  size_bytes?: number;
+  truncated?: boolean;
+  from_cache?: boolean;
+  redirected?: boolean;
+  count?: number;
+  body_error?: string;
+}
+
+export interface NetworkCapture {
+  responses: CapturedResponse[];
+  truncated?: boolean;
+  dropped?: number;
+}
+
 export interface ScrapeResult {
   url: string;
   markdown: string;
@@ -126,6 +148,7 @@ export interface ScrapeResult {
   links?: LinkData[];
   evaluations?: EvaluationResult[];
   extracted_data?: ExtractedData;
+  network?: NetworkCapture;
 }
 
 export interface MultiScrapeParams {
@@ -147,6 +170,7 @@ export interface MultiScrapeParams {
   remove_base64_images?: boolean;
   include_links?: boolean;
   auto_extract?: boolean;
+  capture_network?: boolean;
   /** @deprecated Use `mode: "dynamic"` instead. */
   render?: boolean;
 }
@@ -166,6 +190,7 @@ export interface MultiScrapeItem {
   error?: string;
   evaluations?: EvaluationResult[];
   extracted_data?: ExtractedData;
+  network?: NetworkCapture;
 }
 
 export interface MultiScrapeResponse {

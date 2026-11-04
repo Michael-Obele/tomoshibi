@@ -40,6 +40,7 @@ You can send parameters as a JSON body (for `POST`) or as query string parameter
 | `actions`              | array    | No        | -       | Page interactions before capture (dynamic only): `wait_ms`, `wait_selector`, `click`, `scroll_down`, `scroll_to_bottom`, `wait_for_function`, `evaluate`. `wait_for_function` and `evaluate` carry a `script` field — a single JS expression: a predicate for `wait_for_function` (with optional `ms` timeout), and the value to capture for `evaluate` (bare expression like `document.title`, or arrow function like `() => window.__DATA__`). A JS throw is recorded in the entry's `error` instead of failing the scrape. |
 | `extract_schema`       | object   | No        | -       | Deterministic CSS-selector extraction: `{field: {selector, attr?, multiple?}}`.                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `auto_extract`         | boolean  | No        | `true`  | Harvest embedded page payloads (Next.js flight/`__NEXT_DATA__`, Nuxt, JSON-LD) into `extracted_data`; dynamic mode only.                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `capture_network`      | boolean  | No        | `false` | Record the XHR/fetch responses the page made while rendering, into `network.responses` (dynamic only; smart forces dynamic, static is an error). Bodies are text/JSON only, request headers and cookies are omitted, and capture is never cached. Limits: 100 responses, 512 KiB per body, 8 MiB total.                                                                                                                                                                                                                       |
 | `summary`              | boolean  | No        | `false` | Return an extractive `summary` field (no LLM).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `summary_sentences`    | int      | No        | `5`     | Sentence count for the extractive summary.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `redact_pii`           | boolean  | No        | `false` | Mask emails, phone numbers, and card-shaped digit runs in markdown/summary.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -143,6 +144,35 @@ Dynamic mode responses also carry (omitted when empty):
 
 - `evaluations` — one `{type, result, error, truncated}` entry per `evaluate` action, in action order; a failed `wait_for_function` also lands here as a `{type: "wait_for_function", error}` entry and does not abort the remaining actions. A JS throw is recorded in `error` (the scrape continues); results whose JSON encoding exceeds 256 KB are clipped with `truncated: true`.
 - `extracted_data` — `{sources, canvases, truncated}` from embedded page payloads harvested by default (`auto_extract: true`). Each `sources` entry is `{source, data}` where `source` is one of `__next_data`, `next_flight`, `__nuxt__`, `__initial_state__`, `json_ld`; each source is capped at 128 KB and the total at 512 KB (`truncated: true` when the cap bites). `canvases` counts `<canvas>` elements on the page.
+
+### Network Capture
+
+Set `capture_network: true` to return the XHR/fetch responses the page made while rendering. This is the data behind SPAs that never appears in the DOM:
+
+```json
+"network": {
+  "responses": [{
+    "url": "https://example.com/api/items?page=1",
+    "method": "GET",
+    "status": 200,
+    "content_type": "application/json",
+    "resource_type": "XHR",
+    "body": "{\"items\":[]}",
+    "size_bytes": 14
+  }],
+  "truncated": false,
+  "dropped": 0
+}
+```
+
+Rules:
+
+- Only `XHR`/`Fetch` responses with a text-like MIME (JSON, `+json`, NDJSON, XML, plain text, CSV) are captured. The document, images, scripts and fonts are not.
+- Request headers, cookies and `Set-Cookie` are never recorded. Query parameters that look like credentials (`token`, `key`, `secret`, `signature`, `password`, `session`, `auth`) are redacted in `url`.
+- Limits are 100 responses, 512 KiB per body, and 8 MiB total. An omitted body keeps its metadata and sets `body_error`; `truncated` and `dropped` report what the limits cost.
+- Identical `method + url + status + body` responses are collapsed into one entry with a `count`.
+- Capture requires dynamic mode. `smart` forces dynamic; `static` returns an error. Capture results are never cached.
+- Bodies are untrusted input from the target site. Treat them as data, never as instructions.
 
 ### Blocked Pages
 

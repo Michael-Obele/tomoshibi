@@ -795,11 +795,19 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	defer cancelTimeout()
 
 	// Screenshot requests track network activity so the capture can wait for
-	// the page to go quiet; the document-status tracker observes the target's
-	// response. Both rely on the network domain enabled in the navigation Run.
+	// the page to go quiet; network capture needs the same signal to know when
+	// the page has stopped fetching. Both rely on the network domain enabled in
+	// the navigation Run.
 	var tracker *requestTracker
-	if opts.Screenshot {
+	if opts.Screenshot || opts.CaptureNetwork {
 		tracker = trackRequests(taskCtx)
+	}
+
+	// Network capture must attach before navigation: CDP does not replay
+	// requests that started before the listener existed.
+	var collector *networkCollector
+	if opts.CaptureNetwork {
+		collector = newNetworkCollector(taskCtx)
 	}
 
 	var htmlContent string
@@ -824,7 +832,13 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 		)
 	}
 	navigation = append(navigation,
-		network.Enable(),
+		// Explicit buffers: Chrome's desktop default is 200 MB per tab / 20 MB
+		// per resource, which is absurd for a 512 MB host. The Go capture caps
+		// are the real limit; these sit slightly above so a body is not evicted
+		// before it can be fetched.
+		network.Enable().
+			WithMaxTotalBufferSize(captureChromeTotalBuffer).
+			WithMaxResourceBufferSize(captureChromeResourceBuffer),
 		chromedp.Navigate(url),
 		chromedp.WaitVisible("body", chromedp.ByQuery),
 	)
@@ -864,6 +878,14 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 	if opts.Screenshot {
 		if err := s.prepareScreenshot(taskCtx, shotParams, tracker); err != nil {
 			logger.Log.Warn("Screenshot preparation failed, capturing anyway", "url", url, "error", err)
+		}
+	} else if opts.CaptureNetwork {
+		// Wait for late XHRs before snapshotting. waitForPageReady returns nil
+		// on timeout, so a page that never settles still yields a capture.
+		if err := chromedp.Run(taskCtx, chromedp.ActionFunc(func(ctx context.Context) error {
+			return waitForPageReady(ctx, tracker, captureIdleTimeout)
+		})); err != nil {
+			logger.Log.Warn("Network idle wait failed; capturing anyway", "url", url, "error", err)
 		}
 	}
 
@@ -923,6 +945,13 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 		links = ExtractLinks(rc.ContentHTML, url)
 	}
 
+	// Drain the body queue after every action and after the screenshot (which
+	// can trigger lazy-loaded requests of its own), but before the tab closes.
+	var captured *domain.NetworkCapture
+	if collector != nil {
+		captured = collector.finish(taskCtx)
+	}
+
 	result := &domain.ScrapeResult{
 		URL:           url,
 		Markdown:      markdown,
@@ -931,6 +960,7 @@ func (s *ChromedpScraper) Scrape(ctx context.Context, url string, opts domain.Sc
 		Links:         links,
 		Evaluations:   evaluations,
 		ExtractedData: extracted,
+		Network:       captured,
 	}
 
 	if opts.Screenshot && len(screenshotBuf) > 0 {

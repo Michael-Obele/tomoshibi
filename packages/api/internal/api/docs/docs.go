@@ -470,6 +470,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Capture XHR/fetch responses during a dynamic render",
+                        "name": "capture_network",
+                        "in": "query"
+                    },
+                    {
                         "description": "JSON request body (alternative to query params). Provide either ` + "`" + `url` + "`" + ` or ` + "`" + `urls` + "`" + ` (max 10, exclusive).",
                         "name": "body",
                         "in": "body",
@@ -572,6 +578,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Include extracted links (default true)",
                         "name": "include_links",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Capture XHR/fetch responses during a dynamic render",
+                        "name": "capture_network",
                         "in": "query"
                     },
                     {
@@ -795,6 +807,48 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.CapturedResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "body_error": {
+                    "type": "string"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "from_cache": {
+                    "type": "boolean"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "redirected": {
+                    "type": "boolean"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "truncated": {
+                    "description": "Truncated is true when the body was omitted because it exceeded a\ncapture limit. BodyError explains which limit.",
+                    "type": "boolean"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.DataSource": {
             "type": "object",
             "properties": {
@@ -897,6 +951,23 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.NetworkCapture": {
+            "type": "object",
+            "properties": {
+                "dropped": {
+                    "type": "integer"
+                },
+                "responses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.CapturedResponse"
+                    }
+                },
+                "truncated": {
+                    "type": "boolean"
+                }
+            }
+        },
         "domain.ScrapeResult": {
             "type": "object",
             "properties": {
@@ -944,6 +1015,14 @@ const docTemplate = `{
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "network": {
+                    "description": "Network holds XHR/fetch responses observed during a dynamic render\n(dynamic only, opt-in; omitted when capture was not requested).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.NetworkCapture"
+                        }
+                    ]
                 },
                 "screenshot": {
                     "description": "Image fields (omitted when not requested)",
@@ -1289,6 +1368,14 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "network": {
+                    "description": "Network holds XHR/fetch responses when capture_network was requested.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.NetworkCapture"
+                        }
+                    ]
+                },
                 "screenshot": {
                     "$ref": "#/definitions/domain.ScreenshotData"
                 },
@@ -1331,6 +1418,10 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "block_ads": {
+                    "type": "boolean"
+                },
+                "capture_network": {
+                    "description": "CaptureNetwork records XHR/fetch responses during a dynamic render.",
                     "type": "boolean"
                 },
                 "extract_schema": {

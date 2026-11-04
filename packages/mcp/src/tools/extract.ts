@@ -60,6 +60,15 @@ const ExtractScrapeShape = v.object({
     ),
     true,
   ),
+  capture_network: v.optional(
+    v.pipe(
+      v.boolean(),
+      v.description(
+        "Capture the XHR/fetch JSON the page fetched while rendering into network.responses (dynamic only; smart forces dynamic; static errors). Text bodies only, no headers/cookies, never cached",
+      ),
+    ),
+    false,
+  ),
   screenshot: v.optional(
     v.pipe(
       v.boolean(),
@@ -265,6 +274,15 @@ const ExtractMultiScrapeShape = v.object({
       ),
     ),
     true,
+  ),
+  capture_network: v.optional(
+    v.pipe(
+      v.boolean(),
+      v.description(
+        "Capture the XHR/fetch JSON the page fetched while rendering into network.responses (dynamic only; smart forces dynamic; static errors)",
+      ),
+    ),
+    false,
   ),
   screenshot: v.optional(
     v.pipe(
@@ -477,6 +495,8 @@ export const ExtractSchema = v.object(
         "block_ads",
         "remove_base64_images",
         "include_links",
+        "auto_extract",
+        "capture_network",
         "render",
         "screenshot_opts",
         "image_process",
@@ -551,6 +571,7 @@ const EXTRACT_SHAPE = {
     "remove_base64_images",
     "include_links",
     "auto_extract",
+    "capture_network",
     "render",
   ],
   json: [
@@ -641,6 +662,30 @@ export function createExtractHandler(client: TomoshiClient) {
                 : text;
             lines.push(`### \`${src.source}\``, "", "```json", clippedText, "```");
           }
+        }
+        if (result.network && result.network.responses.length > 0) {
+          const net = result.network;
+          lines.push("", "---", "", "## Network Capture", "");
+          const bits = [`**Responses:** ${net.responses.length}`];
+          if (net.truncated) bits.push("**truncated**");
+          if (net.dropped) bits.push(`**dropped:** ${net.dropped}`);
+          lines.push(bits.join(" · "), "");
+          for (const r of net.responses.slice(0, 20)) {
+            const meta = [`${r.method} ${r.url}`, `→ ${r.status}`];
+            if (r.content_type) meta.push(r.content_type);
+            if (r.count && r.count > 1) meta.push(`×${r.count}`);
+            if (r.body_error) meta.push(r.body_error);
+            lines.push(`### \`${meta.join(" ")}\``, "");
+            if (r.body) {
+              const clipped =
+                r.body.length > 4000
+                  ? `${r.body.slice(0, 4000)}\n… (${r.body.length} chars total)`
+                  : r.body;
+              lines.push("```json", clipped, "```", "");
+            }
+          }
+          if (net.responses.length > 20)
+            lines.push(`- ... and ${net.responses.length - 20} more`);
         }
         if (result.evaluations && result.evaluations.length > 0) {
           lines.push("", "---", "", "## Evaluations", "");

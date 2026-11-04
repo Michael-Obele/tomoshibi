@@ -1,5 +1,35 @@
 basePath: /v1
 definitions:
+  domain.CapturedResponse:
+    properties:
+      body:
+        type: string
+      body_error:
+        type: string
+      content_type:
+        type: string
+      count:
+        type: integer
+      from_cache:
+        type: boolean
+      method:
+        type: string
+      redirected:
+        type: boolean
+      resource_type:
+        type: string
+      size_bytes:
+        type: integer
+      status:
+        type: integer
+      truncated:
+        description: |-
+          Truncated is true when the body was omitted because it exceeded a
+          capture limit. BodyError explains which limit.
+        type: boolean
+      url:
+        type: string
+    type: object
   domain.DataSource:
     properties:
       data: {}
@@ -67,6 +97,17 @@ definitions:
       url:
         type: string
     type: object
+  domain.NetworkCapture:
+    properties:
+      dropped:
+        type: integer
+      responses:
+        items:
+          $ref: '#/definitions/domain.CapturedResponse'
+        type: array
+      truncated:
+        type: boolean
+    type: object
   domain.ScrapeResult:
     properties:
       evaluations:
@@ -102,6 +143,12 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      network:
+        allOf:
+        - $ref: '#/definitions/domain.NetworkCapture'
+        description: |-
+          Network holds XHR/fetch responses observed during a dynamic render
+          (dynamic only, opt-in; omitted when capture was not requested).
       screenshot:
         allOf:
         - $ref: '#/definitions/domain.ScreenshotData'
@@ -329,6 +376,10 @@ definitions:
         additionalProperties:
           type: string
         type: object
+      network:
+        allOf:
+        - $ref: '#/definitions/domain.NetworkCapture'
+        description: Network holds XHR/fetch responses when capture_network was requested.
       screenshot:
         $ref: '#/definitions/domain.ScreenshotData'
       summary:
@@ -359,6 +410,9 @@ definitions:
           into ExtractedData. Pointer so absent ≠ false.
         type: boolean
       block_ads:
+        type: boolean
+      capture_network:
+        description: CaptureNetwork records XHR/fetch responses during a dynamic render.
         type: boolean
       extract_schema:
         additionalProperties:
@@ -855,6 +909,10 @@ paths:
         in: query
         name: include_links
         type: boolean
+      - description: Capture XHR/fetch responses during a dynamic render
+        in: query
+        name: capture_network
+        type: boolean
       - description: JSON request body (alternative to query params). Provide either
           `url` or `urls` (max 10, exclusive).
         in: body
@@ -939,6 +997,10 @@ paths:
       - description: Include extracted links (default true)
         in: query
         name: include_links
+        type: boolean
+      - description: Capture XHR/fetch responses during a dynamic render
+        in: query
+        name: capture_network
         type: boolean
       - description: JSON request body (alternative to query params). Provide either
           `url` or `urls` (max 10, exclusive).

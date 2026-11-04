@@ -121,6 +121,18 @@ func (s *Service) Scrape(
 		}
 	}
 
+	// Network capture observes the browser's own requests, so it has the same
+	// mode requirement as page actions.
+	if opts.CaptureNetwork {
+		switch mode {
+		case "dynamic":
+		case "static":
+			return nil, fmt.Errorf("capture_network requires dynamic mode (got static)")
+		default:
+			mode = "dynamic"
+		}
+	}
+
 	// 1. Try Cache
 	cacheKey := cacheKeyFor(url, mode, opts)
 	if s.cache != nil {
@@ -407,9 +419,10 @@ func (s *Service) Scrape(
 		}
 	}
 
-	// 4. Save to Cache (screenshots are excluded: blobs are large and every
-	// capture is time-sensitive, so a cached one is a liability).
-	if s.cache != nil && !opts.Screenshot {
+	// 4. Save to Cache (screenshots and network captures are excluded: blobs
+	// and API bodies are large, and both are time-sensitive — a cached one is
+	// a liability).
+	if s.cache != nil && !opts.Screenshot && !opts.CaptureNetwork {
 		data, err := json.Marshal(result)
 		if err == nil {
 			// Compress data
