@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>How bot detection actually works</title>
+  <meta name="description" content="A tour of the signals a modern bot wall looks at.">
+</head>
+<body>
+  <article>
+    <h1>How bot detection actually works</h1>
+    <p>Most write-ups treat bot detection as a single check. In practice it is a stack of signals, and the interesting part is how they are combined.</p>
+    <p>The first signal is the TLS handshake. A client that claims to be Chrome but negotiates like a Go program is easy to separate from a real browser.</p>
+    <p>Header order matters too. Browsers emit headers in a stable order, and a client that sorts them alphabetically stands out even when every individual value is correct.</p>
+    <p>Here is the shape of a Cloudflare challenge configuration, which is what people usually mean when they say "the page is blocked":</p>
+    <pre><code>window._cf_chl_opt = { cvId: '3', cType: 'managed' };</code></pre>
+    <p>Vendors also run a captcha or a press &amp; hold interaction when the score is ambiguous. Those are the visible part of the system, not the whole system.</p>
+    <p>A good scraper therefore does not try to win every fight. It sends a coherent identity, detects when it has been blocked, and reports that honestly instead of returning the challenge page as content.</p>
+    <p>That last point is underrated. A silent block is worse than a loud failure, because every downstream consumer treats the block page as data.</p>
+    <!--PAD-->
+  </article>
+</body>
+</html>

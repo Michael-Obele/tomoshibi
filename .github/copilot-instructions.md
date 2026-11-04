@@ -37,7 +37,7 @@ To ensure code quality, common Go analysis tools are unified in the `Makefile`. 
 
 ## 🛡️ Anti-Detection & Quality
 
-- **User Agent Rotation**: Always use `gofakeit.UserAgent()`. Do not hardcode agents.
+- **Identity Consistency**: Static scrapes use `internal/fingerprint` — a profile-matched Chrome User-Agent (`fingerprint.ChromeUA`) with tls-client's TLS/HTTP2 fingerprint. Never randomize the UA per request; a UA that disagrees with the handshake is itself a bot signal. `SCRAPE_TLS_PROFILE=go` opts out. Dynamic (Chromedp) and image fetches keep their existing UA handling.
 - **Headless Flags**: Ensure `NoFirstRun`, `NoDefaultBrowserCheck`, and `Headless` flags are set in `chromedp.go`.
 - **Markdown Conversion**: Use `html-to-markdown/v2` for LLM-ready output. Ensure `ScrapeResult` metadata is always populated.
 

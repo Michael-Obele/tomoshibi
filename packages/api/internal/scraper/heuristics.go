@@ -4,17 +4,22 @@ import (
 	"strings"
 )
 
-// ShouldUseDynamic analyzes HTML content to decide if dynamic rendering (headless browser) is needed.
-// It returns true if the content appears to be an SPA shell or explicitly requires JavaScript.
+// shellTextThreshold is how much visible text a document may contain before
+// it stops being an SPA shell. Framework markers are a weak signal: a compact
+// server-rendered Next.js page carries __NEXT_DATA__ and is still complete.
+// Judging shell-ness by raw HTML size spawned a browser for exactly those
+// pages, which is the expensive direction to be wrong in.
+const shellTextThreshold = 500
+
+// ShouldUseDynamic analyzes HTML content to decide if dynamic rendering
+// (headless browser) is needed.
 func ShouldUseDynamic(htmlBody string) bool {
 	lowerBody := strings.ToLower(htmlBody)
 
-	// 1. Check for <noscript> instructions
-	// Many SPAs put "You need to enable JavaScript" inside noscript tags.
+	// 1. Check for <noscript> instructions. This is the strongest signal: the
+	// page itself says it needs JavaScript, regardless of how much markup it
+	// shipped.
 	if strings.Contains(lowerBody, "<noscript>") {
-		// We could be more specific, but presence of noscript is a strong hint
-		// that the site expects JS-disabled clients (like us) to miss out.
-		// Detailed checks:
 		if strings.Contains(lowerBody, "enable javascript") ||
 			strings.Contains(lowerBody, "need javascript") ||
 			strings.Contains(lowerBody, "requires javascript") {
@@ -22,10 +27,12 @@ func ShouldUseDynamic(htmlBody string) bool {
 		}
 	}
 
-	// 2. Check for SPA Root Elements
-	// React: id="root", id="app", data-reactroot
-	// Next.js: id="__next", __NEXT_DATA__
-	// Vue: id="app", data-v-
+	// 2. SPA roots only matter when the page is actually a shell. Measure the
+	// text a reader would see, not the bytes in the document.
+	if visibleTextLen(lowerBody) > shellTextThreshold {
+		return false
+	}
+
 	spaRoots := []string{
 		`id="root"`,
 		`id="app"`,
@@ -38,20 +45,60 @@ func ShouldUseDynamic(htmlBody string) bool {
 
 	for _, marker := range spaRoots {
 		if strings.Contains(htmlBody, marker) {
-			// Just having a root isn't enough (SSR might fill it),
-			// but combined with small content size, it's a strong indicator.
-			// Let's refine this: if we see these AND the body is relatively small, assume shell.
-			if len(htmlBody) < 5000 {
-				return true
-			}
+			return true
 		}
 	}
 
-	// 3. Simple Content Size Heuristic
-	// If the body is tiny (< 2KB) but has script tags, it's likely a shell.
+	// 3. A tiny document with scripts and no readable text is a shell even
+	// without a recognised framework marker.
 	if len(htmlBody) < 2000 && strings.Contains(lowerBody, "<script") {
 		return true
 	}
 
 	return false
+}
+
+// visibleTextLen estimates how many non-whitespace characters a reader would
+// see, skipping tags, script bodies, and style bodies. It is deliberately a
+// scanner rather than a DOM parse: this runs on every static scrape and only
+// needs to separate a shell from a rendered page.
+func visibleTextLen(s string) int {
+	const (
+		scriptOpen  = "<script"
+		scriptClose = "</script>"
+		styleOpen   = "<style"
+		styleClose  = "</style>"
+	)
+
+	count := 0
+	inTag := false
+	for i := 0; i < len(s); {
+		if strings.HasPrefix(s[i:], scriptOpen) {
+			end := strings.Index(s[i:], scriptClose)
+			if end < 0 {
+				return count
+			}
+			i += end + len(scriptClose)
+			continue
+		}
+		if strings.HasPrefix(s[i:], styleOpen) {
+			end := strings.Index(s[i:], styleClose)
+			if end < 0 {
+				return count
+			}
+			i += end + len(styleClose)
+			continue
+		}
+
+		switch c := s[i]; {
+		case c == '<':
+			inTag = true
+		case c == '>':
+			inTag = false
+		case !inTag && c != ' ' && c != '\n' && c != '\r' && c != '\t':
+			count++
+		}
+		i++
+	}
+	return count
 }

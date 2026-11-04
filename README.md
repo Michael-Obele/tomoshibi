@@ -119,7 +119,7 @@ No `mode` needed — `smart` is default. `static` skips JS; `dynamic` always ren
 
 | Package | Path                           | Description                                                                                    | Install                                                |
 | ------- | ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + native search roster (21 engines) | `docker compose up` or `go run ./packages/api/cmd/api` |
+| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + native search roster (21 engines)                   | `docker compose up` or `go run ./packages/api/cmd/api` |
 | **mcp** | [`packages/mcp`](packages/mcp) | MCP server — 3 tools, `tomoshi`/`tomoshibi` bin ([npm](https://www.npmjs.com/package/tomoshi)) | `npx -y tomoshi`                                       |
 | **web** | [`packages/web`](packages/web) | Svelte 5 playground — scrape/crawl/search UI                                                   | `bun --cwd packages/web dev`                           |
 
@@ -206,18 +206,20 @@ Self-hosters pull the same images CI pushed: `docker pull ghcr.io/michael-obele/
 
 Base: `http://localhost:7431` — every endpoint under `/v1`.
 
-| Method | Endpoint              | What it does                                                                 | Needs Redis |
-| ------ | --------------------- | ---------------------------------------------------------------------------- | ----------- |
-| `POST` | `/v1/scrape`          | Single page → markdown (smart/static/dynamic, screenshots, `extract_schema`) | No          |
-| `POST` | `/v1/scrape` + `urls` | Multi-URL sync (max 10, no Redis)                                            | No          |
-| `POST` | `/v1/map`             | Sitemap → robots.txt → link fallback                                         | No          |
-| `POST` | `/v1/search`          | Native 21-engine roster → SearXNG → stealth → Brave (keyed: brave/serper/tavily) | No   |
-| `GET`  | `/v1/env`             | env var names a client may send per request in `X-Tomoshi-Env` (MCP forwarding) | No       |
-| `POST` | `/v1/crawl`           | Async BFS crawl → `202` + job ID                                             | **Yes**     |
-| `GET`  | `/v1/crawl/:id`       | Poll crawl status                                                            | **Yes**     |
-| `POST` | `/v1/batch/scrape`    | Enqueue 20 URLs async                                                        | **Yes**     |
-| `GET`  | `/v1/batch/:id`       | Poll batch                                                                   | **Yes**     |
-| `POST` | `/v1/monitor`         | Hash markdown, webhook on change                                             | **Yes**     |
+| Method | Endpoint              | What it does                                                                     | Needs Redis |
+| ------ | --------------------- | -------------------------------------------------------------------------------- | ----------- |
+| `POST` | `/v1/scrape`          | Single page → markdown (smart/static/dynamic, screenshots, `extract_schema`)     | No          |
+| `POST` | `/v1/scrape` + `urls` | Multi-URL sync (max 10, no Redis)                                                | No          |
+| `POST` | `/v1/map`             | Sitemap → robots.txt → link fallback                                             | No          |
+| `POST` | `/v1/search`          | Native 21-engine roster → SearXNG → stealth → Brave (keyed: brave/serper/tavily) | No          |
+| `GET`  | `/v1/env`             | env var names a client may send per request in `X-Tomoshi-Env` (MCP forwarding)  | No          |
+| `POST` | `/v1/crawl`           | Async BFS crawl → `202` + job ID                                                 | **Yes**     |
+| `GET`  | `/v1/crawl/:id`       | Poll crawl status                                                                | **Yes**     |
+| `POST` | `/v1/batch/scrape`    | Enqueue 20 URLs async                                                            | **Yes**     |
+| `GET`  | `/v1/batch/:id`       | Poll batch                                                                       | **Yes**     |
+| `POST` | `/v1/monitor`         | Hash markdown, webhook on change                                                 | **Yes**     |
+
+**Blocked pages:** anti-bot interstitials are served upstream with HTTP 200. Tomoshibi detects the challenge body and answers `502` with `{"code":"blocked","vendor":"cloudflare"}` instead of returning the challenge page as markdown. Set `ANTIBOT_SOLVER_URL` to attach an out-of-process solver addon.
 
 ```
 Client → Gin Router → Scraper (Colly / Chromedp + Readability)

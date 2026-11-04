@@ -6,6 +6,7 @@ import (
 
 	"github.com/Michael-Obele/tomoshibi/internal/config"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
+	"github.com/Michael-Obele/tomoshibi/internal/solver"
 	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
 	"github.com/hibiken/asynq"
@@ -56,7 +57,14 @@ func run() (int, error) {
 	collyScraper := scraper.NewCollyScraper()
 	chromedpScraper := scraper.NewChromedpScraperWithConfig(cfg.App.ChromeRecycleAfter, cfg.App.ScreenshotMaxHeight)
 	defer chromedpScraper.Close()
-	scraperService := scraper.NewService(collyScraper, chromedpScraper, redisClient)
+
+	var scraperOpts []scraper.Option
+	if cfg.AntiBot.SolverURL != "" {
+		scraperOpts = append(scraperOpts,
+			scraper.WithSolver(solver.NewHTTP(cfg.AntiBot.SolverURL, cfg.AntiBot.SolverToken)))
+		logger.Log.Info("Anti-bot solver addon enabled", "url", cfg.AntiBot.SolverURL)
+	}
+	scraperService := scraper.NewService(collyScraper, chromedpScraper, redisClient, scraperOpts...)
 
 	// 4. Initialize Asynq Server
 	srv := worker.NewServer(cfg, logger.Log)

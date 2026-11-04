@@ -3,41 +3,58 @@ package scraper
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
 	"time"
 
 	md "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/Michael-Obele/tomoshibi/internal/fingerprint"
 	"github.com/Michael-Obele/tomoshibi/internal/safeurl"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
-	"github.com/brianvoe/gofakeit/v6"
 	"github.com/gocolly/colly/v2"
 )
 
 type CollyScraper struct {
+	transport    http.RoundTripper
+	transportErr error
 }
 
+// NewCollyScraper builds the static engine with a browser-grade transport:
+// Chrome's TLS fingerprint and a User-Agent that matches it. Set
+// SCRAPE_TLS_PROFILE=go to fall back to Go's own TLS stack, which is faster to
+// start but trivially distinguishable from a browser.
 func NewCollyScraper() *CollyScraper {
-	return &CollyScraper{}
+	if os.Getenv("SCRAPE_TLS_PROFILE") == "go" {
+		return &CollyScraper{transport: safeurl.Transport()}
+	}
+	rt, err := fingerprint.Transport()
+	if err != nil {
+		// Do not silently degrade to the Go stack: a request that claims to be
+		// Chrome while handshaking like Go is worse than failing loudly.
+		return &CollyScraper{transportErr: fmt.Errorf("browser TLS transport: %w", err)}
+	}
+	return &CollyScraper{transport: rt}
 }
 
 func (s *CollyScraper) Scrape(ctx context.Context, url string, opts domain.ScrapeOptions) (*domain.ScrapeResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if s.transportErr != nil {
+		return nil, s.transportErr
+	}
 
 	c := colly.NewCollector(
 		colly.Async(true),
 	)
 
-	// Refuse non-public destinations. The guarded transport checks at dial
-	// time, so it covers colly's redirect following as well as the initial
-	// request — a pre-flight URL check alone would not.
-	c.WithTransport(safeurl.Transport())
+	// The fingerprint transport dials through safeurl, so redirects and DNS
+	// rebinding are still checked at connection time.
+	c.WithTransport(s.transport)
 
-	// Rotate User-Agents
 	c.OnRequest(func(r *colly.Request) {
-		r.Headers.Set("User-Agent", gofakeit.UserAgent())
-		logger.Log.Info("Scraping", "url", r.URL, "user_agent", r.Headers.Get("User-Agent"))
+		logger.Log.Info("Scraping", "url", r.URL)
 	})
 
 	timeout := 30 * time.Second
@@ -56,9 +73,31 @@ func (s *CollyScraper) Scrape(ctx context.Context, url string, opts domain.Scrap
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
-		if r != nil && r.StatusCode >= 400 {
-			// Carry the HTTP status so retry policies can skip 4xx.
-			scrapeErr = &StatusError{StatusCode: r.StatusCode, Err: err}
+		if r == nil {
+			scrapeErr = fmt.Errorf("scraping failed: %w", err)
+			return
+		}
+		if r.StatusCode >= 400 {
+			if ch := detectChallenge(r.Body, r.StatusCode); ch != nil {
+				// A 403 that is really an anti-bot wall must not be reported as
+				// a plain upstream status: the caller needs to know the body is
+				// not content.
+				scrapeErr = &BlockedError{
+					URL:        requestURL(r),
+					Vendor:     ch.Vendor,
+					StatusCode: r.StatusCode,
+					HTML:       challengeBody(r.Body),
+					Err:        err,
+				}
+				return
+			}
+			// Carry the HTTP status so retry policies can skip 4xx and the
+			// throttle can honour a Retry-After the origin actually sent.
+			scrapeErr = &StatusError{
+				StatusCode: r.StatusCode,
+				RetryAfter: parseRetryAfter(r.Headers.Get("Retry-After")),
+				Err:        err,
+			}
 			return
 		}
 		scrapeErr = fmt.Errorf("scraping failed: %w", err)
@@ -91,7 +130,14 @@ func (s *CollyScraper) Scrape(ctx context.Context, url string, opts domain.Scrap
 
 	// Apply cleaner-output defaults (block ads, drop base64 images) before
 	// readability strips the class/id/aria-label attributes the selectors need.
-	clean := cleanContent(htmlContent,
+	return buildStaticResult(url, htmlContent, opts)
+}
+
+// buildStaticResult turns raw HTML into the standard scrape result. It is
+// shared with the solver path so a challenge addon that returns post-challenge
+// HTML produces exactly the same shape as a normal static scrape.
+func buildStaticResult(url, html string, opts domain.ScrapeOptions) (*domain.ScrapeResult, error) {
+	clean := cleanContent(html,
 		opts.BlockAds == nil || *opts.BlockAds,
 		opts.RemoveBase64Images == nil || *opts.RemoveBase64Images,
 	)
@@ -100,7 +146,6 @@ func (s *CollyScraper) Scrape(ctx context.Context, url string, opts domain.Scrap
 	// the LLM-ready output. Falls back to full HTML on failure.
 	rc, _ := ExtractMainContent(clean, url)
 
-	// Convert to Markdown
 	markdown, err := md.ConvertString(rc.ContentHTML)
 	if err != nil {
 		return nil, fmt.Errorf("markdown conversion failed: %w", err)
@@ -120,8 +165,26 @@ func (s *CollyScraper) Scrape(ctx context.Context, url string, opts domain.Scrap
 	return &domain.ScrapeResult{
 		URL:      url,
 		Markdown: markdown,
-		HTML:     htmlContent, // Optional: might want to toggle this
+		HTML:     html,
 		Metadata: metadata,
 		Links:    links,
 	}, nil
+}
+
+// requestURL reads the URL Colly attached to a response without assuming the
+// request survived (it is absent on some transport-level failures).
+func requestURL(r *colly.Response) string {
+	if r.Request != nil && r.Request.URL != nil {
+		return r.Request.URL.String()
+	}
+	return ""
+}
+
+// challengeBody keeps the challenge page small enough to hand to a solver
+// addon without letting a hostile origin balloon memory.
+func challengeBody(body []byte) string {
+	if len(body) > challengeMaxBody {
+		body = body[:challengeMaxBody]
+	}
+	return string(body)
 }

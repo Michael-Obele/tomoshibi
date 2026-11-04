@@ -97,17 +97,22 @@ Configuration is handled via environment variables or a `.env` file (canonical r
 - `SEARCH_NATIVE_ENABLED` / `SEARCH_COMPAT_ADDR` / `SEARCH_ENGINES_PATH`: in-house search layer (see **Search backends** below)
 - `WEBSHARE_API_KEY` / `WEBSHARE_PROXY_URL` / `SEARCH_PROXY_TIER1|T2` / `SEARCH_PROXY_BUDGET_GB`: search proxy groups
 - `DISABLE_WORKER`: Set to `true` to disable the embedded background worker
+- `SCRAPE_TLS_PROFILE`: `chrome` (default) sends Chrome's TLS/h2 fingerprint; `go` falls back to Go's TLS stack
+- `CRAWL_IGNORE_ROBOTS`: `true` disables robots.txt enforcement during crawl
+- `CRAWL_DOMAIN_DELAY` / `CRAWL_DOMAIN_DELAY_MAX`: politeness floor (default 1s) and adaptive cap (default 60s)
+- `ANTIBOT_SOLVER_URL` / `ANTIBOT_SOLVER_TOKEN`: optional out-of-process challenge solver addon; unset = report blocks, never solve them
 
 ## Architecture
 
 Dependency go one way: `cmd/` → `internal/api/` → `internal/scraper/` → `internal/domain/`. Interface live in `internal/domain` (`domain.Scraper` = the seam), so `internal/*` reach only for `domain` or `pkg/`. `internal/search` fully standalone — import nothing from project, define own `Service` interface and types.
 
-**Startup wiring** (`cmd/api/main.go`) = map of system: config → logger → optional Redis client → Colly scraper + Chromedp scraper → `scraper.Service` → handlers → optional crawl handler + embedded worker + monitor scheduler → router.
+**Startup wiring** (`cmd/api/main.go`) = map of system: config → logger → optional Redis client → Colly scraper + Chromedp scraper → `scraper.Service` (with optional `WithSolver`) → handlers → optional crawl handler + embedded worker + monitor scheduler → router.
 
 **Engine selection** (`internal/scraper/service.go:55`) = core decision point:
 
-- `static` → Colly. `dynamic` → Chromedp. `smart` (default) → Colly first, then `ShouldUseDynamic(html)` (`heuristics.go`, SPA-shell marker + content-size check) decide whether redo in Chromedp.
+- `static` → Colly. `dynamic` → Chromedp. `smart` (default) → Colly first, then `ShouldUseDynamic(html)` (`heuristics.go`) decide whether redo in Chromedp. The heuristic measures **visible text** (tags/script/style stripped), not raw HTML size: a compact server-rendered Next.js page carries `__NEXT_DATA__` and is still complete, so sizing by bytes spawned a browser for pages that needed none.
 - Page `actions` force dynamic, and `static` + actions = hard error. `screenshot` in smart mode go straight to dynamic.
+- **Challenge handling** (`internal/scraper/blocked.go`): anti-bot interstitials return HTTP **200**, so detection runs on the body. Smart mode retries once in dynamic; if both engines are blocked the service returns `*BlockedError` (HTTP 502, body `{"code":"blocked","vendor":"..."}`) and never returns the interstitial as markdown. `ANTIBOT_SOLVER_URL` points at an optional out-of-process addon implementing `domain.ChallengeSolver` (`internal/solver` is the HTTP client); the core ships no solver, so the MIT image stays small and a private/paid addon can carry its own browser stack.
 - Post-scrape enrichment run in fixed order: schema extraction → summary → PII redaction → image extraction/blob fetch (bounded `errgroup`, limit 5).
 
 **Caching** = gzip-compressed JSON in Redis, 7-day TTL. Key = SHA-256 of URL + mode + _whole_ `ScrapeOptions` struct (`cacheKeyFor`), so add field to `ScrapeOptions` auto-prevent stale hit — no hand-roll narrower key. Compression deliberate (hobby-tier storage), and read path still tolerate legacy uncompressed value. `Service.cache` = two-method `cacheStore` interface, not `*redis.Client`, so test can drive cache branch; `NewService` still take concrete client and assign only when non-nil, because nil `*redis.Client` in interface is not nil interface.
@@ -118,7 +123,9 @@ Dependency go one way: `cmd/` → `internal/api/` → `internal/scraper/` → `i
 
 `crawl_handler.go:ExecuteCrawl` = parallel BFS with per-domain politeness delay, retry-with-backoff that never retry 4xx, and bounded queue that drop excess link instead of block producer. It enforce own deadline and return status `"timeout"`; Asynq task timeout deliberately `crawlTimeout() + 5m` as outer safety net. Seed URL always scraped — `include_paths`/`exclude_paths` apply only to discovered link.
 
-Crawl tuning read from environment at call time via `clampEnvInt` helper at bottom of `crawl_handler.go` (`CRAWL_CONCURRENCY`, `CRAWL_DOMAIN_DELAY`, `CRAWL_TIMEOUT`, `CRAWL_SCRAPE_TIMEOUT`, `CRAWL_MAX_RETRIES`), not through `internal/config` — follow whichever pattern surrounding file already use.
+**Robots + politeness** (`internal/robots`, `internal/worker/throttle.go`): crawl fetches `robots.txt` per origin (1h cache) and applies `Disallow`/`Allow` (wildcards, `$`, longest-match, tie→allow) to discovered links only; seed still bypass. `Crawl-delay`/`Request-rate` raise the floor. `CRAWL_IGNORE_ROBOTS=true` opts out. A robots file that cannot be fetched is logged and treated as no restrictions (RFC 9309 says 5xx→disallow; that would turn an origin outage into a failed crawl). Spacing is adaptive: start at `CRAWL_DOMAIN_DELAY`, relax toward 2× latency (never below the floor), double on 403/429/503, and honour `Retry-After` up to 10m, capped by `CRAWL_DOMAIN_DELAY_MAX`.
+
+Crawl tuning read from environment at call time via `clampEnvInt` helper at bottom of `crawl_handler.go` (`CRAWL_CONCURRENCY`, `CRAWL_DOMAIN_DELAY`, `CRAWL_DOMAIN_DELAY_MAX`, `CRAWL_TIMEOUT`, `CRAWL_SCRAPE_TIMEOUT`, `CRAWL_MAX_RETRIES`), not through `internal/config` — follow whichever pattern surrounding file already use. `CRAWL_IGNORE_ROBOTS` read the same way.
 
 **Graceful degradation = design rule.** Redis optional: without it, `/v1/crawl` return 503 and `/v1/batch` + `/v1/monitor` never registered (`internal/api/router.go:79`). Readability failure return raw HTML with nil error. Per-image fetch failure logged and skipped. Scrape must not fail because enrichment step did.
 
@@ -126,7 +133,7 @@ Crawl tuning read from environment at call time via `clampEnvInt` helper at bott
 
 **Shutdown** (`cmd/api/main.go`) drain HTTP server and embedded worker at same time, not in sequence: `signal.NotifyContext` fire → worker `Shutdown()` start in goroutine → `srv.Shutdown` run in foreground → `select` wait on whichever finish first, bounded by `SHUTDOWN_TIMEOUT` (default 20s) and 5s `workerDrainGrace`. Asynq own shutdown cannot beat its `TaskCheckInterval` on idle queue (`processor.go` sleep uninterruptibly for roughly half of it), so 15s of check interval = floor on worker drain — that is what grace window absorb.
 
-Support package: `internal/extract` (deterministic CSS-selector schema extraction, extractive summary, PII redaction — all LLM-free), `internal/image` (srcset/lazy-load/`<picture>` extraction, dimension sniffing, resize/re-encode), `internal/sitemap` (robots.txt/sitemap.xml discovery behind `/v1/map`), `internal/search` (Brave), `internal/safeurl` (SSRF guard), `pkg/logger` (slog wrapper).
+Support package: `internal/extract` (deterministic CSS-selector schema extraction, extractive summary, PII redaction — all LLM-free), `internal/image` (srcset/lazy-load/`<picture>` extraction, dimension sniffing, resize/re-encode), `internal/sitemap` (robots.txt/sitemap.xml discovery behind `/v1/map`), `internal/robots` (crawl permission rules), `internal/fingerprint` (browser-consistent TLS/UA transport), `internal/solver` (HTTP client for the optional anti-bot addon), `internal/search` (Brave), `internal/safeurl` (SSRF guard), `pkg/logger` (slog wrapper).
 
 **Search backends** (`internal/search`): chain **Native → SearXNG → Stealth → Brave** (`NewHybridServiceWithNative`). Native = declarative roster in `internal/search/engines/registry.default.yaml` (override `SEARCH_ENGINES_PATH`) fanned out per category (`general|news`, API `code` → registry `it`) with a per-engine `Report` that feeds `unresponsive_engines`. SearXNG JSON contract listener: `SEARCH_COMPAT_ADDR` (use `:7436` locally — `:7435` is the SearXNG container). Proxy groups `webshare|tier1|tier2` via `WEBSHARE_API_KEY` (list fetch, lazy) or `WEBSHARE_PROXY_URL` (explicit, wins) + `SEARCH_PROXY_TIER1/T2`, byte cap `SEARCH_PROXY_BUDGET_GB` (default 1, 0=unlimited). Live canary: `go test -tags=canary ./internal/search/engines/ -run TestCanary -v` (`CANARY_ENGINES=ddg,bing` filters; never in CI). **Roster changes require a live probe first** — verdicts logged in local-only `plan/tomoshi-search/research.md` §3b (e.g. mojeek 403 from datacenter egress, Google News links JS-only, reuters feeds dead). **Per-request keys**: a client may send allowlisted search API keys in the `X-Tomoshi-Env` header (names from `GET /v1/env`; allowlist in `internal/search/envctx`) — middleware attaches them to the request context and engines resolve `requires_env`/`${VAR}` through `envctx.Get` per request, so the MCP forwards keys from its own env (`TOMOSHI_FORWARD_ENV`) instead of requiring them in the backend's `.env`.
 
@@ -136,7 +143,7 @@ Support package: `internal/extract` (deterministic CSS-selector schema extractio
 - Handle every error explicit; wrap with `fmt.Errorf("...: %w", err)`. No `_ = err`, no `panic` for control flow, no start goroutine without lifecycle.
 - Propagate `context.Context` into anything blocking or networked.
 - Table-driven test with `t.Run` subtest; mock via `domain.Scraper` / `search.Service` interface (see `MockSearchService`, `mockScraper`). Handler test use `httptest` with `gin.SetMode(gin.TestMode)`.
-- User agent come from `gofakeit.UserAgent()` — no hardcode one (exception: search engines use the fixed profile-matched Chrome UA in `internal/search/engines/fetch.go` — a mismatched/random UA is itself a bot signal there).
+- Static scrapes send one coherent identity: `internal/fingerprint` uses tls-client's Chrome profile (TLS ClientHello + HTTP/2 settings + header order) with `fingerprint.ChromeUA`, dialing through `safeurl.DialContext`. Never randomize the UA per request: a UA that disagrees with the handshake is a louder bot signal than an honest one. `SCRAPE_TLS_PROFILE=go` opts back into Go's TLS. Dynamic (Chromedp) still sets its own UA; image fetches still use `gofakeit.UserAgent()`.
 - New config go in `internal/config/config.go` (Viper + godotenv, `AutomaticEnv` with `.`→`_`), plus `.env.example` and README table.
 - **Interfaces:** Define interfaces in `internal/domain` to keep the core logic decoupled from implementation details.
 - **Swagger:** API documentation is auto-generated using `swag`. In debug mode, the API attempts to re-generate docs on startup.

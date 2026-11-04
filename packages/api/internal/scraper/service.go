@@ -7,8 +7,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -34,12 +36,25 @@ type Service struct {
 	colly    domain.Scraper
 	chromedp domain.Scraper
 	cache    cacheStore
+	solver   domain.ChallengeSolver
 }
 
-func NewService(colly domain.Scraper, chromedp domain.Scraper, rdb *redis.Client) *Service {
+// Option configures optional Service collaborators.
+type Option func(*Service)
+
+// WithSolver attaches an optional anti-bot addon. Without one, a challenge
+// page is reported as a BlockedError instead of being returned as content.
+func WithSolver(s domain.ChallengeSolver) Option {
+	return func(svc *Service) { svc.solver = s }
+}
+
+func NewService(colly domain.Scraper, chromedp domain.Scraper, rdb *redis.Client, opts ...Option) *Service {
 	s := &Service{
 		colly:    colly,
 		chromedp: chromedp,
+	}
+	for _, opt := range opts {
+		opt(s)
 	}
 	// Assign only a real client. A nil *redis.Client stored in an interface
 	// makes a non-nil interface holding a nil pointer, so the `s.cache != nil`
@@ -69,10 +84,13 @@ func cacheKeyFor(url, mode string, opts domain.ScrapeOptions) string {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		// Marshal of these types cannot fail; fall back to the legacy key.
-		return fmt.Sprintf("scrape:%s:%s", url, mode)
+		return fmt.Sprintf("scrape:v2:%s:%s", url, mode)
 	}
 	sum := sha256.Sum256(data)
-	return "scrape:" + hex.EncodeToString(sum[:])
+	// v2 invalidates entries written before challenge detection existed: those
+	// may hold an interstitial body that the old code cached as a successful
+	// scrape, and serving one would defeat the guard this version adds.
+	return "scrape:v2:" + hex.EncodeToString(sum[:])
 }
 
 func (s *Service) Scrape(
@@ -179,20 +197,38 @@ func (s *Service) Scrape(
 
 		// Decide whether dynamic is worth a second attempt.
 		var needsDynamic bool
+		var staticChallenge *Challenge
+		var staticChallengeHTML string
 		if err != nil {
 			// Not every static failure is worth retrying: DNS and connection
 			// errors fail identically in a browser, and retrying doubles the
 			// latency of an already-failed request. Retry only the failures a
 			// real browser plausibly fixes — bot blocks keyed on the absence
 			// of a JS runtime, and empty bodies.
-			needsDynamic = worthRetryingDynamic(err)
+			var blocked *BlockedError
+			if errors.As(err, &blocked) {
+				// A challenge page is the strongest signal that a browser may
+				// get through, so it always earns the one retry.
+				staticChallenge = &Challenge{Vendor: blocked.Vendor}
+				needsDynamic = true
+			} else {
+				needsDynamic = worthRetryingDynamic(err)
+			}
 			if needsDynamic {
 				logger.Log.Info("Static scrape failed in a way a browser may fix; retrying dynamic",
 					"url", url, "error", err)
 			}
 		} else if result != nil {
-			// Check heuristics
-			if ShouldUseDynamic(result.HTML) {
+			if ch := detectChallenge([]byte(result.HTML), http.StatusOK); ch != nil {
+				// Challenge pages are served with HTTP 200. Without this check
+				// the "thin but real" fallback below would happily return the
+				// block page as content.
+				staticChallenge = ch
+				staticChallengeHTML = result.HTML
+				needsDynamic = true
+				logger.Log.Info("Static scrape hit an anti-bot challenge; switching to Chromedp",
+					"url", url, "vendor", ch.Vendor)
+			} else if ShouldUseDynamic(result.HTML) {
 				needsDynamic = true
 				logger.Log.Info("Heuristics detected an SPA shell; switching to Chromedp", "url", url)
 			}
@@ -208,19 +244,56 @@ func (s *Service) Scrape(
 				// original cause, and the dynamic retry was speculative.
 				logger.Log.Warn("Dynamic retry also failed", "url", url, "error", dynErr)
 			default:
-				// Static succeeded but looked like a shell, and dynamic
-				// failed. The static result is thin but real, so return it
-				// rather than failing a request we can partially answer.
-				logger.Log.Warn("Dynamic retry failed; falling back to the static result",
-					"url", url, "error", dynErr)
+				if staticChallenge != nil {
+					// The static "success" was a challenge page, so there is
+					// nothing real to fall back to.
+					err = &BlockedError{URL: url, Vendor: staticChallenge.Vendor, HTML: staticChallengeHTML, Err: dynErr}
+				} else {
+					// Static succeeded but looked like a shell, and dynamic
+					// failed. The static result is thin but real, so return it
+					// rather than failing a request we can partially answer.
+					logger.Log.Warn("Dynamic retry failed; falling back to the static result",
+						"url", url, "error", dynErr)
+				}
 			}
 		}
 	default:
 		return nil, fmt.Errorf("unknown mode: %s", mode)
 	}
 
+	// A challenge can also arrive as a 200 from either engine. Give an optional
+	// addon one chance, then fail loudly: returning block-page text as content
+	// is the one failure mode an agent cannot detect for itself.
+	if err == nil && result != nil {
+		if ch := detectChallenge([]byte(result.HTML), http.StatusOK); ch != nil {
+			solved, solveErr := s.trySolve(ctx, url, ch, http.StatusOK, result.HTML, opts)
+			if solveErr != nil {
+				logger.Log.Warn("Challenge solver failed", "url", url, "vendor", ch.Vendor, "error", solveErr)
+			}
+			if solved == nil {
+				return nil, &BlockedError{URL: url, Vendor: ch.Vendor}
+			}
+			result = solved
+		}
+	}
+
 	if err != nil {
-		return nil, err
+		// A block reported as 403/429/503 still carries the challenge body, so
+		// the addon gets the same opportunity as the 200 case above.
+		var blocked *BlockedError
+		if errors.As(err, &blocked) && blocked.HTML != "" {
+			ch := &Challenge{Vendor: blocked.Vendor}
+			solved, solveErr := s.trySolve(ctx, url, ch, blocked.StatusCode, blocked.HTML, opts)
+			if solveErr != nil {
+				logger.Log.Warn("Challenge solver failed", "url", url, "vendor", ch.Vendor, "error", solveErr)
+			}
+			if solved != nil {
+				result, err = solved, nil
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// 3a. Deterministic schema extraction (no LLM).
@@ -351,4 +424,48 @@ func (s *Service) Scrape(
 	}
 
 	return result, nil
+}
+
+// trySolve gives the optional addon one attempt at a challenge. It returns
+// (nil, nil) when no solver is configured, which lets callers report the block
+// without special-casing the absence of an addon.
+func (s *Service) trySolve(
+	ctx context.Context,
+	url string,
+	ch *Challenge,
+	statusCode int,
+	html string,
+	opts domain.ScrapeOptions,
+) (*domain.ScrapeResult, error) {
+	if s.solver == nil {
+		return nil, nil
+	}
+
+	solution, err := s.solver.Solve(ctx, domain.ChallengeRequest{
+		URL:        url,
+		Vendor:     ch.Vendor,
+		StatusCode: statusCode,
+		HTML:       html,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if solution == nil || solution.HTML == "" {
+		return nil, fmt.Errorf("solver returned no HTML")
+	}
+	// An addon that hands back another interstitial has not solved anything;
+	// returning it would reintroduce the silent failure this path prevents.
+	if ch := detectChallenge([]byte(solution.HTML), http.StatusOK); ch != nil {
+		return nil, fmt.Errorf("solver returned a %s challenge page", ch.Vendor)
+	}
+
+	solved, err := buildStaticResult(url, solution.HTML, opts)
+	if err != nil {
+		return nil, err
+	}
+	if solved.Metadata == nil {
+		solved.Metadata = make(map[string]string)
+	}
+	solved.Metadata["challenge_solved"] = "true"
+	return solved, nil
 }

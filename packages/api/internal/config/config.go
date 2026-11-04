@@ -15,8 +15,20 @@ type Config struct {
 	Redis  RedisConfig  `mapstructure:"redis"`
 	Brave  BraveConfig  `mapstructure:"brave"`
 	Search SearchConfig `mapstructure:"search"`
+	// AntiBot configures the optional out-of-process challenge solver addon.
+	AntiBot AntiBotConfig `mapstructure:"antibot"`
 	// Telemetry is local-only search observability (JSONL + /v1/insights).
 	Telemetry TelemetryConfig `mapstructure:"telemetry"`
+}
+
+// AntiBotConfig points at an optional challenge solver. When SolverURL is
+// empty the core reports blocked pages and never attempts to solve them.
+type AntiBotConfig struct {
+	// SolverURL is the addon endpoint (ANTIBOT_SOLVER_URL). It receives a
+	// ChallengeRequest and returns a ChallengeSolution as JSON.
+	SolverURL string `mapstructure:"solver_url"`
+	// SolverToken is sent as a bearer token (ANTIBOT_SOLVER_TOKEN).
+	SolverToken string `mapstructure:"solver_token"`
 }
 
 // TelemetryConfig controls local-only search telemetry: daily JSONL event
@@ -132,6 +144,8 @@ func Load() (*Config, error) {
 	v.SetDefault("redis.rest_url", "")
 	v.SetDefault("redis.rest_token", "")
 	v.SetDefault("brave.api_key", "")
+	v.SetDefault("antibot.solver_url", "")
+	v.SetDefault("antibot.solver_token", "")
 	v.SetDefault("search.searxng_endpoint", "")
 	v.SetDefault("search.stealth_enabled", false)
 	v.SetDefault("search.native_enabled", true)
@@ -148,6 +162,8 @@ func Load() (*Config, error) {
 
 	// Custom bindings
 	v.BindEnv("brave.api_key", "BRAVE_SEARCH_API_KEY")
+	v.BindEnv("antibot.solver_url", "ANTIBOT_SOLVER_URL")
+	v.BindEnv("antibot.solver_token", "ANTIBOT_SOLVER_TOKEN")
 	v.BindEnv("search.searxng_endpoint", "SEARXNG_ENDPOINT")
 	v.BindEnv("search.stealth_enabled", "STEALTH_ENABLED")
 	v.BindEnv("search.native_enabled", "SEARCH_NATIVE_ENABLED")

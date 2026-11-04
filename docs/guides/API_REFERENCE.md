@@ -144,6 +144,23 @@ Dynamic mode responses also carry (omitted when empty):
 - `evaluations` — one `{type, result, error, truncated}` entry per `evaluate` action, in action order; a failed `wait_for_function` also lands here as a `{type: "wait_for_function", error}` entry and does not abort the remaining actions. A JS throw is recorded in `error` (the scrape continues); results whose JSON encoding exceeds 256 KB are clipped with `truncated: true`.
 - `extracted_data` — `{sources, canvases, truncated}` from embedded page payloads harvested by default (`auto_extract: true`). Each `sources` entry is `{source, data}` where `source` is one of `__next_data`, `next_flight`, `__nuxt__`, `__initial_state__`, `json_ld`; each source is capped at 128 KB and the total at 512 KB (`truncated: true` when the cap bites). `canvases` counts `<canvas>` elements on the page.
 
+### Blocked Pages
+
+Anti-bot interstitials (Cloudflare, DataDome, PerimeterX, Imperva, Akamai, AWS WAF, Sucuri, DDoS-Guard) are served upstream with **HTTP 200**, so a scraper that trusts the status code will return the challenge page as content. Tomoshibi detects the challenge body instead:
+
+- In `smart` mode it retries once with the browser engine.
+- If the page is still blocked, the request fails with **HTTP 502** and a structured body:
+
+```json
+{
+  "error": "blocked by cloudflare anti-bot challenge at https://example.com",
+  "code": "blocked",
+  "vendor": "cloudflare"
+}
+```
+
+`mode: "static"` does not escalate; it reports the block immediately. To resolve challenges, point `ANTIBOT_SOLVER_URL` at an out-of-process addon (it receives `{url, vendor, status_code, html}` and returns `{html}`). The core image ships no solver.
+
 ---
 
 ## 2. Search
@@ -252,8 +269,9 @@ Accepts a JSON body with scraping parameters and crawl-specific options.
 ### Crawl Behavior
 
 - **Parallel**: Pages are scraped concurrently (env `CRAWL_CONCURRENCY`, default 4, max 10).
-- **Polite**: A minimum interval between requests to the same host (env `CRAWL_DOMAIN_DELAY`, default 1s).
-- **Retries**: Transient failures are retried `CRAWL_MAX_RETRIES` times (default 2) with backoff; 4xx errors are never retried.
+- **Polite and adaptive**: Requests to the same host start at `CRAWL_DOMAIN_DELAY` (default 1s), relax toward 2× the observed latency (never below the floor), double on 403/429/503, and honour `Retry-After` up to 10 minutes. `CRAWL_DOMAIN_DELAY_MAX` caps the spacing (default 60s).
+- **Robots-aware**: `robots.txt` is fetched per origin (cached for an hour) and `Disallow`/`Allow` rules apply to discovered links; `Crawl-delay` and `Request-rate` raise the politeness floor. The seed URL is always scraped. Set `CRAWL_IGNORE_ROBOTS=true` to opt out.
+- **Retries**: Transient failures are retried `CRAWL_MAX_RETRIES` times (default 2) with backoff; 4xx errors are never retried, and a blocked page is not retried (the same engine gets the same wall).
 - **Watchdogs**: An internal deadline (`CRAWL_TIMEOUT`, default 30m) returns a `"timeout"` result instead of hanging; each scrape attempt is bounded by `CRAWL_SCRAPE_TIMEOUT` (default 30s).
 - **Bounded queue**: Enqueue is non-blocking; when the queue is full, excess links are dropped so a crawl can never deadlock, and the queue never carries more than `limit` unprocessed URLs.
 - **Domain-locked**: The crawler only follows links on the same hostname as the seed URL.

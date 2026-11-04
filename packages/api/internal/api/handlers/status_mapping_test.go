@@ -29,6 +29,7 @@ func TestScrapeHandler_UpstreamStatusMapping(t *testing.T) {
 		{"target 403 becomes 502", &scraper.StatusError{StatusCode: http.StatusForbidden, Err: errors.New("blocked")}, http.StatusBadGateway},
 		{"target 429 becomes 502", &scraper.StatusError{StatusCode: http.StatusTooManyRequests, Err: errors.New("rate limited")}, http.StatusBadGateway},
 		{"target 503 becomes 502", &scraper.StatusError{StatusCode: http.StatusServiceUnavailable, Err: errors.New("unavailable")}, http.StatusBadGateway},
+		{"challenge page becomes 502", &scraper.BlockedError{URL: "https://example.com", Vendor: "cloudflare"}, http.StatusBadGateway},
 		{"plain error stays 500", errors.New("boom"), http.StatusInternalServerError},
 	}
 	for _, tt := range tests {

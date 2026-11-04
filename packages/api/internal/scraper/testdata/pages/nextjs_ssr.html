@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Release notes for version 4.2</title>
+  <meta name="description" content="Everything that changed in version 4.2.">
+</head>
+<body>
+  <main>
+    <h1>Release notes for version 4.2</h1>
+    <p>Version 4.2 focuses on reliability. The scheduler now retries transient failures with exponential backoff, and the cache key includes every option that can change a response.</p>
+    <p>The API gained a schema extraction option that returns deterministic fields without an LLM in the loop. It accepts a map of field names to CSS selectors and supports text, HTML, and attribute extraction.</p>
+    <p>We also changed how the crawler treats links. Include and exclude patterns now apply only to discovered links, while the seed URL is always fetched. That matches the behaviour people expected from the previous release.</p>
+    <p>Several bugs were fixed. The image pipeline no longer drops every blob when one image fails, and the markdown converter no longer strips code blocks inside tables.</p>
+    <p>Operators who run the service behind a proxy should review the new environment variables. The defaults are unchanged, so an existing deployment keeps working without edits.</p>
+    <p>Performance work continued on the browser pool. Reusing one allocator avoids the roughly one second cost of starting Chrome for every request, and recycling the allocator bounds memory growth on long-running hosts.</p>
+    <p>The search layer now reports unresponsive engines separately from engines that returned no results. That distinction makes a partial answer visible instead of silently returning fewer results.</p>
+    <p>Documentation was rewritten around tasks rather than endpoints. Each page now starts with the command a reader would actually run, then explains the options afterwards.</p>
+    <p>Thanks to everyone who filed issues and sent reproduction steps. The detailed reports made the scheduler and crawler fixes much easier to verify.</p>
+    <p>Version 4.2 is a drop-in upgrade. There are no breaking API changes, and the database schema is untouched.</p>
+    <p>Looking ahead, version 4.3 will focus on observability. We want per-request traces that show which engine served a page, how long each enrichment step took, and why a fallback happened.</p>
+    <p>If you maintain an integration, the test suite now runs with the race detector enabled by default. That change caught two real data races in the worker during development.</p>
+    <p>The release is available from the usual package registry and as a container image. Both are built from the same commit.</p>
+    <p>For a full list of commits, see the changelog in the repository. For upgrade questions, open a discussion rather than an issue.</p>
+    <p>We are also publishing a migration guide for people moving from the old service name. Import paths changed, but the wire format did not.</p>
+    <p>The team will host an office hours session next week to walk through the crawler changes and answer questions about tuning the delay.</p>
+    <p>Feedback on the new defaults is especially welcome. Politeness settings are a trade-off between speed and load, and the right answer depends on the sites you crawl.</p>
+    <p>Finally, a note on security. Every outbound fetch goes through the SSRF guard, including redirects, because the check runs at dial time rather than on the original URL.</p>
+    <p>That covers the release. The next section of the documentation walks through a first scrape and explains each field in the response.</p>
+    <p>If you only read one thing, read the upgrade notes. They are short, and they explain the two environment variables that changed.</p>
+  </main>
+  <script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"release":{"version":"4.2","date":"2026-10-28","highlights":["scheduler retries","schema extraction","crawler link policy"]}}},"page":"/releases/[version]","query":{"version":"4.2"},"buildId":"abc123","isFallback":false}</script>
+  <script src="/_next/static/chunks/main-8f2a.js" defer></script>
+</body>
+</html>

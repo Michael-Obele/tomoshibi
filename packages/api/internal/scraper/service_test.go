@@ -223,7 +223,7 @@ func TestCacheKeyFor_StableForSameOptions(t *testing.T) {
 	if k1 != k2 {
 		t.Errorf("cache key should be deterministic: %q != %q", k1, k2)
 	}
-	if len(k1) != len("scrape:")+64 {
+	if len(k1) != len("scrape:v2:")+64 {
 		t.Errorf("expected sha256-length key, got %q", k1)
 	}
 }

@@ -28,6 +28,12 @@ func TestMain(m *testing.M) {
 	os.Setenv(safeurl.AllowPrivateEnv, "true")
 	os.Setenv("CRAWL_DOMAIN_DELAY", "0")
 
+	// The BFS tests point at example.com, which no test server backs. Fetching
+	// robots.txt for them would mean a real network call per test, so robots
+	// enforcement is off by default here. The dedicated robots test turns it
+	// back on and injects a local cache.
+	os.Setenv("CRAWL_IGNORE_ROBOTS", "true")
+
 	// Collapse the retry backoff. The retry tests assert how many attempts
 	// were made, never how long they took, so the production 1s/2s waits were
 	// dead time — the webhook and monitor cases spent 5s each purely asleep.

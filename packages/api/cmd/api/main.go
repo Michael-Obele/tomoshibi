@@ -25,6 +25,7 @@ import (
 	"github.com/Michael-Obele/tomoshibi/internal/search"
 	"github.com/Michael-Obele/tomoshibi/internal/search/compat"
 	"github.com/Michael-Obele/tomoshibi/internal/search/engines"
+	"github.com/Michael-Obele/tomoshibi/internal/solver"
 	"github.com/Michael-Obele/tomoshibi/internal/telemetry"
 	"github.com/Michael-Obele/tomoshibi/internal/worker"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
@@ -136,7 +137,16 @@ func run() error {
 	collyScraper := scraper.NewCollyScraper()
 	chromedpScraper := scraper.NewChromedpScraperWithConfig(cfg.App.ChromeRecycleAfter, cfg.App.ScreenshotMaxHeight)
 	defer chromedpScraper.Close()
-	scraperService := scraper.NewService(collyScraper, chromedpScraper, redisClient)
+
+	// The challenge solver is an optional, out-of-process addon. Without it a
+	// blocked page is reported as an error rather than returned as content.
+	var scraperOpts []scraper.Option
+	if cfg.AntiBot.SolverURL != "" {
+		scraperOpts = append(scraperOpts,
+			scraper.WithSolver(solver.NewHTTP(cfg.AntiBot.SolverURL, cfg.AntiBot.SolverToken)))
+		logger.Log.Info("Anti-bot solver addon enabled", "url", cfg.AntiBot.SolverURL)
+	}
+	scraperService := scraper.NewService(collyScraper, chromedpScraper, redisClient, scraperOpts...)
 
 	// Initialize Handlers
 	scrapeHandler := handlers.NewScrapeHandler(scraperService)

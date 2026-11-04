@@ -188,7 +188,7 @@ func (s *statusScraper) Scrape(ctx context.Context, url string, opts domain.Scra
 // TestScrapeWithRetry_4xxNoRetry verifies 4xx errors are never retried.
 func TestScrapeWithRetry_4xxNoRetry(t *testing.T) {
 	svc := &statusScraper{status: 404}
-	_, err := scrapeWithRetry(context.Background(), scraper.NewService(svc, nil, nil), "https://x.example.com", "static", domain.ScrapeOptions{})
+	_, err := scrapeWithRetry(context.Background(), scraper.NewService(svc, nil, nil), newDomainThrottle(0, 0), "https://x.example.com", "static", domain.ScrapeOptions{})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -203,7 +203,7 @@ func TestScrapeWithRetry_4xxNoRetry(t *testing.T) {
 // TestScrapeWithRetry_5xxRetries verifies 5xx errors are retried twice.
 func TestScrapeWithRetry_5xxRetries(t *testing.T) {
 	svc := &statusScraper{status: 500}
-	_, err := scrapeWithRetry(context.Background(), scraper.NewService(svc, nil, nil), "https://x.example.com", "static", domain.ScrapeOptions{})
+	_, err := scrapeWithRetry(context.Background(), scraper.NewService(svc, nil, nil), newDomainThrottle(0, 0), "https://x.example.com", "static", domain.ScrapeOptions{})
 	if err == nil {
 		t.Fatal("expected error")
 	}

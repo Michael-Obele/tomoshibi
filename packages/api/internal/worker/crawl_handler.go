@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -15,6 +16,8 @@ import (
 	"time"
 
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
+	"github.com/Michael-Obele/tomoshibi/internal/robots"
+	"github.com/Michael-Obele/tomoshibi/internal/safeurl"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gobwas/glob"
@@ -41,13 +44,22 @@ type FailedURL struct {
 type CrawlTaskHandler struct {
 	scraper *scraper.Service
 	logger  *slog.Logger
+	robots  *robots.Cache
 }
 
 func NewCrawlTaskHandler(scraper *scraper.Service, logger *slog.Logger) *CrawlTaskHandler {
 	return &CrawlTaskHandler{
 		scraper: scraper,
 		logger:  logger,
+		robots:  robots.NewCache(safeurl.Client(10 * time.Second)),
 	}
+}
+
+// WithRobotsCache replaces the robots.txt cache. It exists so tests can run a
+// crawl without reaching the network; production wiring uses the default.
+func (h *CrawlTaskHandler) WithRobotsCache(cache *robots.Cache) *CrawlTaskHandler {
+	h.robots = cache
+	return h
 }
 
 // ProcessTask is the Asynq entry point — it deserializes the payload,
@@ -140,6 +152,31 @@ func (h *CrawlTaskHandler) ExecuteCrawl(ctx context.Context, payload CrawlPayloa
 	}
 	allowedHost := seedURL.Hostname()
 
+	// robots.txt: honour explicit Disallow rules for discovered links. A file
+	// that cannot be fetched is treated as "no instructions" and logged — the
+	// alternative (RFC 9309's disallow-all on 5xx) turns an origin's transient
+	// outage into a failed crawl. The seed URL is always scraped, matching the
+	// include/exclude semantics.
+	rules := &robots.Rules{}
+	if !ignoreRobots() {
+		fetched, rulesErr := h.robots.For(crawlCtx, payload.URL)
+		if rulesErr != nil {
+			h.logger.Warn("robots.txt unavailable; continuing without restrictions",
+				"url", payload.URL, "error", rulesErr)
+		} else {
+			rules = fetched
+		}
+	}
+
+	// Politeness is adaptive: start at the configured floor (or the strictest
+	// delay robots.txt asks for), relax back toward that floor on healthy
+	// responses, and back off on 403/429/503/Retry-After.
+	politeness := domainDelay()
+	if d := rules.Delay(); d > politeness {
+		politeness = d
+	}
+	throttle := newDomainThrottle(politeness, domainDelayMax())
+
 	h.logger.Info("Starting crawl",
 		"timeout", crawlTimeout().String(),
 		"url", payload.URL,
@@ -183,9 +220,8 @@ func (h *CrawlTaskHandler) ExecuteCrawl(ctx context.Context, payload CrawlPayloa
 	visited := map[string]bool{normalizeURL(payload.URL): true}
 	results := []domain.ScrapeResult{}
 	failed := []FailedURL{}
-	lastRequest := make(map[string]time.Time) // per-host politeness
-	pending := 1                              // the seed entry, not yet picked
-	queued := 1                               // the seed entry, still in the queue
+	pending := 1 // the seed entry, not yet picked
+	queued := 1  // the seed entry, still in the queue
 
 	var closeOnce sync.Once
 	closeQueue := func() { closeOnce.Do(func() { close(queue) }) }
@@ -231,27 +267,6 @@ func (h *CrawlTaskHandler) ExecuteCrawl(ctx context.Context, payload CrawlPayloa
 				return
 			}
 
-			// Per-domain politeness: enforce a minimum interval between
-			// requests to the same host across all workers.
-			host := hostOf(entry.url)
-			delay := time.Duration(0)
-			mu.Lock()
-			if last, ok := lastRequest[host]; ok {
-				delay = domainDelay() - time.Since(last)
-				if delay < 0 {
-					delay = 0
-				}
-			}
-			lastRequest[host] = time.Now().Add(delay)
-			mu.Unlock()
-			if delay > 0 {
-				select {
-				case <-time.After(delay):
-				case <-crawlCtx.Done():
-					return
-				}
-			}
-
 			// Snapshot under the lock: len(results) is written by other
 			// workers and must not be read unlocked.
 			mu.Lock()
@@ -266,7 +281,7 @@ func (h *CrawlTaskHandler) ExecuteCrawl(ctx context.Context, payload CrawlPayloa
 				"task_id", taskID,
 			)
 
-			result, scrapeErr := scrapeWithRetry(crawlCtx, h.scraper, entry.url, mode, scrapeOpts)
+			result, scrapeErr := scrapeWithRetry(crawlCtx, h.scraper, throttle, entry.url, mode, scrapeOpts)
 			if scrapeErr != nil {
 				mu.Lock()
 				failed = append(failed, FailedURL{URL: entry.url, Error: scrapeErr.Error()})
@@ -292,6 +307,9 @@ func (h *CrawlTaskHandler) ExecuteCrawl(ctx context.Context, payload CrawlPayloa
 			if entry.depth < maxDepth {
 				links := filterByPatterns(extractLinks(result.HTML, entry.url, allowedHost),
 					payload.IncludePaths, payload.ExcludePaths)
+				if !ignoreRobots() {
+					links = filterByRobots(links, rules)
+				}
 
 				newEntries := make([]queueEntry, 0, len(links))
 				mu.Lock()
@@ -390,15 +408,23 @@ func (h *CrawlTaskHandler) ExecuteCrawl(ctx context.Context, payload CrawlPayloa
 // scrapeWithRetry scrapes a URL with up to crawlMaxRetries retries and
 // exponential backoff (1s, 2s, …) for transient failures. Each attempt is
 // bounded by scrapeTimeout (CRAWL_SCRAPE_TIMEOUT) so a slow site can't pin
-// a worker. 4xx errors are never retried (429s included — retrying without
-// honoring Retry-After would just pile on more throttled requests).
+// a worker.
+//
+// 4xx errors are never retried: they are permanent for this URL. A 429 is the
+// one exception in spirit — the throttle reads its Retry-After and slows every
+// subsequent request to that host, which is what the header asks for without
+// hammering the same URL again. A challenge page is not retried either: the
+// same engine will get the same wall, so the crawl records the failure and
+// moves on.
 func scrapeWithRetry(
 	ctx context.Context,
 	svc *scraper.Service,
+	throttle *domainThrottle,
 	url, mode string,
 	opts domain.ScrapeOptions,
 ) (*domain.ScrapeResult, error) {
 	maxRetries := crawlMaxRetries()
+	host := hostOf(url)
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		if attempt > 0 {
@@ -408,19 +434,66 @@ func scrapeWithRetry(
 				return nil, ctx.Err()
 			}
 		}
+		if err := throttle.wait(ctx, host); err != nil {
+			return nil, err
+		}
+
+		start := time.Now()
 		attemptCtx, cancel := context.WithTimeout(ctx, scrapeTimeout())
 		result, err := svc.Scrape(attemptCtx, url, mode, opts)
 		cancel()
+		latency := time.Since(start)
+
 		if err == nil {
+			throttle.observe(host, latency, http.StatusOK, 0)
 			return result, nil
 		}
+
 		lastErr = err
+		status, retryAfter := errorSignals(err)
+		throttle.observe(host, latency, status, retryAfter)
+
+		var blocked *scraper.BlockedError
+		if errors.As(err, &blocked) {
+			return nil, err
+		}
 		var statusErr *scraper.StatusError
 		if errors.As(err, &statusErr) && statusErr.StatusCode >= 400 && statusErr.StatusCode < 500 {
 			return nil, err
 		}
 	}
 	return nil, lastErr
+}
+
+// errorSignals extracts the upstream status and Retry-After a failed attempt
+// reported, so the throttle can react to them.
+func errorSignals(err error) (int, time.Duration) {
+	var blocked *scraper.BlockedError
+	if errors.As(err, &blocked) {
+		return blocked.StatusCode, blocked.RetryAfter()
+	}
+	var statusErr *scraper.StatusError
+	if errors.As(err, &statusErr) {
+		return statusErr.StatusCode, statusErr.RetryAfter
+	}
+	return 0, 0
+}
+
+// filterByRobots drops links the origin's robots.txt disallows. The seed URL
+// never reaches this function, so it is always scraped.
+func filterByRobots(links []string, rules *robots.Rules) []string {
+	out := make([]string, 0, len(links))
+	for _, link := range links {
+		u, err := url.Parse(link)
+		if err != nil {
+			continue
+		}
+		if !rules.Allowed(u.RequestURI()) {
+			continue
+		}
+		out = append(out, link)
+	}
+	return out
 }
 
 // crawlConcurrency returns the worker pool size (env CRAWL_CONCURRENCY,
@@ -430,9 +503,23 @@ func crawlConcurrency() int {
 }
 
 // domainDelay returns the minimum interval between requests to the same
-// host (env CRAWL_DOMAIN_DELAY seconds, default 1s).
+// host (env CRAWL_DOMAIN_DELAY seconds, default 1s). The throttle treats it
+// as a floor, not a fixed value.
 func domainDelay() time.Duration {
 	return time.Duration(clampEnvInt("CRAWL_DOMAIN_DELAY", 1, 0, 60)) * time.Second
+}
+
+// domainDelayMax caps the adaptive spacing after push-back
+// (env CRAWL_DOMAIN_DELAY_MAX seconds, default 60).
+func domainDelayMax() time.Duration {
+	return time.Duration(clampEnvInt("CRAWL_DOMAIN_DELAY_MAX", 60, 1, 600)) * time.Second
+}
+
+// ignoreRobots reports whether the operator opted out of robots.txt
+// enforcement (env CRAWL_IGNORE_ROBOTS).
+func ignoreRobots() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("CRAWL_IGNORE_ROBOTS")))
+	return v == "true" || v == "1"
 }
 
 // crawlTimeout returns the internal crawl deadline (env CRAWL_TIMEOUT

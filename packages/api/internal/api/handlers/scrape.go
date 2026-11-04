@@ -157,6 +157,14 @@ func mapActions(in []ActionReq) []domain.Action {
 // gateway that received an invalid response. Everything else is an internal
 // error.
 func scrapeErrorStatus(err error) int {
+	// A challenge page is not an internal fault and not the caller's mistake;
+	// it is an upstream response we refuse to treat as content. 502 keeps it
+	// distinct from a target 404 while still signalling "gateway problem".
+	var blocked *scraper.BlockedError
+	if errors.As(err, &blocked) {
+		return http.StatusBadGateway
+	}
+
 	var se *scraper.StatusError
 	if !errors.As(err, &se) {
 		return http.StatusInternalServerError
@@ -165,6 +173,21 @@ func scrapeErrorStatus(err error) int {
 		return http.StatusNotFound
 	}
 	return http.StatusBadGateway
+}
+
+// scrapeErrorBody renders a scrape failure. Blocked responses carry a stable
+// code and the detected vendor so an agent can branch on them instead of
+// parsing prose.
+func scrapeErrorBody(err error) gin.H {
+	body := gin.H{"error": err.Error()}
+	var blocked *scraper.BlockedError
+	if errors.As(err, &blocked) {
+		body["code"] = "blocked"
+		if blocked.Vendor != "" {
+			body["vendor"] = blocked.Vendor
+		}
+	}
+	return body
 }
 
 // wordCount returns the number of whitespace-delimited words in the given text.
@@ -387,7 +410,7 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		}
 		if err := g.Wait(); err != nil {
 			logger.Log.Error("Multi-scrape aborted", "error", err)
-			c.JSON(scrapeErrorStatus(err), gin.H{"error": err.Error()})
+			c.JSON(scrapeErrorStatus(err), scrapeErrorBody(err))
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"results": results})
@@ -397,7 +420,7 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 	result, err := h.service.Scrape(c.Request.Context(), req.URL, mode, opts)
 	if err != nil {
 		logger.Log.Error("Scrape failed", "url", req.URL, "error", err)
-		c.JSON(scrapeErrorStatus(err), gin.H{"error": err.Error()})
+		c.JSON(scrapeErrorStatus(err), scrapeErrorBody(err))
 		return
 	}
 

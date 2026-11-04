@@ -270,11 +270,23 @@ func retryDialContext(
 	}
 }
 
+// dialContext is the shared guarded dialer. The Control hook reads its env
+// opt-out at dial time, so one instance stays correct for the process life.
+var dialContext = retryDialContext(Dialer().DialContext)
+
+// DialContext dials through the SSRF guard with transient-DNS retry. It is
+// exported for callers that own the connection themselves — the browser-grade
+// tls-client used by the scraper cannot take an http.Transport, only a dial
+// function.
+func DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	return dialContext(ctx, network, addr)
+}
+
 // Transport returns an http.Transport that refuses non-public destinations
 // and retries transient DNS failures.
 func Transport() *http.Transport {
 	t := http.DefaultTransport.(*http.Transport).Clone()
-	t.DialContext = retryDialContext(Dialer().DialContext)
+	t.DialContext = DialContext
 	return t
 }
 
