@@ -40,6 +40,32 @@ type ScrapeResult struct {
 	// Network holds XHR/fetch responses observed during a dynamic render
 	// (dynamic only, opt-in; omitted when capture was not requested).
 	Network *NetworkCapture `json:"network,omitempty"`
+
+	// Provenance records how this result was obtained when a layer beyond the
+	// built-in engines produced it (currently: the lanyard bridge). Absent for
+	// plain static/dynamic scrapes.
+	Provenance *Provenance `json:"provenance,omitempty"`
+}
+
+// Provenance is the receipt for a bridged fetch: which lane ran, through which
+// recipe, in which browser layer. A result you cannot reproduce is not a
+// result, and content that came through the user's own session is untrusted
+// input to whichever model reads it next.
+type Provenance struct {
+	Transport string `json:"transport"`        // "bridge"
+	Lane      string `json:"lane,omitempty"`   // "borrow"
+	Recipe    string `json:"recipe,omitempty"` // id@version
+	IO        string `json:"io,omitempty"`     // scripting | turbo
+	Actions   int    `json:"actions_run,omitempty"`
+	// ActionsFailed names the actions the browser refused or could not run,
+	// with the reason. An advisory action that did nothing must not be
+	// invisible: the page still comes back, and only this says part of the
+	// recipe was skipped.
+	ActionsFailed []string `json:"actions_failed,omitempty"`
+	Markers       []string `json:"markers,omitempty"`
+	Pages         int      `json:"pages,omitempty"`
+	Ms            int64    `json:"ms,omitempty"`
+	Untrusted     bool     `json:"untrusted,omitempty"`
 }
 
 // CapturedResponse is one XHR/fetch response observed while a dynamic scrape
@@ -75,11 +101,12 @@ type NetworkCapture struct {
 	Dropped   int                `json:"dropped,omitempty"`
 }
 
-// ExtractField describes one deterministic extraction rule.
+// ExtractField describes one deterministic extraction rule. The yaml tags let
+// recipes carry the same shape as the API's extract_schema.
 type ExtractField struct {
-	Selector string `json:"selector"`
-	Attr     string `json:"attr,omitempty"` // "text" (default), "html", or attribute name
-	Multiple bool   `json:"multiple,omitempty"`
+	Selector string `json:"selector" yaml:"selector"`
+	Attr     string `json:"attr,omitempty" yaml:"attr,omitempty"` // "text" (default), "html", or attribute name
+	Multiple bool   `json:"multiple,omitempty" yaml:"multiple,omitempty"`
 }
 
 type ScrapeOptions struct {
@@ -107,6 +134,19 @@ type ScrapeOptions struct {
 	// CaptureNetwork records XHR/fetch responses during a dynamic render.
 	// Off by default; forces dynamic mode and is rejected in static mode.
 	CaptureNetwork bool `json:"capture_network,omitempty"`
+
+	// Recipe names an installed lanyard recipe to run instead of guessing.
+	// When empty, the recipe matching the request host is used automatically;
+	// an unknown domain stays on the plain lane.
+	Recipe string `json:"recipe,omitempty"`
+
+	// AllowBorrow lets this request reach the borrow lane, which drives the
+	// user's own signed-in browser. Only entry points where a human chose the
+	// URL set it (a direct scrape). Crawl and monitor deliberately do not: a
+	// crawl follows links it did not choose, and following a sign-out link
+	// would end the user's real session. It is not a wire field; a caller
+	// cannot ask for it.
+	AllowBorrow bool `json:"-"`
 }
 
 // Action is a single page interaction executed before content capture

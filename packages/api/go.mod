@@ -10,6 +10,7 @@ require (
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/chromedp/cdproto v0.0.0-20250803210736-d308e07a266d
 	github.com/chromedp/chromedp v0.14.2
+	github.com/coder/websocket v1.8.15
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-shiori/go-readability v0.0.0-20251205110129-5db1dc9836f0
 	github.com/gobwas/glob v0.2.3

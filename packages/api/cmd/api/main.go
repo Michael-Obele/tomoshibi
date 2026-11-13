@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -20,7 +21,9 @@ import (
 
 	"github.com/Michael-Obele/tomoshibi/internal/api"
 	"github.com/Michael-Obele/tomoshibi/internal/api/handlers"
+	"github.com/Michael-Obele/tomoshibi/internal/bridge"
 	"github.com/Michael-Obele/tomoshibi/internal/config"
+	"github.com/Michael-Obele/tomoshibi/internal/recipe"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
 	"github.com/Michael-Obele/tomoshibi/internal/search"
 	"github.com/Michael-Obele/tomoshibi/internal/search/compat"
@@ -42,6 +45,33 @@ func mustRedisOpt(cfg *config.Config) asynq.RedisClientOpt {
 		panic(err)
 	}
 	return opt
+}
+
+// bridgeStateDir resolves where the lanyard bridge keeps its state. An empty
+// return disables the bridge.
+func bridgeStateDir() string {
+	if dir := os.Getenv("BRIDGE_STATE_DIR"); dir != "" {
+		return dir
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".config", "tomoshi")
+}
+
+// rootHandler puts /bridge in front of gin instead of inside it. A WebSocket
+// upgrade must hijack the connection before any wrapper has written a status,
+// and serving it from the mux keeps gin's response writer (and every
+// middleware) out of that path entirely.
+func rootHandler(router http.Handler, bridgeServer *bridge.Server) http.Handler {
+	if bridgeServer == nil {
+		return router
+	}
+	mux := http.NewServeMux()
+	mux.Handle("/bridge", http.HandlerFunc(bridgeServer.ServeWS))
+	mux.Handle("/", router)
+	return mux
 }
 
 // shutdownTimeout bounds graceful shutdown (env SHUTDOWN_TIMEOUT seconds,
@@ -145,6 +175,30 @@ func run() error {
 		scraperOpts = append(scraperOpts,
 			scraper.WithSolver(solver.NewHTTP(cfg.AntiBot.SolverURL, cfg.AntiBot.SolverToken)))
 		logger.Log.Info("Anti-bot solver addon enabled", "url", cfg.AntiBot.SolverURL)
+	}
+
+	// The lanyard bridge: a loopback WebSocket the paired browser extension
+	// connects to. State (pairing code, devices, recipes, access log) lives in
+	// BRIDGE_STATE_DIR, defaulting to ~/.config/tomoshi. A failure here
+	// disables the borrow lane; it never blocks the plain API.
+	var bridgeServer *bridge.Server
+	if bridgeDir := bridgeStateDir(); bridgeDir != "" {
+		if st, err := bridge.NewState(bridgeDir, logger.Log); err != nil {
+			logger.Log.Warn("Bridge disabled: state init failed", "error", err)
+		} else {
+			bridgeServer = bridge.NewServer(st, logger.Log)
+			bridgeServer.Start(ctx)
+			if err := st.Publish(cfg.Server.Port); err != nil {
+				logger.Log.Warn("Bridge: could not record the port", "error", err)
+			}
+			registry := recipe.LoadRegistry(bridgeDir)
+			for _, w := range registry.Warnings() {
+				logger.Log.Warn("Recipe skipped", "reason", w)
+			}
+			scraperOpts = append(scraperOpts, scraper.WithBridge(scraper.NewBridgeTransport(bridgeServer, registry)))
+			logger.Log.Info("Bridge ready", "pairing_code", bridgeServer.Code(), "state", bridgeDir,
+				"recipes", len(registry.All()))
+		}
 	}
 	scraperService := scraper.NewService(collyScraper, chromedpScraper, redisClient, scraperOpts...)
 
@@ -283,7 +337,7 @@ func run() error {
 	//     per-engine deadlines instead.
 	srv := &http.Server{
 		Addr:              ":" + cfg.Server.Port,
-		Handler:           router,
+		Handler:           rootHandler(router, bridgeServer),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		IdleTimeout:       120 * time.Second,

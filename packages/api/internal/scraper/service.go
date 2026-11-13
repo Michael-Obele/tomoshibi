@@ -17,6 +17,7 @@ import (
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/extract"
 	"github.com/Michael-Obele/tomoshibi/internal/image"
+	"github.com/Michael-Obele/tomoshibi/internal/recipe"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/errgroup"
@@ -37,6 +38,7 @@ type Service struct {
 	chromedp domain.Scraper
 	cache    cacheStore
 	solver   domain.ChallengeSolver
+	bridge   *BridgeTransport
 }
 
 // Option configures optional Service collaborators.
@@ -46,6 +48,13 @@ type Option func(*Service)
 // page is reported as a BlockedError instead of being returned as content.
 func WithSolver(s domain.ChallengeSolver) Option {
 	return func(svc *Service) { svc.solver = s }
+}
+
+// WithBridge attaches the lanyard bridge transport, enabling borrow-lane
+// recipes. Without it, a borrow recipe fails loudly instead of silently
+// falling back to an anonymous fetch the site would reject anyway.
+func WithBridge(t *BridgeTransport) Option {
+	return func(svc *Service) { svc.bridge = t }
 }
 
 func NewService(colly domain.Scraper, chromedp domain.Scraper, rdb *redis.Client, opts ...Option) *Service {
@@ -108,6 +117,55 @@ func (s *Service) Scrape(
 	if opts.IncludeLinks == nil {
 		t := true
 		opts.IncludeLinks = &t
+	}
+
+	// Recipe routing (lanyard). A borrow-lane recipe hands the fetch to the
+	// user's own browser through the bridge; every other lane keeps the normal
+	// engine pipeline, with the recipe's actions, schema and expectations applied
+	// to it. An unknown host has no recipe and stays anonymous.
+	var laneRecipe *recipe.Recipe
+	if s.bridge != nil {
+		rec, rerr := s.bridge.ResolveRecipe(url, opts.Recipe)
+		if rerr != nil {
+			return nil, rerr
+		}
+		if rec != nil {
+			switch rec.Access.Lane {
+			case recipe.LaneBorrow:
+				// The borrow lane drives the user's own signed-in browser, so only a
+				// direct scrape may use it. A crawl follows links nobody chose — and
+				// one of them could be a sign-out link that ends the real session —
+				// and a monitor repeats unattended. Those paths get a loud refusal
+				// rather than a browser they should not have.
+				if !opts.AllowBorrow {
+					return nil, fmt.Errorf("recipe %s: the borrow lane is only available to a direct scrape; a crawl, monitor or queued job will not drive your browser", rec.ID)
+				}
+				// Options the borrow lane cannot honour are refused here rather
+				// than accepted and dropped: the caller has to know that this
+				// lane does not do them.
+				if mode == "static" {
+					return nil, fmt.Errorf("recipe %s: lane borrow needs a browser, so mode static is not available", rec.ID)
+				}
+				if opts.CaptureNetwork {
+					return nil, fmt.Errorf("recipe %s: capture_network is not supported on the borrow lane", rec.ID)
+				}
+				return s.bridge.Scrape(ctx, url, rec, opts)
+			case recipe.LaneOfficial, recipe.LaneImport:
+				return nil, fmt.Errorf("recipe %s: lane %q is not implemented yet; use the plain lane or the site's own API", rec.ID, rec.Access.Lane)
+			case recipe.LanePlain:
+				// A plain recipe is still a recipe: its actions, extraction schema
+				// and expectations apply to the ordinary pipeline. Without this a
+				// pack's rules would be loaded, verified and then ignored.
+				merged, merr := applyRecipeToOptions(rec, opts)
+				if merr != nil {
+					return nil, merr
+				}
+				opts = merged
+				laneRecipe = rec
+			}
+		}
+	} else if opts.Recipe != "" {
+		return nil, fmt.Errorf("recipe %q requested but the bridge is not configured", opts.Recipe)
 	}
 
 	// Page actions require a real browser: force dynamic mode.
@@ -421,8 +479,9 @@ func (s *Service) Scrape(
 
 	// 4. Save to Cache (screenshots and network captures are excluded: blobs
 	// and API bodies are large, and both are time-sensitive — a cached one is
-	// a liability).
-	if s.cache != nil && !opts.Screenshot && !opts.CaptureNetwork {
+	// a liability). A recipe-routed fetch is never cached: its expectations are
+	// checked per run, and a cached body would skip them.
+	if s.cache != nil && !opts.Screenshot && !opts.CaptureNetwork && laneRecipe == nil {
 		data, err := json.Marshal(result)
 		if err == nil {
 			// Compress data
@@ -436,7 +495,67 @@ func (s *Service) Scrape(
 		}
 	}
 
+	// A plain-lane recipe is a contract about the page, so its expectations are
+	// checked here too: a pack's rules must not be crowd-sourced away by falling
+	// through to the generic pipeline.
+	if laneRecipe != nil {
+		if err := checkRecipeExpectations(laneRecipe, result); err != nil {
+			return nil, err
+		}
+		result.Provenance = &domain.Provenance{
+			Transport: "engine", Lane: laneRecipe.Access.Lane, Recipe: laneRecipe.Ref(),
+			Pages: 1,
+		}
+	}
+
 	return result, nil
+}
+
+// applyRecipeToOptions folds a plain-lane recipe's request settings into the
+// scrape options. The caller's own values win: a recipe supplies defaults, not
+// orders. The engine's action vocabulary is narrower than the bridge's (no
+// typing, no keys, no navigation), so a recipe action it cannot express is an
+// error naming the action — never a silently skipped step.
+func applyRecipeToOptions(rec *recipe.Recipe, opts domain.ScrapeOptions) (domain.ScrapeOptions, error) {
+	if len(opts.Actions) == 0 {
+		for _, a := range rec.Request.Actions {
+			if a.Text != "" || a.Key != "" || a.URL != "" || a.Px != 0 {
+				return opts, fmt.Errorf("recipe %s: action %q needs fields the engine lane cannot express (text/key/url/px); use lane borrow for this recipe", rec.ID, a.Type)
+			}
+			opts.Actions = append(opts.Actions, domain.Action{
+				Type: a.Type, Selector: a.Selector, Ms: a.Ms, Script: a.Script,
+			})
+		}
+	}
+	if len(opts.ExtractSchema) == 0 && len(rec.Extract.Schema) > 0 {
+		opts.ExtractSchema = rec.Extract.Schema
+	}
+	return opts, nil
+}
+
+// checkRecipeExpectations runs a recipe's contains/absent/status rules against
+// a completed result. Shared by the borrow lane and the engine pipeline so one
+// recipe means the same thing whichever lane served it.
+func checkRecipeExpectations(rec *recipe.Recipe, result *domain.ScrapeResult) error {
+	if result == nil {
+		return nil
+	}
+	text := result.Markdown
+	if text == "" {
+		text = result.HTML
+	}
+	for _, marker := range rec.Expect.Absent {
+		if marker != "" && strings.Contains(text, marker) {
+			return &BlockedError{URL: result.URL, Vendor: "challenge-marker", HTML: result.HTML,
+				Err: fmt.Errorf("recipe %s: page contains a block marker %q", rec.ID, marker)}
+		}
+	}
+	for _, needle := range rec.Expect.Contains {
+		if needle != "" && !strings.Contains(text, needle) {
+			return fmt.Errorf("recipe %s: expected text %q is missing; the recipe may be stale (tomoshibi recipes verify %s)", rec.ID, needle, rec.ID)
+		}
+	}
+	return nil
 }
 
 // trySolve gives the optional addon one attempt at a challenge. It returns

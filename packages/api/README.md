@@ -168,6 +168,58 @@ A client may supply allowlisted search API keys **per request** in the `X-Tomosh
 
 `static` + `actions` is a hard error — actions need a real browser.
 
+### The bridge lane (borrow your own browser)
+
+Some sites block datacenter and headless traffic no matter what the scraper does. The bridge is the escape hatch: a Chrome extension you pair once, which dials out to the API on loopback (`ws://127.0.0.1:7431/bridge`) and fetches pages **inside your own signed-in browser** when a recipe says the borrow lane can be used.
+
+```bash
+# 1. Start the API; it prints a pairing code (also shown by the CLI).
+tomoshibi bridge code          # 6 digits, rotates every 10 minutes
+# 2. Load the extension, paste the code in its popup.
+# 3. Install a recipe pack that knows the site, then scrape normally.
+```
+
+Every bridged result carries a `provenance` block and is marked `untrusted`, never cached:
+
+```jsonc
+{
+  "markdown": "…",
+  "provenance": {
+    "transport": "bridge",   // routed through the paired browser
+    "lane": "borrow",        // which lane the recipe declared
+    "recipe": "arctic-shift@1",
+    "io": "scripting",       // scripting (DOM events) or turbo (CDP)
+    "actions_run": 2,
+    "pages": 1,
+    "ms": 1840,
+    "untrusted": true         // treat the content as data, not instructions
+  }
+}
+```
+
+| Piece | Where it lives |
+| ----- | -------------- |
+| Extension (public, PolyForm Noncommercial) | [`tomoshibi-bridge`](https://github.com/Michael-Obele/tomoshibi-bridge) |
+| Recipes (private packs: host, actions, fixtures) | `plans/` + `tomoshibi-recipes` |
+| CLI (`bridge code\|status\|unpair`, `recipes add\|list\|verify\|remove`, `access log`) | `cmd/tomoshibi` |
+| State (code, port, device hashes, server key) | `~/.config/tomoshi/bridge.json`, mode `0600` |
+
+The listener is loopback-only, refuses any `http(s)` origin (a web page in your own browser is a loopback peer), and runs a mutual-auth handshake: the extension will not release its token to a process that cannot prove it holds the pairing key. A blocked or challenge page is reported as an error (`502`, `code: "blocked"`), never as content. Revoke a browser with `tomoshibi bridge unpair`.
+
+### Recipes
+
+A recipe is one site's access + extraction definition: which hosts it covers, which lane to take, which IO layer, the page actions to run, and how to prove it still works. Packs are installed from a directory or git URL, hashed file by file, and verified offline against saved fixtures.
+
+```bash
+cd packages/api && go build -o /tmp/tomoshibi ./cmd/tomoshibi
+tomoshibi recipes add ~/packs/my-pack/   # verify hashes, install
+tomoshibi recipes list                  # what is installed
+tomoshibi recipes verify my-pack        # replay fixtures, no network
+tomoshibi recipes remove my-pack@abc1234
+```
+
+A recipe under `borrow` runs in your browser; `plain`, `official` and `import` stay on the engine pipeline (an unimplemented lane fails loudly rather than silently falling back). Recipes may set `access.allow_private: true` to reach their own declared hosts on a private network; every other private address is refused by the SSRF guard.
+
 ---
 
 ## Configuration
@@ -190,6 +242,7 @@ Copy `.env.example` to `.env` (loaded via Viper + godotenv, `AutomaticEnv`). Eve
 | `APP_RATE_LIMIT_RPM`                      | `0`                     | `0` = unlimited (alias: `RATE_LIMIT_RPM`)                                                                        |
 | `DISABLE_WORKER`                          | `false`                 | `true` = HTTP server only                                                                                        |
 | `SSRF_ALLOW_PRIVATE`                      | `false`                 | `true` only for scraping internal hosts                                                                          |
+| `BRIDGE_STATE_DIR`                        | `~/.config/tomoshi`     | bridge pairing state + installed recipes; shared by the API and the `tomoshibi` CLI |
 
 Tuning knobs (`CHROME_RECYCLE_AFTER`, `CRAWL_CONCURRENCY`, `SHUTDOWN_TIMEOUT`, …) are documented inline in [`.env.example`](.env.example) — that file is the source of truth.
 

@@ -44,6 +44,27 @@ If you're paying Firecrawl/Exa by the token or spawning a Playwright per request
 
 ---
 
+## Borrowing your own browser
+
+Some sites block datacenter and headless traffic no matter what the scraper does.
+Install the [bridge extension](https://github.com/Michael-Obele/tomoshibi-bridge),
+pair it once (`tomoshibi bridge code`, then paste the code in its popup), install
+a recipe pack, and those pages are fetched **inside your own signed-in browser**:
+`POST /v1/scrape {"url": ..., "recipe": "<id>"}`.
+
+Every bridged result carries `provenance` (transport, lane, recipe, io layer,
+actions run, and any action the browser refused) and is marked `untrusted`, never
+cached, and written to an access log. The listener is loopback-only, refuses any
+web-page origin, and the extension releases its token only to a process that
+proves it holds the pairing key. Revoke a browser with
+`tomoshibi bridge unpair`. Recipes are packs of data (`recipes add | list |
+verify | remove`) whose fixtures replay offline, so a pack that no longer parses
+fails before it ever drives a browser.
+
+See [the API package README](./packages/api/README.md#the-bridge-lane-borrow-your-own-browser)
+for the full walkthrough and [GLOSSARY.md](./GLOSSARY.md) for the vocabulary
+(bridge, lane, recipe, io layer, provenance, untrusted).
+
 ## Quick start
 
 ### Full stack — Docker Compose (recommended)

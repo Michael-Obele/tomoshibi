@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"unicode"
 
+	"github.com/Michael-Obele/tomoshibi/internal/bridge"
 	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/scraper"
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
@@ -40,6 +41,8 @@ type ScrapeRequest struct {
 	AutoExtract *bool `json:"auto_extract,omitempty"`
 	// CaptureNetwork records XHR/fetch responses during a dynamic render.
 	CaptureNetwork bool `json:"capture_network,omitempty"`
+	// Recipe names an installed lanyard recipe: explicit wins over host matching.
+	Recipe string `json:"recipe,omitempty"`
 }
 
 // maxMultiScrapeURLs caps sync multi-URL scrape, mirroring web_fetch_exa.
@@ -68,7 +71,9 @@ type MultiScrapeItem struct {
 	ExtractedData *domain.ExtractedData `json:"extracted_data,omitempty"`
 	// Network holds XHR/fetch responses when capture_network was requested.
 	Network *domain.NetworkCapture `json:"network,omitempty"`
-	Error   string                 `json:"error,omitempty"`
+	// Provenance names how this URL was fetched, when a recipe routed it.
+	Provenance *domain.Provenance `json:"provenance,omitempty"`
+	Error      string             `json:"error,omitempty"`
 }
 
 // MultiScrapeResponse is returned when `urls` is used.
@@ -180,16 +185,26 @@ func scrapeErrorStatus(err error) int {
 }
 
 // scrapeErrorBody renders a scrape failure. Blocked responses carry a stable
-// code and the detected vendor so an agent can branch on them instead of
-// parsing prose.
+// code and the detected vendor, and bridge failures carry the reason the
+// browser lane could not run, so an agent can branch on them instead of parsing
+// prose.
 func scrapeErrorBody(err error) gin.H {
 	body := gin.H{"error": err.Error()}
 	var blocked *scraper.BlockedError
-	if errors.As(err, &blocked) {
+	switch {
+	case errors.As(err, &blocked):
 		body["code"] = "blocked"
 		if blocked.Vendor != "" {
 			body["vendor"] = blocked.Vendor
 		}
+	case errors.Is(err, bridge.ErrOffline):
+		body["code"] = "bridge-offline"
+	case errors.Is(err, bridge.ErrUnpaired):
+		body["code"] = "bridge-unpaired"
+	case errors.Is(err, bridge.ErrTimeout):
+		body["code"] = "bridge-timeout"
+	case errors.Is(err, bridge.ErrDisconnected):
+		body["code"] = "bridge-disconnected"
 	}
 	return body
 }
@@ -238,6 +253,7 @@ func isValidURL(s string) bool {
 // @Param        max_image_size_kb query    int     false  "Max individual image size in KB (default: 5120)"
 // @Param        include_links    query     bool    false  "Include extracted links (default true)"
 // @Param        capture_network  query     bool    false  "Capture XHR/fetch responses during a dynamic render"
+// @Param        recipe           query     string  false  "Serve this URL through an installed recipe by id; the host's recipe is used automatically when this is empty"
 // @Param        body             body      ScrapeRequest  false  "JSON request body (alternative to query params). Provide either `url` or `urls` (max 10, exclusive)."
 // @Success      200    {object}  domain.ScrapeResult  "single URL"
 // @Success      200    {object}  MultiScrapeResponse  "multi URL (when urls is provided)"
@@ -375,6 +391,15 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		IncludeLinks:       req.IncludeLinks,
 		AutoExtract:        req.AutoExtract,
 		CaptureNetwork:     req.CaptureNetwork,
+		Recipe:             req.Recipe,
+		// A direct scrape is a URL a person or an agent chose, so the borrow
+		// lane is allowed here and nowhere else (crawl and monitor deliberately
+		// leave this false).
+		AllowBorrow: true,
+	}
+	// Recipe also arrives as a query param for GET requests.
+	if opts.Recipe == "" {
+		opts.Recipe = c.Query("recipe")
 	}
 
 	// Multi-URL sync path (sync, errgroup limit 5, reuse Service.Scrape)
@@ -414,6 +439,7 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 					Evaluations:   res.Evaluations,
 					ExtractedData: res.ExtractedData,
 					Network:       res.Network,
+					Provenance:    res.Provenance,
 				}
 				return nil
 			})
@@ -452,6 +478,11 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		"links":      result.Links,
 		"extracted":  result.Extracted,
 		"summary":    result.Summary,
+	}
+	// Provenance appears only when a recipe routed the fetch (currently the
+	// bridge). Ordinary pages keep their pre-feature response shape.
+	if result.Provenance != nil {
+		resp["provenance"] = result.Provenance
 	}
 	// Omit the new fields when empty so ordinary pages keep their pre-feature
 	// response shape (design: zero response change).

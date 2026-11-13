@@ -93,6 +93,8 @@ export interface ScrapeParams {
   include_links?: boolean;
   auto_extract?: boolean;
   capture_network?: boolean;
+  /** Serve through an installed recipe by id (wins over the host auto-match). */
+  recipe?: string;
   /** @deprecated Use `mode: "dynamic"` instead. */
   render?: boolean;
 }
@@ -136,6 +138,25 @@ export interface NetworkCapture {
   dropped?: number;
 }
 
+/**
+ * How a page was fetched. Present only when a recipe routed the request
+ * (currently the browser-bridge lane); absent for the plain HTTP/headless path.
+ * Field names match the JSON the API sends (actions_run, not actions).
+ */
+export interface Provenance {
+  transport?: string;
+  lane?: string;
+  recipe?: string;
+  io?: string;
+  actions_run?: number;
+  /** Actions the browser refused or could not run, with the reason. */
+  actions_failed?: string[];
+  markers?: string[];
+  pages?: number;
+  ms?: number;
+  untrusted?: boolean;
+}
+
 export interface ScrapeResult {
   url: string;
   markdown: string;
@@ -149,6 +170,7 @@ export interface ScrapeResult {
   evaluations?: EvaluationResult[];
   extracted_data?: ExtractedData;
   network?: NetworkCapture;
+  provenance?: Provenance;
 }
 
 export interface MultiScrapeParams {
@@ -171,6 +193,8 @@ export interface MultiScrapeParams {
   include_links?: boolean;
   auto_extract?: boolean;
   capture_network?: boolean;
+  /** Serve through an installed recipe by id (applies to every URL). */
+  recipe?: string;
   /** @deprecated Use `mode: "dynamic"` instead. */
   render?: boolean;
 }
@@ -191,6 +215,7 @@ export interface MultiScrapeItem {
   evaluations?: EvaluationResult[];
   extracted_data?: ExtractedData;
   network?: NetworkCapture;
+  provenance?: Provenance;
 }
 
 export interface MultiScrapeResponse {

@@ -155,6 +155,67 @@ describe("tomoshi_extract handler", () => {
     expect((params.screenshot_opts as { scale: string }).scale).toBe("css");
   });
 
+  test("forwards an explicit recipe for scrape and scrape_multi", async () => {
+    const { client, calls } = stubClient();
+    const one = (await createExtractHandler(client)({
+      action: "scrape",
+      url: "https://example.com",
+      recipe: "arctic-shift",
+    })) as Result;
+    expect(one.isError).toBeUndefined();
+    expect((calls[0].params as { recipe: string }).recipe).toBe("arctic-shift");
+
+    const many = (await createExtractHandler(client)({
+      action: "scrape_multi",
+      urls: ["https://a.com", "https://b.com"],
+      recipe: "arctic-shift",
+    })) as Result;
+    expect(many.isError).toBeUndefined();
+    expect(calls[1].method).toBe("scrapeMulti");
+    expect((calls[1].params as { recipe: string }).recipe).toBe(
+      "arctic-shift",
+    );
+  });
+
+  test("reports which recipe and lane fetched the page", async () => {
+    const { client } = stubClient();
+    const flavourClient = {
+      ...client,
+      async scrape() {
+        return {
+          url: "https://example.com",
+          markdown: "# Hello",
+          metadata: {},
+          provenance: {
+            transport: "bridge",
+            lane: "borrow",
+            recipe: "arctic-shift@1",
+            io: "scripting",
+            actions_run: 3,
+            untrusted: true,
+          },
+        };
+      },
+    } as unknown as TomoshiClient;
+    const res = (await createExtractHandler(flavourClient)({
+      action: "scrape",
+      url: "https://example.com",
+    })) as Result;
+    expect(res.isError).toBeUndefined();
+    const text = res.content[0].text;
+    expect(text).toContain("**Fetched by:**");
+    expect(text).toContain("arctic-shift@1");
+    expect(text).toContain("lane borrow");
+    expect(text).toContain("3 action(s)");
+    expect(text).toContain("untrusted");
+  });
+
+  test("schema exposes recipe as an optional string", async () => {
+    const json = (await adapter.toJsonSchema(ExtractSchema)) as any;
+    expect(json.properties.recipe).toMatchObject({ type: "string" });
+    expect(json.required).toEqual(["action"]);
+  });
+
   test("schema exposes new action types, script and auto_extract", async () => {
     const json = (await adapter.toJsonSchema(ExtractSchema)) as any;
     expect(json.properties.auto_extract).toMatchObject({ type: "boolean" });

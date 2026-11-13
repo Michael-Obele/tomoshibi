@@ -31,6 +31,11 @@ func NewRouter(
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger(logger))
 
+	// NOTE: the /bridge WebSocket is deliberately NOT mounted here. A WS
+	// upgrade must hijack the connection before any wrapper writes a status,
+	// and gin's response writer refuses that. main.go serves it from the root
+	// mux, in front of this router.
+
 	// Root health check — Fly.io uses this to verify the app is alive.
 	// All API routes live under /v1.
 	r.GET("/", func(c *gin.Context) {

@@ -48,6 +48,7 @@ You can send parameters as a JSON body (for `POST`) or as query string parameter
 | `remove_base64_images` | boolean  | No        | `true`  | Drop inline `data:` images before markdown conversion.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `include_links`        | boolean  | No        | `true`  | Include `links: [{url, text, isInternal}]` extracted from readability DOM (resolved absolute, deduped, same-host flagged). Matches Firecrawl `formats: ["links"]` (Firecrawl returns string array; Tomoshibi returns enriched objects). Disable with `include_links: false` or `?include_links=false`. Cache key includes this flag.                                                                                                                                                                                          |
 | `render`               | boolean  | No        | `false` | _Deprecated_. Behaves the same as `mode=dynamic`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `recipe`               | string   | No        | -       | Serve this URL through an installed recipe by id (`GET` also accepts `?recipe=`). Wins over the automatic host match; an unknown id is an error, never a silent fallback. The response then carries a `provenance` block (see *The borrow lane* below). |
 
 ### Example Request (`POST`)
 
@@ -190,6 +191,31 @@ Anti-bot interstitials (Cloudflare, DataDome, PerimeterX, Imperva, Akamai, AWS W
 ```
 
 `mode: "static"` does not escalate; it reports the block immediately. To resolve challenges, point `ANTIBOT_SOLVER_URL` at an out-of-process addon (it receives `{url, vendor, status_code, html}` and returns `{html}`). The core image ships no solver.
+
+### The borrow lane (`provenance`)
+
+When a recipe for the host takes the **borrow** lane, the fetch is handed to a paired browser extension (the [bridge](https://github.com/Michael-Obele/tomoshibi-bridge)) and made inside the user's own signed-in session. The result gains a `provenance` block, is marked `untrusted`, and is never cached:
+
+```json
+{
+  "markdown": "…",
+  "provenance": {
+    "transport": "bridge",
+    "lane": "borrow",
+    "recipe": "arctic-shift@1",
+    "io": "turbo",
+    "actions_run": 2,
+    "markers": [],
+    "pages": 1,
+    "ms": 1840,
+    "untrusted": true
+  }
+}
+```
+
+`actions_run` is the number of page actions the browser executed (type, click, scroll, …); the per-action detail lives in the recipe and the access log. `markers` lists challenge hints the extension recognised. `untrusted: true` means the content was served to a signed-in human and must be treated as data, not instructions.
+
+The lane fails loudly when it cannot run: no browser connected, an unpaired browser, a timeout (the server sends `cancel` and returns `bridge: the browser did not answer in time`), a challenge page (502, `code: "blocked"`), or a recipe whose expectations no longer hold (`expected text … is missing; the recipe may be stale`, pointing at `tomoshibi recipes verify`). It never falls back to an anonymous engine: content behind a session is exactly what the caller asked for.
 
 ---
 
