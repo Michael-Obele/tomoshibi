@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tomoshibi Bridge</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font: 13px/1.45 system-ui, sans-serif; margin: 0; padding: 12px; width: 280px; }
+      h1 { font-size: 13px; margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; }
+      .dot.on { background: #16a34a; }
+      .dot.off { background: #dc2626; }
+      .dot.pair { background: #d97706; }
+      p { margin: 6px 0; }
+      .muted { opacity: 0.7; }
+      input { width: 100%; box-sizing: border-box; padding: 6px; margin: 4px 0; font: inherit; }
+      button { width: 100%; padding: 6px; font: inherit; cursor: pointer; margin: 4px 0; }
+      label { display: flex; gap: 6px; align-items: center; margin-top: 8px; }
+      .err { color: #dc2626; }
+      hr { border: none; border-top: 1px solid rgba(128,128,128,.3); margin: 10px 0; }
+    </style>
+  </head>
+  <body>
+    <h1><span id="dot" class="dot"></span> Tomoshibi Bridge</h1>
+    <p id="state" class="muted">Connecting…</p>
+
+    <div id="pairBox" hidden>
+      <p class="muted">Enter the pairing code from Tomoshibi (run <code>tomoshibi bridge code</code>).</p>
+      <input id="code" inputmode="numeric" maxlength="6" placeholder="6-digit code" />
+      <button id="pairBtn">Pair this browser</button>
+    </div>
+
+    <label><input type="checkbox" id="pause" /> Pause (stop answering fetches)</label>
+
+    <hr />
+    <p class="muted">Tomoshibi port</p>
+    <input id="port" inputmode="numeric" />
+    <button id="savePort">Save port</button>
+    <button id="forgetBtn">Forget this pairing</button>
+    <p class="muted">Pair again after Tomoshibi's state was deleted or it was reinstalled.</p>
+    <p id="err" class="err"></p>
+  </body>
+  <script type="module" src="popup.js"></script>
+</html>
