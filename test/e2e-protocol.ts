@@ -114,7 +114,10 @@ try {
     typeof challenge.nonce === 'string' && challenge.nonce.length > 0 && typeof challenge.proof === 'string',
     JSON.stringify({ nonce: challenge.nonce, proofLen: String(challenge.proof).length }));
 
-  ext.send({ type: 'pair', code: '000000', nonce: ext.nonce });
+  // A code that is definitely not the real one (a hardcoded 000000 would
+  // collide with the server's own code about once in a million runs).
+  const wrongCode = ext.nonce ? String((Number(readState().code) + 1) % 1000000).padStart(6, '0') : '000000';
+  ext.send({ type: 'pair', code: wrongCode, nonce: ext.nonce });
   const badPair = await ext.waitFrame('error');
   check('wrong pairing code is refused', badPair.code === 'pair-failed', JSON.stringify(badPair));
 
@@ -140,7 +143,8 @@ try {
   // The steady-state handshake: verify the server before releasing the token.
   const serverProof = await hmacHex(ext.serverKey, `tomoshibi-srv|${ch2.nonce}`);
   ext2.proofOk = serverProof === ch2.proof;
-  check('challenge proof verifies with the stored server key', ext2.proofOk);
+  check('challenge proof verifies with the stored server key', ext2.proofOk,
+    JSON.stringify({ got: String(ch2.proof).slice(0, 16), want: String(serverProof).slice(0, 16) }));
   ext2.send({ type: 'auth', token: ext.token, nonce: ch2.nonce });
   const status = await ext2.waitFrame('status');
   check('stored token re-authenticates without a code', status.paired === true, JSON.stringify(status));
