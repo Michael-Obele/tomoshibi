@@ -1,4 +1,4 @@
-// Package bridge implements the lanyard bridge: a loopback WebSocket that lets
+// Package bridge implements the browser bridge: a loopback WebSocket that lets
 // a paired browser extension fetch and drive pages inside the user's own
 // signed-in browser, and hand the result back to the scraper.
 //

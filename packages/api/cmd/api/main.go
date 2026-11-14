@@ -47,7 +47,7 @@ func mustRedisOpt(cfg *config.Config) asynq.RedisClientOpt {
 	return opt
 }
 
-// bridgeStateDir resolves where the lanyard bridge keeps its state. An empty
+// bridgeStateDir resolves where the browser bridge keeps its state. An empty
 // return disables the bridge.
 func bridgeStateDir() string {
 	if dir := os.Getenv("BRIDGE_STATE_DIR"); dir != "" {
@@ -177,7 +177,7 @@ func run() error {
 		logger.Log.Info("Anti-bot solver addon enabled", "url", cfg.AntiBot.SolverURL)
 	}
 
-	// The lanyard bridge: a loopback WebSocket the paired browser extension
+	// The browser bridge: a loopback WebSocket the paired browser extension
 	// connects to. State (pairing code, devices, recipes, access log) lives in
 	// BRIDGE_STATE_DIR, defaulting to ~/.config/tomoshi. A failure here
 	// disables the borrow lane; it never blocks the plain API.

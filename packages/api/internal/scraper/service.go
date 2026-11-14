@@ -50,7 +50,7 @@ func WithSolver(s domain.ChallengeSolver) Option {
 	return func(svc *Service) { svc.solver = s }
 }
 
-// WithBridge attaches the lanyard bridge transport, enabling borrow-lane
+// WithBridge attaches the browser bridge transport, enabling borrow-lane
 // recipes. Without it, a borrow recipe fails loudly instead of silently
 // falling back to an anonymous fetch the site would reject anyway.
 func WithBridge(t *BridgeTransport) Option {
@@ -119,7 +119,7 @@ func (s *Service) Scrape(
 		opts.IncludeLinks = &t
 	}
 
-	// Recipe routing (lanyard). A borrow-lane recipe hands the fetch to the
+	// Recipe routing. A borrow-lane recipe hands the fetch to the
 	// user's own browser through the bridge; every other lane keeps the normal
 	// engine pipeline, with the recipe's actions, schema and expectations applied
 	// to it. An unknown host has no recipe and stays anonymous.

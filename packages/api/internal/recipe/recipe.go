@@ -1,4 +1,4 @@
-// Package recipe implements lanyard's recipe layer: per-site YAML that names a
+// Package recipe implements the recipe layer: per-site YAML that names a
 // lane (plain / official / import / borrow), the actions to run, the
 // extraction rules, the expectations that prove a page is real, and the
 // fixtures that prove the recipe still parses without touching the network.

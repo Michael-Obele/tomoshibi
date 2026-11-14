@@ -42,7 +42,7 @@ type ScrapeResult struct {
 	Network *NetworkCapture `json:"network,omitempty"`
 
 	// Provenance records how this result was obtained when a layer beyond the
-	// built-in engines produced it (currently: the lanyard bridge). Absent for
+	// built-in engines produced it (currently: the browser bridge). Absent for
 	// plain static/dynamic scrapes.
 	Provenance *Provenance `json:"provenance,omitempty"`
 }
@@ -135,7 +135,7 @@ type ScrapeOptions struct {
 	// Off by default; forces dynamic mode and is rejected in static mode.
 	CaptureNetwork bool `json:"capture_network,omitempty"`
 
-	// Recipe names an installed lanyard recipe to run instead of guessing.
+	// Recipe names an installed recipe to run instead of guessing.
 	// When empty, the recipe matching the request host is used automatically;
 	// an unknown domain stays on the plain lane.
 	Recipe string `json:"recipe,omitempty"`

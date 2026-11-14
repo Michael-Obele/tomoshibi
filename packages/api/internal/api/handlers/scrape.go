@@ -41,7 +41,7 @@ type ScrapeRequest struct {
 	AutoExtract *bool `json:"auto_extract,omitempty"`
 	// CaptureNetwork records XHR/fetch responses during a dynamic render.
 	CaptureNetwork bool `json:"capture_network,omitempty"`
-	// Recipe names an installed lanyard recipe: explicit wins over host matching.
+	// Recipe names an installed recipe: explicit wins over host matching.
 	Recipe string `json:"recipe,omitempty"`
 }
 

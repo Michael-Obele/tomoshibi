@@ -21,7 +21,7 @@ import (
 	"github.com/Michael-Obele/tomoshibi/pkg/logger"
 )
 
-// BridgeTransport fetches pages through the lanyard bridge: the user's own
+// BridgeTransport fetches pages through the browser bridge: the user's own
 // signed-in browser, driven by a recipe that names the borrow lane. It is the
 // only path that carries a real session, so its results are marked untrusted
 // and are never cached (the content behind a login is per-user, and the
