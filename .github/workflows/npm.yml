@@ -4,7 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - "packages/mcp/**"
+      # Package CONTENT only. `packages/mcp/**` matched the README too, so a
+      # documentation edit published a patch release (tomoshi 1.2.1, 2026-11-14)
+      # — a version nobody could explain from the changelog.
+      - "packages/mcp/src/**"
+      - "packages/mcp/package.json"
+      - "packages/mcp/tsconfig*.json"
+      - "packages/mcp/Dockerfile"
+      - "bun.lock"
       - ".github/workflows/npm.yml"
     tags: ["v*", "tomoshi-v*", "mcp-v*"]
   workflow_dispatch:
