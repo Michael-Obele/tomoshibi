@@ -235,7 +235,13 @@ try {
   ext4.send({ type: 'auth', token: 'not-a-token', nonce: 'deadbeef' });
   const replayed = await ext4.waitFrame('error');
   check('a replayed handshake is refused', replayed.code === 'refused', JSON.stringify(replayed));
-  await Bun.sleep(200);
+  // The server refuses and then closes. Give it a deadline rather than a fixed
+  // sleep: 200 ms is not enough on a loaded runner, and a flaky assertion is how
+  // people learn to ignore red CI. The assertion itself is unchanged.
+  const closeDeadline = Date.now() + 5000;
+  while (Date.now() < closeDeadline && ext4.ws?.readyState !== WebSocket.CLOSED) {
+    await Bun.sleep(50);
+  }
   check('the refused socket is closed', ext4.ws?.readyState === WebSocket.CLOSED, `readyState=${ext4.ws?.readyState}`);
 
   // 7. Offline bridge: no extension connected means a clear error, not a hang.

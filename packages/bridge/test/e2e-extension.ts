@@ -95,7 +95,12 @@ try {
     if (!found) {
       const { targetInfos } = await cdp.send('Target.getTargets');
       const workers = targetInfos.filter((t: any) => String(t.url).startsWith('chrome-extension://')).map((t: any) => `${t.type} ${t.url}`);
-      throw new Error(`bridge service worker never appeared. Extension workers seen:\n${workers.join('\n') || '(none)'}`);
+      throw new Error(
+        `bridge service worker never appeared on ${version.Browser} (${CHROME_BIN}).\n` +
+          `Extension workers seen:\n${workers.join('\n') || '(none)'}\n` +
+          `The extension is registered — its popup page has an id — but no worker started. ` +
+          `That is a browser behaviour, not a protocol one (see D21).`,
+      );
     }
   }
   check('bridge extension loaded in Chrome', !!extIdReal, extIdReal);
