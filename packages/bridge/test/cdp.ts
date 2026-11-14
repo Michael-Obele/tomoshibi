@@ -17,8 +17,34 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+/**
+ * isBrandedChrome reports whether a binary is Google-branded Chrome rather than
+ * Chromium/Chrome for Testing.
+ *
+ * This exists because a CI runner image can export CHROME_BIN=/usr/bin/google-chrome.
+ * Branded Chrome 137+ honours --load-extension only far enough to register the
+ * extension: the popup page resolves to a real extension id and the service
+ * worker never starts, which reads as "our extension is broken" for twenty
+ * minutes. It is D21, and the resolver should say so instead of trusting the
+ * variable.
+ */
+function isBrandedChrome(bin: string): boolean {
+  try {
+    const out = Bun.spawnSync([bin, '--version'], { stdout: 'pipe', stderr: 'pipe' });
+    return /Google Chrome/i.test(out.stdout?.toString() ?? '');
+  } catch {
+    return false;
+  }
+}
+
 export function resolveChrome(): string {
-  if (process.env.CHROME_BIN && existsSync(process.env.CHROME_BIN)) return process.env.CHROME_BIN;
+  if (process.env.CHROME_BIN && existsSync(process.env.CHROME_BIN)) {
+    if (!isBrandedChrome(process.env.CHROME_BIN)) return process.env.CHROME_BIN;
+    console.warn(
+      `[bridge] ignoring CHROME_BIN=${process.env.CHROME_BIN}: branded Google Chrome cannot start an ` +
+        `unpacked extension's worker (D21). Falling back to the Playwright Chromium.`,
+    );
+  }
   const root = join(process.env.HOME!, '.cache/ms-playwright');
   if (existsSync(root)) {
     const builds = readdirSync(root)
