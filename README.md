@@ -8,12 +8,12 @@ TLS stack pretending to be Chrome. Modern bot protection scores whether all
 those layers *agree*. The honest fix is not a sneakier bot; it is to be your
 browser. That is all this extension does.
 
-## What it does
+## What It Does
 
 The extension opens one loopback WebSocket to Tomoshibi on `127.0.0.1` and
 answers `fetch` messages by driving a real tab and reading it back:
 
-- **scripting** (default) — click, type, keys, scroll, navigate through the
+- **Scripting** (default) — click, type, keys, scroll, navigate through the
   extension scripting API. No debugger, no infobar, no CDP tells; works on
   Firefox too.
 - **turbo** (per-recipe `io: turbo`) — attaches `chrome.debugger` for trusted
@@ -82,6 +82,10 @@ clear message and the scripting layer keeps working.
 
 Zero build step. Edit the files and reload the extension. There is no icon, so
 the toolbar shows the default puzzle piece until one is added.
+
+`AGENTS.md` is the contract for anyone changing this repo: the commands, the
+rules that tests enforce, and what a change here forces on the Tomoshibi side.
+`docs/product.md` is the plan for turning this spike into the product.
 
 ```bash
 bun test/e2e-protocol.ts     # protocol against the real API, ~40s, no browser
