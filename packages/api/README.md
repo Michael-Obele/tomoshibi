@@ -199,7 +199,7 @@ Every bridged result carries a `provenance` block and is marked `untrusted`, nev
 
 | Piece | Where it lives |
 | ----- | -------------- |
-| Extension (public, PolyForm Noncommercial) | [`tomoshibi-bridge`](https://github.com/Michael-Obele/tomoshibi-bridge) |
+| Extension (PolyForm Noncommercial, not MIT) | [`packages/bridge`](../../packages/bridge) |
 | Recipes (private packs: host, actions, fixtures) | `plans/` + `tomoshibi-recipes` |
 | CLI (`bridge code\|status\|unpair`, `recipes add\|list\|verify\|remove`, `access log`) | `cmd/tomoshibi` |
 | State (code, port, device hashes, server key) | `~/.config/tomoshi/bridge.json`, mode `0600` |

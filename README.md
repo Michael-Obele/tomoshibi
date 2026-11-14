@@ -47,7 +47,7 @@ If you're paying Firecrawl/Exa by the token or spawning a Playwright per request
 ## Borrowing your own browser
 
 Some sites block datacenter and headless traffic no matter what the scraper does.
-Install the [bridge extension](https://github.com/Michael-Obele/tomoshibi-bridge),
+Install the [bridge extension](./packages/bridge),
 pair it once (`tomoshibi bridge code`, then paste the code in its popup), install
 a recipe pack, and those pages are fetched **inside your own signed-in browser**:
 `POST /v1/scrape {"url": ..., "recipe": "<id>"}`.
@@ -376,5 +376,13 @@ Measured 2026-08-31 (`docker images` + `docker stats`). **4× lighter, 13× less
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+**One exception, by directory.** `packages/bridge/` (the browser extension) is
+PolyForm Noncommercial 1.0.0 — see
+[packages/bridge/LICENSE](packages/bridge/LICENSE). Read it, run it, fork it for
+yourself; do not sell it. Everything else in this repo stays MIT. The extension
+is the one piece someone could take wholesale and repackage, which is why it
+carries a different licence while living here; as the copyright holder Michael
+keeps full commercial rights and can dual-licence it later.
 
 > **Migrating from Cinder?** `github.com/Michael-Obele/cinder` now redirects to `tomoshibi`. Docker image `ghcr.io/michael-obele/cinder` → `ghcr.io/michael-obele/tomoshibi`. No code changes needed beyond the import path (`github.com/Michael-Obele/tomoshibi`).

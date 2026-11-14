@@ -111,5 +111,10 @@ toolchain, and it uses ports 7439, 7445 and 9444 plus `/tmp/tomoshibi-e2e`.
 
 ## License
 
-PolyForm Noncommercial 1.0.0. Read it, run it, fork it for yourself; do not
-sell it. Everything site-specific lives in recipe packs, not here.
+PolyForm Noncommercial 1.0.0 — see [LICENSE](./LICENSE). Read it, run it, fork
+it for yourself; do not sell it. Everything site-specific lives in recipe packs,
+not here.
+
+This directory is the one part of the `tomoshibi` repo that is **not** MIT: the
+rest of the repository is MIT, and this licence applies to what is under
+`packages/bridge/`.

@@ -1,6 +1,6 @@
 // E2E-B: the real extension in real Chrome, end to end.
 //
-// Launches headless Chrome for Testing with tomoshibi-bridge loaded, points it
+// Launches headless Chrome for Testing with the extension loaded, points it
 // at the test API through the popup UI, pairs it the same way a person would,
 // then asks the API to scrape through the bridge:
 //   - scripting recipe: types into a search box, clicks, returns the result

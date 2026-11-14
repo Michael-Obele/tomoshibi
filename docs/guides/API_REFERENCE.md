@@ -194,7 +194,7 @@ Anti-bot interstitials (Cloudflare, DataDome, PerimeterX, Imperva, Akamai, AWS W
 
 ### The borrow lane (`provenance`)
 
-When a recipe for the host takes the **borrow** lane, the fetch is handed to a paired browser extension (the [bridge](https://github.com/Michael-Obele/tomoshibi-bridge)) and made inside the user's own signed-in session. The result gains a `provenance` block, is marked `untrusted`, and is never cached:
+When a recipe for the host takes the **borrow** lane, the fetch is handed to a paired browser extension (the [bridge extension](../../packages/bridge)) and made inside the user's own signed-in session. The result gains a `provenance` block, is marked `untrusted`, and is never cached:
 
 ```json
 {

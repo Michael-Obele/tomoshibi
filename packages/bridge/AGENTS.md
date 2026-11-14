@@ -1,14 +1,25 @@
 # Tomoshibi Bridge — the agent contract
 
-This repo is the browser half of Tomoshibi's `borrow` lane: a zero-build MV3
-extension that lets a local Tomoshibi API drive the browser you are already
-signed into, over one loopback WebSocket. Read this before editing; it is the
-only agent-instruction file in the repo.
+`packages/bridge/` is the browser half of Tomoshibi's `borrow` lane: a zero-build
+MV3 extension that lets a local Tomoshibi API drive the browser you are already
+signed into, over one loopback WebSocket. Read this before editing.
 
-- Product plan of record: `AI-Plans/plans/lanyard/` (D19–D27 are what shipped).
+It lives inside the `tomoshibi` monorepo, next to the server it talks to. It was
+its own repo until 2026-11-14; the only thing that had made it separate was a
+different licence, and a licence applies to a directory just as well as to a
+repo (D29). Two consequences:
+
+- The repo root's rules still apply. Read `AGENTS.md` at the repo root and
+  `packages/api/AGENTS.md` if it exists; this file only covers what is specific
+  to the extension.
+- `packages/bridge/` is the one non-MIT directory in the repo. It is PolyForm
+  Noncommercial 1.0.0 (`LICENSE` here); everything around it is MIT. Do not
+  relicense, and do not copy extension code into a MIT package.
+
+- Product plan of record: `AI-Plans/plans/lanyard/` (D19–D27 are what shipped,
+  D29 is the move into this repo).
 - Target shape: `docs/product.md` — WXT + Svelte 5. Read "State of the repo"
   before you plan any change.
-- Licence: PolyForm Noncommercial 1.0.0. Do not relicense.
 
 ## State of the repo (2026-11-14)
 
@@ -73,13 +84,13 @@ Manual run:
 
 ```bash
 # 1. API (writes the pairing state and logs the code on startup)
-cd ~/Documents/GitHub/tomoshibi/packages/api && go run ./cmd/api
+cd packages/api && go run ./cmd/api
 
-# 2. Load this folder unpacked: chrome://extensions → Developer mode →
-#    Load unpacked → pick the repo root.
+# 2. Load packages/bridge unpacked: chrome://extensions → Developer mode →
+#    Load unpacked → pick packages/bridge (not the repo root).
 
 # 3. Pair
-cd ~/Documents/GitHub/tomoshibi/packages/api
+cd packages/api
 go run ./cmd/tomoshibi bridge code     # 6 digits, 10 min TTL
 go run ./cmd/tomoshibi bridge status   # port + paired devices
 go run ./cmd/tomoshibi bridge unpair   # revokes a live socket
@@ -101,7 +112,7 @@ Test environment, all overridable: state `/tmp/tomoshibi-e2e` (via
 
 ## The seam
 
-Protocol 1 is pinned in two repos and must be bumped together:
+Protocol 1 is pinned in two halves of this repo and must be bumped together:
 `PROTOCOL` in `src/lib.js` and `ProtocolVersion` in
 `tomoshibi/packages/api/internal/bridge/protocol.go`. A mismatch is refused,
 not guessed.
@@ -134,9 +145,8 @@ not guessed.
 - Branded Chrome 137+ ignores `--load-extension`, and `Extensions.loadUnpacked`
   registers the extension without starting the worker. Use Chrome for Testing
   or Chromium (D21). Users are unaffected: they load unpacked by hand.
-- `test/harness.ts` hardcodes the API checkout as
-  `$HOME/Documents/GitHub/tomoshibi/packages/api`. A clone elsewhere means
-  editing `REPO` in that one file.
+- `test/harness.ts` finds the API package relative to itself
+  (`packages/bridge/test` -> `packages/api`), so the suite runs from any clone.
 - MV3 workers sleep. A 20 s server ping keeps the socket alive; a 30 s alarm
   reconnects when nothing is listening.
 - The storage listener would restart the socket when the worker writes its own

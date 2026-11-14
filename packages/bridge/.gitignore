@@ -1,2 +1,6 @@
 node_modules/
 *.log
+
+# WXT build output once the migration in docs/product.md lands.
+.output/
+.wxt/

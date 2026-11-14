@@ -103,3 +103,37 @@ jobs:
         run: bun run typecheck
       - name: Test
         run: bun test
+
+  # The extension's two suites. The protocol suite builds the API binaries
+  # itself and plays a scripted extension over a real WebSocket, so it needs Go
+  # as well as bun. The browser suite drives the real extension in Chrome for
+  # Testing, which the harness finds in the Playwright cache with no extra
+  # configuration — branded Chrome cannot load an unpacked extension any more
+  # (D21), so CI installs Chromium rather than using the runner's Chrome.
+  bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: packages/bridge
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: packages/api/go.mod
+          cache: true
+          cache-dependency-path: packages/api/go.sum
+
+      - uses: oven-sh/setup-bun@v2
+
+      # ~170 MB; the price of testing the extension in a real browser instead
+      # of trusting the protocol suite to cover it.
+      - name: Install Chrome for Testing
+        run: bunx --bun playwright install --with-deps chromium
+
+      - name: Protocol suite (real binaries, scripted extension)
+        run: bun test/e2e-protocol.ts
+
+      - name: Browser suite (real extension, real Chrome)
+        run: bun test/e2e-extension.ts

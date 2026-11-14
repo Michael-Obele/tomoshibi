@@ -18,7 +18,10 @@ export const CHROME_DIR = join(RUN_DIR, 'chrome');
 // The extension repo is this checkout; deriving it from the file's own
 // location keeps the tests runnable from anywhere.
 export const BRIDGE_DIR = join(import.meta.dir, '..');
-export const REPO = join(process.env.HOME!, 'Documents/GitHub/tomoshibi/packages/api');
+// The API package is a sibling now that the extension lives inside the
+// monorepo: packages/bridge/test -> packages/api. Deriving it means the suite
+// runs from any clone, in any directory.
+export const REPO = join(import.meta.dir, '..', '..', 'api');
 
 export const fixtureHTML = {
   home: `<!doctype html><html><head><title>Fixture Home</title></head>
