@@ -158,8 +158,8 @@ export function readState(): { code: string; port?: string; devices?: unknown[];
   return JSON.parse(readFileSync(join(STATE_DIR, 'bridge.json'), 'utf8'));
 }
 
-export async function scrape(body: Record<string, unknown>) {
-  const res = await fetch(`http://127.0.0.1:${API_PORT}/v1/scrape`, {
+export async function apiPost(path: string, body: Record<string, unknown>) {
+  const res = await fetch(`http://127.0.0.1:${API_PORT}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': API_KEY },
     body: JSON.stringify(body),
@@ -171,6 +171,10 @@ export async function scrape(body: Record<string, unknown>) {
     /* error bodies may be empty */
   }
   return { status: res.status, json };
+}
+
+export async function scrape(body: Record<string, unknown>) {
+  return apiPost('/v1/scrape', body);
 }
 
 // -------------------------------------------------------------- recipe pack
@@ -274,9 +278,9 @@ fixtures:
     'name: e2e-pack',
     'version: 1',
     'files:',
-    ...Object.keys(files)
-      .sort()
-      .map((rel) => `  - { path: "${rel}", sha256: "${sha256(files[rel])}" }`),
+    ...Object.entries(files)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([rel, body]) => `  - { path: "${rel}", sha256: "${sha256(body)}" }`),
     '',
   ].join('\n');
   writeFileSync(join(PACK_DIR, 'manifest.yaml'), manifest);

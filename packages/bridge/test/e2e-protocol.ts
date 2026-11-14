@@ -3,12 +3,11 @@
 // expectations, provenance, audit, and the offline-error path — without a
 // browser. E2E-B is the same flow through the real extension in real Chrome.
 
-import { spawn } from 'bun';
 import {
   resetRunDir, buildBinaries, startFixtureSite, startAPI, writePack, installPack, verifyPack,
   scrape, readState, STATE_DIR, BRIDGE_DIR, API_PORT, check, assertAllPassed,
 } from './harness';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 type Frame = Record<string, any>;
@@ -92,8 +91,27 @@ try {
   // 2. The manifests ask for what the bridge needs and nothing else. The
   //    README claims the extension cannot read cookies or watch requests; this
   //    is the assertion that keeps that claim true.
-  const chromeManifest = JSON.parse(readFileSync(join(BRIDGE_DIR, 'manifest.json'), 'utf8'));
-  const firefoxManifest = JSON.parse(readFileSync(join(BRIDGE_DIR, 'manifest.firefox.json'), 'utf8'));
+  // The manifests are generated now (WXT), so assert what actually ships rather
+  // than a hand-written source file: the build output is the artifact a user
+  // loads.
+  for (const target of ['chrome-mv3', 'firefox-mv3']) {
+    if (!existsSync(join(BRIDGE_DIR, '.output', target, 'manifest.json'))) {
+      const build = Bun.spawnSync(['bun', 'run', 'build'], {
+        cwd: BRIDGE_DIR,
+        env: { ...process.env, ...(target === 'firefox-mv3' ? { WXT_TARGET: 'firefox-mv3' } : {}) },
+      });
+      if (target === 'firefox-mv3') {
+        Bun.spawnSync(['bun', 'run', 'build:firefox'], { cwd: BRIDGE_DIR });
+      }
+      if (build.exitCode !== 0) throw new Error(`could not build ${target}`);
+    }
+  }
+  const chromeManifest = JSON.parse(
+    readFileSync(join(BRIDGE_DIR, '.output', 'chrome-mv3', 'manifest.json'), 'utf8'),
+  );
+  const firefoxManifest = JSON.parse(
+    readFileSync(join(BRIDGE_DIR, '.output', 'firefox-mv3', 'manifest.json'), 'utf8'),
+  );
   const forbidden = ['cookies', 'webRequest', 'nativeMessaging', 'externally_connectable', 'history', 'bookmarks'];
   const perms = [...(chromeManifest.permissions || []), ...(firefoxManifest.permissions || []), ...(chromeManifest.optional_permissions || [])];
   check('no cookie, webRequest or nativeMessaging permissions',

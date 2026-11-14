@@ -21,19 +21,25 @@ repo (D29). Two consequences:
 - Target shape: `docs/product.md` — WXT + Svelte 5. Read "State of the repo"
   before you plan any change.
 
-## State of the repo (2026-11-14)
+## State of the repo (2026-11-14, later)
 
-Two shapes exist; only one is real at a time.
+**The migration landed.** WXT builds the extension, the background is
+TypeScript, and the popup is Svelte 5. D20 (zero-build) is superseded by D34.
 
-- **Now — the spike.** `src/*.js` is plain MV3: four files, two hand-written
-  manifests, no build step (D20). Everything in this file describes it, and both
-  suites are green against it.
-- **Target — the product.** WXT + Svelte 5 + TypeScript, built to
-  `.output/chrome-mv3` and `.output/firefox-mv3`, with a popup, a side panel and
-  an options page. Planned in `docs/product.md`.
+- `entrypoints/background/index.ts` — the service worker and the protocol.
+- `entrypoints/popup/{index.html,main.ts,App.svelte}` — the only UI.
+- `utils/protocol.ts` — the wire constants and types, pinned against
+  `packages/api/internal/bridge/protocol.go`.
+- `utils/guard.ts` — the pure refusals (credential field, origin drift, stop
+  reason). No browser API, so each one is unit-testable on its own.
+- `utils/page.ts` — the functions injected into a tab. Each MUST be
+  self-contained (no imports, no closures): `scripting.executeScript`
+  serialises them with `toString()`, so a transpiler helper would be a dangling
+  reference in the page. `vite.build.target = 'es2022'` in `wxt.config.ts` is
+  what keeps async/await native; do not lower it.
 
-Do not half-migrate. A change either touches the spike as it is, or executes one
-numbered step of the migration plan. Mixing the two makes both suites lie.
+`docs/product.md` still owns the target shape (side panel, options). The popup
+is done; steps 5–8 of its migration order remain.
 
 ## Non-negotiables
 
@@ -43,42 +49,54 @@ relaxing the rule.
 | # | Rule | Where it lives |
 | - | ---- | -------------- |
 | 1 | No `cookies`, `webRequest`, `nativeMessaging`, `externally_connectable`, `history` or `bookmarks` in either manifest | `test/e2e-protocol.ts` asserts it over both manifests |
-| 2 | Never type into a credential field | `isCredentialField` in `src/background.js`, called by both IO layers; `test/e2e-extension.ts` proves the refusal |
-| 3 | Never solve a challenge. A marker hit is `awaiting-human` (tab left open), never content | `detectMarkers` + `BUILTIN_MARKERS` in `src/lib.js`; recipe `expect.absent` turns it into `502 blocked` |
+| 2 | Never type into a credential field | `isCredentialField` in `utils/guard.ts`, called by both IO layers; `test/e2e-extension.ts` proves the refusal |
+| 3 | Never solve a challenge. A marker hit is `awaiting-human` (tab left open), never content | `detectMarkers` in `utils/guard.ts` + `BUILTIN_MARKERS` in `utils/protocol.ts`; recipe `expect.absent` turns it into `502 blocked` |
 | 4 | Never drive or read an origin the fetch did not name | `originDrift` and `assertSameOrigin`, checked between actions and again at the end |
-| 5 | Nothing runs for an unverified peer; the token leaves only after the server proves it holds the pairing key | `onChallenge` in `src/background.js` (D19) |
+| 5 | Nothing runs for an unverified peer; the token leaves only after the server proves it holds the pairing key | `onChallenge` in `entrypoints/background/index.ts` (D19) |
 | 6 | No half-migration: the spike stays zero-build until a migration step lands whole | D20 binds `src/*.js` today; `docs/product.md` replaces it |
 | 7 | Loopback only: dials `ws://127.0.0.1:<port>/bridge`, never listens, never tunnels | D22 and the server's origin check |
-| 8 | Keep the caps composed: 8 MB HTML + 2 MB text + a ≤8 MB base64 PNG must all fit one 24 MiB frame | constants in `src/background.js` and `internal/bridge/protocol.go` |
+| 8 | Keep the caps composed: 8 MB HTML + 2 MB text + a ≤8 MB base64 PNG must all fit one 24 MiB frame | constants in `entrypoints/background/index.ts` and `internal/bridge/protocol.go` |
 
 ## Repo map
 
 | Path | What it is |
 | ---- | ---------- |
-| `src/background.js` | Service worker: socket, handshake, popup API, both IO layers, tab pinning |
-| `src/lib.js` | Protocol constant, default port, challenge markers, `getSettings` |
-| `src/popup.{html,js}` | The only UI: state dot, pairing code, pause, port, forget |
-| `manifest.json` | Chrome MV3. `debugger` lives here only |
-| `manifest.firefox.json` | Firefox MV3: no `debugger`, `background.scripts` |
+| `entrypoints/background/index.ts` | Service worker: socket, handshake, popup API, both IO layers, tab pinning, the named built-ins |
+| `entrypoints/popup/App.svelte` | The only UI: state dot, pairing code, pause, allowlist summary, last run, port, forget |
+| `utils/protocol.ts` | Protocol constant, default port, challenge markers, wire types |
+| `utils/guard.ts` | Pure refusals: credential field, origin drift, stop reason, host matching |
+| `utils/page.ts` | Functions injected into a tab (readPage, click, type, press, settle, scroll_collect, page_tree, motion) |
+| `wxt.config.ts` | Both manifests from one file; `debugger` is Chrome-only; `build.target = es2022` is load-bearing |
+| `test/cdp.ts` | Which Chrome, the CDP client, extension-id derivation — shared by B and C |
 | `test/harness.ts` | Fixture site, bin build, API spawn, recipe pack written on the fly, `check()` tally |
-| `test/e2e-protocol.ts` | E2E-A: protocol against the real Go API with a scripted extension. 25 checks |
+| `test/e2e-protocol.ts` | E2E-A: protocol against the real Go API with a scripted extension |
 | `test/e2e-extension.ts` | E2E-B: this extension in real Chrome, paired through the popup. 19 checks |
+| `test/live-research.ts` | E2E-C: real engines through the real browser — ddg, google, bing, then a research fan-out. Needs the internet |
+| `test/unit/` | `bun test`: the guards, and settle/collect/tree/motion against happy-dom |
 | `fixtures/` | The two pages the scripted extension serves in E2E-A |
 
 ## Commands
 
-Everything below was run on this machine and passed. Bun 1.4.4, Go 1.25.4.
+Everything below was run on this machine and passed. Bun 1.4.4, Go 1.25.4,
+WXT 0.21.5, Vite 8.
 
 ```bash
-bun test/e2e-protocol.ts     # 25 checks, ~40 s. Builds the Go binaries and plays
-                             # a scripted extension. No browser, no display.
-bun test/e2e-extension.ts    # 19 checks, ~90 s. Real extension in Chrome for
-                             # Testing. Needs Go and a Chromium that honours
-                             # --load-extension.
+bun run check              # wxt prepare + tsc --noEmit + unit tests (25)
+bun run test               # check, then E2E-A and E2E-B
+bun run build              # .output/chrome-mv3
+bun run build:firefox      # .output/firefox-mv3
+
+bun test/e2e-protocol.ts   # 25 checks, ~40 s. Builds the Go binaries and plays
+                           # a scripted extension. No browser, no display.
+bun test/e2e-extension.ts  # 19 checks, ~90 s. The real extension in Chrome for
+                           # Testing, paired through the popup.
+bun test/live-research.ts  # real ddg/google/bing plus a research fan-out.
+                           # Needs the internet; not part of `bun run test`.
 ```
 
-These are plain scripts with their own `check()` tally, not `bun test` unit
-tests. Run the files; do not look for a test config.
+These are plain scripts with their own `check()` tally, not `bun test` suites.
+`test/unit/` is the exception: those are real `bun test` files with a happy-dom
+preload from `bunfig.toml`.
 
 Manual run:
 
@@ -113,7 +131,7 @@ Test environment, all overridable: state `/tmp/tomoshibi-e2e` (via
 ## The seam
 
 Protocol 1 is pinned in two halves of this repo and must be bumped together:
-`PROTOCOL` in `src/lib.js` and `ProtocolVersion` in
+`PROTOCOL` in `utils/protocol.ts` and `ProtocolVersion` in
 `tomoshibi/packages/api/internal/bridge/protocol.go`. A mismatch is refused,
 not guessed.
 
@@ -136,8 +154,8 @@ not guessed.
 | An action type | both `runScriptingAction` and `runTurboAction`, the server's `bridge.Action`, the recipe schema in tomoshibi, and one check in E2E-B |
 | A frame or a field the server reads | bump protocol in both repos, then E2E-A |
 | A permission | both manifests, the permission assertion in E2E-A, and the README's "will not do" list |
-| A read cap or frame size | `src/background.js` constants and `MaxMessageBytes`/`readPageExpression` on the server side |
-| A popup state | `src/popup.js` render, `badge()` calls, and the state list in `docs/product.md` |
+| A read cap or frame size | `entrypoints/background/index.ts` constants and `MaxMessageBytes`/`readPageExpression` on the server side |
+| A popup state | `entrypoints/popup/App.svelte` render, `badge()` calls, and the state list in `docs/product.md` |
 | Anything user-visible | the README's install and security sections |
 
 ## Gotchas that cost an hour
