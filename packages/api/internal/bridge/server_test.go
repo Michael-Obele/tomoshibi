@@ -98,22 +98,6 @@ func handshake(t *testing.T, wsURL string, st *State) (*websocket.Conn, string) 
 	return conn, ok.Token
 }
 
-// authenticate is the steady-state handshake: hello -> challenge -> auth.
-func authenticate(t *testing.T, wsURL, token, serverKey string) *websocket.Conn {
-	t.Helper()
-	conn := dial(t, wsURL)
-	ch := hello(t, conn)
-	if want := ServerProof(serverKey, ch.Nonce); ch.Proof != want {
-		t.Fatalf("challenge proof does not verify with the stored server key")
-	}
-	writeMsg(t, conn, Message{Type: MsgAuth, Token: token, Nonce: ch.Nonce})
-	got := readMsg(t, conn, 3*time.Second)
-	if got.Type != MsgStatus || !got.Paired {
-		t.Fatalf("want status paired, got %+v", got)
-	}
-	return conn
-}
-
 func TestPairThenFetchRoundtrip(t *testing.T) {
 	srv, st, wsURL := newTestServer(t)
 	conn, token := handshake(t, wsURL, st)

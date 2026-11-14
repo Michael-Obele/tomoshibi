@@ -7,7 +7,8 @@ import {
   resetRunDir, buildBinaries, startFixtureSite, startAPI, writePack, installPack, verifyPack,
   scrape, readState, STATE_DIR, BRIDGE_DIR, API_PORT, check, assertAllPassed,
 } from './harness';
-import { readFileSync, existsSync } from 'node:fs';
+import { ensureExtensionBuild } from './harness';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 type Frame = Record<string, any>;
@@ -93,19 +94,10 @@ try {
   //    is the assertion that keeps that claim true.
   // The manifests are generated now (WXT), so assert what actually ships rather
   // than a hand-written source file: the build output is the artifact a user
-  // loads.
-  for (const target of ['chrome-mv3', 'firefox-mv3']) {
-    if (!existsSync(join(BRIDGE_DIR, '.output', target, 'manifest.json'))) {
-      const build = Bun.spawnSync(['bun', 'run', 'build'], {
-        cwd: BRIDGE_DIR,
-        env: { ...process.env, ...(target === 'firefox-mv3' ? { WXT_TARGET: 'firefox-mv3' } : {}) },
-      });
-      if (target === 'firefox-mv3') {
-        Bun.spawnSync(['bun', 'run', 'build:firefox'], { cwd: BRIDGE_DIR });
-      }
-      if (build.exitCode !== 0) throw new Error(`could not build ${target}`);
-    }
-  }
+  // loads. Both targets are required, and a build failure surfaces its output.
+  ensureExtensionBuild('chrome-mv3');
+  ensureExtensionBuild('firefox-mv3');
+
   const chromeManifest = JSON.parse(
     readFileSync(join(BRIDGE_DIR, '.output', 'chrome-mv3', 'manifest.json'), 'utf8'),
   );

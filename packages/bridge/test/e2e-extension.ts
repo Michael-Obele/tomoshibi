@@ -15,12 +15,13 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   resetRunDir, buildBinaries, startFixtureSite, startAPI, writePack, installPack,
-  scrape, readState, RUN_DIR, STATE_DIR, SITE_PORT, CDP_PORT, API_PORT, BRIDGE_DIR, check,
+  scrape, readState, RUN_DIR, STATE_DIR, SITE_PORT, CDP_PORT, API_PORT, check,
   assertAllPassed,
 } from './harness';
 import { CDP, resolveChrome, extensionIdFromPath, waitFor } from './cdp';
+import { ensureExtensionBuild } from './harness';
 
-const EXT_DIR = join(BRIDGE_DIR, '.output', 'chrome-mv3');
+const EXT_DIR = ensureExtensionBuild('chrome-mv3');
 
 const CHROME_BIN = resolveChrome();
 

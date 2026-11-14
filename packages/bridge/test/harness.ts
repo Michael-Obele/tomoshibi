@@ -177,6 +177,32 @@ export async function scrape(body: Record<string, unknown>) {
   return apiPost('/v1/scrape', body);
 }
 
+// ------------------------------------------------ extension build
+
+/**
+ * ensureExtensionBuild returns the built extension directory, building it first
+ * when it is missing.
+ *
+ * It throws with the build's own stdout/stderr on failure. A test that reports
+ * "could not build" and swallows the compiler's reason is a dead end — that is
+ * exactly how the first CI run failed, with no way to see why.
+ */
+export function ensureExtensionBuild(target: 'chrome-mv3' | 'firefox-mv3' = 'chrome-mv3'): string {
+  const dir = join(BRIDGE_DIR, '.output', target);
+  if (existsSync(join(dir, 'manifest.json'))) return dir;
+
+  const script = target === 'firefox-mv3' ? ['bun', 'run', 'build:firefox'] : ['bun', 'run', 'build'];
+  const proc = Bun.spawnSync(script, { cwd: BRIDGE_DIR, stdout: 'pipe', stderr: 'pipe' });
+  if (proc.exitCode !== 0) {
+    throw new Error(
+      `${script.join(' ')} failed (exit ${proc.exitCode})\n` +
+        `--- stdout ---\n${proc.stdout?.toString() ?? ''}\n` +
+        `--- stderr ---\n${proc.stderr?.toString() ?? ''}`,
+    );
+  }
+  return dir;
+}
+
 // -------------------------------------------------------------- recipe pack
 
 function sha256(text: string): string {
