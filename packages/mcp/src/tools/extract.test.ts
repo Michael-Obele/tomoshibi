@@ -64,12 +64,17 @@ describe("tomoshi_extract schema", () => {
       "links",
       "batch",
       "batch_status",
+      "research",
     ]);
     expect(json.properties.url).toMatchObject({ type: "string" });
     expect(json.properties.urls).toMatchObject({ type: "array" });
     expect(json.properties.max_images).toMatchObject({ type: "number" });
     expect(json.properties.summary).toMatchObject({ type: "boolean" });
     expect(json.properties.batch_id).toMatchObject({ type: "string" });
+    // The recipe-free browser lane is reachable from the tool surface, with no
+    // recipe and no extra setup beyond pairing the extension.
+    expect(json.properties.transport).toMatchObject({ type: "string" });
+    expect(json.properties.query).toMatchObject({ type: "string" });
     expect(json.properties.action.description).toContain("url");
   });
 

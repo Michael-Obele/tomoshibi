@@ -4,6 +4,7 @@ import type {
   ScrapeParams,
   MultiScrapeParams,
   Provenance,
+  ResearchParams,
 } from "../client.js";
 import {
   composite,
@@ -198,6 +199,65 @@ const ExtractScrapeShape = v.object({
       v.string(),
       v.description(
         "Serve this page through an installed recipe by id (e.g. \"arctic-shift\"), using the paired browser bridge when the recipe asks for it. Explicit id wins over the automatic host match; an unknown id fails loudly instead of silently falling back. The response carries `provenance` naming the recipe, lane and io layer that ran",
+      ),
+    ),
+  ),
+  transport: v.optional(
+    v.pipe(
+      v.picklist(["anonymous", "bridge", "auto"]),
+      v.description(
+        "Whose network and session answer. `bridge` drives the browser you are signed into and needs NO recipe (just a paired extension and `tomoshibi bridge allow <host>`); `auto` tries static→dynamic first and only escalates into the browser for an allowed origin; `anonymous` is the default",
+      ),
+    ),
+  ),
+  // The API takes an options object for each of these; the tool also accepts a
+  // bare `true` as shorthand because that is how everyone will call it. The
+  // coercion happens in the client, not here, so both scrape paths share it.
+  settle: v.optional(
+    v.pipe(
+      v.union([
+        v.boolean(),
+        v.object({
+          quiet_ms: v.optional(v.number()),
+          max_ms: v.optional(v.number()),
+          poll_ms: v.optional(v.number()),
+        }),
+      ]),
+      v.description(
+        "Bridge: wait until the page stops moving (quiet DOM, stable height, no finite animation) instead of sleeping a guessed duration. `true` uses the defaults. The usual fix for pages of carousels, skeletons and lazy widgets",
+      ),
+    ),
+  ),
+  scroll_collect: v.optional(
+    v.pipe(
+      v.union([
+        v.boolean(),
+        v.object({
+          max_rounds: v.optional(v.number()),
+          quiet_rounds: v.optional(v.number()),
+          step_px: v.optional(v.number()),
+          pause_ms: v.optional(v.number()),
+          item_selector: v.optional(v.string()),
+        }),
+      ]),
+      v.description(
+        "Bridge: scroll the page in steps and report what each round added. `true` uses the defaults. This is how an infinite feed or a lazily-hydrated list is actually read rather than half-read",
+      ),
+    ),
+  ),
+  page_tree: v.optional(
+    v.pipe(
+      v.picklist(["dom", "ax", "both"]),
+      v.description(
+        "Bridge: return the page outline as `page_tree` — `dom` is tag/role/box/visibility per node (works on Firefox), `ax` is the real accessibility tree (turbo/Chrome), `both` is dom plus ax",
+      ),
+    ),
+  ),
+  motion: v.optional(
+    v.pipe(
+      v.boolean(),
+      v.description(
+        "Bridge: report what is animating (flagging infinite spinners), what is fixed/sticky, and which element owns scrolling",
       ),
     ),
   ),
@@ -461,6 +521,55 @@ const ExtractBatchStatusShape = v.object({
   ),
 });
 
+// ── research (search + the pages behind it) ────────────────────────────
+const ExtractResearchShape = v.object({
+  action: v.pipe(
+    v.picklist(["research"]),
+    v.description(
+      "Search, then read the top results and return them together. One call, one budget, one trace — the shape a research question actually has",
+    ),
+  ),
+  query: v.pipe(
+    v.string(),
+    v.minLength(1, "A query is required"),
+    v.description("What to search for"),
+  ),
+  engine: v.optional(
+    v.pipe(
+      v.string(),
+      v.description(
+        "Which search backend answers: `browser:ddg`, `browser:google` or `browser:bing` reads that engine's results page inside your signed-in browser (the way engines that block a datacenter address still answer). Omit it for the configured chain, which puts the free engines first and the paid API last",
+      ),
+    ),
+  ),
+  limit: v.optional(
+    v.pipe(
+      v.number(),
+      v.minValue(1),
+      v.maxValue(50),
+      v.description("How many search results to ask for (default 10)"),
+    ),
+  ),
+  pages: v.optional(
+    v.pipe(
+      v.number(),
+      v.minValue(1),
+      v.maxValue(20),
+      v.description(
+        "How many of the top results to actually read (default 5, max 20). A search is cheap; a page read is not",
+      ),
+    ),
+  ),
+  transport: v.optional(
+    v.pipe(
+      v.picklist(["anonymous", "bridge", "auto"]),
+      v.description(
+        "How the pages are read. Default `auto`: anonymous engines first, escalate into your browser only for an allowed origin",
+      ),
+    ),
+  ),
+});
+
 /**
  * Flat extraction schema: ONE object, with `action` forced into the required
  * list of the emitted JSON Schema (see `discover.ts` for the why — a root-level
@@ -476,6 +585,7 @@ export const ExtractSchema = v.object(
       ExtractLinksShape,
       ExtractBatchShape,
       ExtractBatchStatusShape,
+      ExtractResearchShape,
     ],
     {
       action: v.optional(
@@ -486,9 +596,10 @@ export const ExtractSchema = v.object(
             "links",
             "batch",
             "batch_status",
+            "research",
           ]),
           v.description(
-            "Extraction action — required. scrape needs `url`; scrape_multi needs `urls` (max 10); links needs `url`; batch needs `urls` (max 20, Redis); batch_status needs `batch_id`",
+            "Extraction action — required. scrape needs `url`; scrape_multi needs `urls` (max 10); links needs `url`; batch needs `urls` (max 20, Redis); batch_status needs `batch_id`; research needs `query`",
           ),
         ),
       ),
@@ -563,6 +674,15 @@ const EXTRACT_ACTIONS: Record<string, ActionSpec> = {
   batch_status: {
     required: ["batch_id"],
     example: { action: "batch_status", batch_id: "batch_01H…" },
+  },
+  research: {
+    required: ["query"],
+    example: {
+      action: "research",
+      query: "svelte 5 runes",
+      engine: "browser:ddg",
+      pages: 4,
+    },
   },
 };
 const EXTRACT_USAGE =
@@ -758,6 +878,40 @@ export function createExtractHandler(client: TomoshiClient) {
           }
           if (result.links.length > 50)
             lines.push(`- ... and ${result.links.length - 50} more`);
+        }
+        return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+      }
+
+      if (action === "research") {
+        const params = args as unknown as ResearchParams & { action: string };
+        const result = await client.research(params);
+        const cost = result.paid_api_used
+          ? " · **paid search API was used**"
+          : " · no paid search API used";
+        const lines: string[] = [
+          `# Research: ${result.query}`,
+          "",
+          `**Results:** ${result.results.length} · **Pages read:** ${result.pages.length} · **Failed:** ${result.failures.length} · ${result.elapsed_ms}ms${cost}`,
+          "",
+          "## Search results",
+        ];
+        result.results.forEach((r, i) => {
+          lines.push(
+            `${i + 1}. [${r.title}](${r.url})${r.engine ? ` — ${r.engine}` : ""}`,
+          );
+        });
+        for (const p of result.pages) {
+          lines.push("", `## ${p.title || p.url}`, "", `**URL:** ${p.url}`);
+          if (p.word_count) lines.push(`**Words:** ${p.word_count}`);
+          if (p.provenance) lines.push("", renderProvenance(p.provenance));
+          if (p.summary) lines.push("", "### Summary", "", p.summary);
+          if (p.markdown) lines.push("", p.markdown);
+        }
+        if (result.failures.length) {
+          lines.push("", "## Pages that could not be read");
+          for (const f of result.failures) {
+            lines.push(`- ${f.url}: ${f.error}`);
+          }
         }
         return { content: [{ type: "text" as const, text: lines.join("\n") }] };
       }
