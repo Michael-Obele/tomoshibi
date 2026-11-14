@@ -107,6 +107,14 @@ const DiscoverSearchShape = v.object({
       ),
     ),
   ),
+  engine: v.optional(
+    v.pipe(
+      v.string(),
+      v.description(
+        "Pick the search backend by name. `browser:ddg`, `browser:google`, `browser:bing` read that engine's results page inside your signed-in browser — the way engines that block a datacenter address still answer. Switch freely between them to compare. Omit for the configured chain (free engines first, paid API last)",
+      ),
+    ),
+  ),
 });
 
 // ── map ────────────────────────────────────────────────────────────────

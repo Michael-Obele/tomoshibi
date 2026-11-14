@@ -3,11 +3,11 @@
 // expectations, provenance, audit, and the offline-error path — without a
 // browser. E2E-B is the same flow through the real extension in real Chrome.
 
-import { spawn } from 'bun';
 import {
   resetRunDir, buildBinaries, startFixtureSite, startAPI, writePack, installPack, verifyPack,
   scrape, readState, STATE_DIR, BRIDGE_DIR, API_PORT, check, assertAllPassed,
 } from './harness';
+import { ensureExtensionBuild } from './harness';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -92,8 +92,18 @@ try {
   // 2. The manifests ask for what the bridge needs and nothing else. The
   //    README claims the extension cannot read cookies or watch requests; this
   //    is the assertion that keeps that claim true.
-  const chromeManifest = JSON.parse(readFileSync(join(BRIDGE_DIR, 'manifest.json'), 'utf8'));
-  const firefoxManifest = JSON.parse(readFileSync(join(BRIDGE_DIR, 'manifest.firefox.json'), 'utf8'));
+  // The manifests are generated now (WXT), so assert what actually ships rather
+  // than a hand-written source file: the build output is the artifact a user
+  // loads. Both targets are required, and a build failure surfaces its output.
+  ensureExtensionBuild('chrome-mv3');
+  ensureExtensionBuild('firefox-mv3');
+
+  const chromeManifest = JSON.parse(
+    readFileSync(join(BRIDGE_DIR, '.output', 'chrome-mv3', 'manifest.json'), 'utf8'),
+  );
+  const firefoxManifest = JSON.parse(
+    readFileSync(join(BRIDGE_DIR, '.output', 'firefox-mv3', 'manifest.json'), 'utf8'),
+  );
   const forbidden = ['cookies', 'webRequest', 'nativeMessaging', 'externally_connectable', 'history', 'bookmarks'];
   const perms = [...(chromeManifest.permissions || []), ...(firefoxManifest.permissions || []), ...(chromeManifest.optional_permissions || [])];
   check('no cookie, webRequest or nativeMessaging permissions',
@@ -225,7 +235,13 @@ try {
   ext4.send({ type: 'auth', token: 'not-a-token', nonce: 'deadbeef' });
   const replayed = await ext4.waitFrame('error');
   check('a replayed handshake is refused', replayed.code === 'refused', JSON.stringify(replayed));
-  await Bun.sleep(200);
+  // The server refuses and then closes. Give it a deadline rather than a fixed
+  // sleep: 200 ms is not enough on a loaded runner, and a flaky assertion is how
+  // people learn to ignore red CI. The assertion itself is unchanged.
+  const closeDeadline = Date.now() + 5000;
+  while (Date.now() < closeDeadline && ext4.ws?.readyState !== WebSocket.CLOSED) {
+    await Bun.sleep(50);
+  }
   check('the refused socket is closed', ext4.ws?.readyState === WebSocket.CLOSED, `readyState=${ext4.ws?.readyState}`);
 
   // 7. Offline bridge: no extension connected means a clear error, not a hang.

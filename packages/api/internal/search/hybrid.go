@@ -68,10 +68,21 @@ func NewHybridServiceWithStealth(braveAPIKey, searxngEndpoint string, fetcher Br
 // a nil native restores the legacy ordering exactly. Plan M5 later removes
 // SearXNG from this chain after the parity gate.
 func NewHybridServiceWithNative(rec telemetry.Recorder, native Service, braveAPIKey, searxngEndpoint string, fetcher BrowserFetcher) Service {
+	return NewHybridServiceWithLadder(rec, native, nil, braveAPIKey, searxngEndpoint, fetcher)
+}
+
+// NewHybridServiceWithLadder is the full chain in cost order:
+//
+//	native → SearXNG → stealth → browser → Brave API
+//
+// The browser rung (D32) is what makes the engines that are blocked from a
+// datacenter address usable again, and it deliberately sits *before* the paid
+// API: free access first, money last. A nil browser rung is the old ordering.
+func NewHybridServiceWithLadder(rec telemetry.Recorder, native, browser Service, braveAPIKey, searxngEndpoint string, fetcher BrowserFetcher) Service {
 	if rec == nil {
 		rec = telemetry.Nop{}
 	}
-	chain := make([]Service, 0, 4)
+	chain := make([]Service, 0, 5)
 	if native != nil {
 		chain = append(chain, native)
 	}
@@ -80,6 +91,9 @@ func NewHybridServiceWithNative(rec telemetry.Recorder, native Service, braveAPI
 	}
 	if fetcher != nil {
 		chain = append(chain, NewStealthService(fetcher, ""))
+	}
+	if browser != nil {
+		chain = append(chain, browser)
 	}
 	if braveAPIKey != "" {
 		chain = append(chain, NewBraveService(braveAPIKey))

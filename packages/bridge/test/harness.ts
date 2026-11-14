@@ -158,8 +158,8 @@ export function readState(): { code: string; port?: string; devices?: unknown[];
   return JSON.parse(readFileSync(join(STATE_DIR, 'bridge.json'), 'utf8'));
 }
 
-export async function scrape(body: Record<string, unknown>) {
-  const res = await fetch(`http://127.0.0.1:${API_PORT}/v1/scrape`, {
+export async function apiPost(path: string, body: Record<string, unknown>) {
+  const res = await fetch(`http://127.0.0.1:${API_PORT}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': API_KEY },
     body: JSON.stringify(body),
@@ -171,6 +171,36 @@ export async function scrape(body: Record<string, unknown>) {
     /* error bodies may be empty */
   }
   return { status: res.status, json };
+}
+
+export async function scrape(body: Record<string, unknown>) {
+  return apiPost('/v1/scrape', body);
+}
+
+// ------------------------------------------------ extension build
+
+/**
+ * ensureExtensionBuild returns the built extension directory, building it first
+ * when it is missing.
+ *
+ * It throws with the build's own stdout/stderr on failure. A test that reports
+ * "could not build" and swallows the compiler's reason is a dead end — that is
+ * exactly how the first CI run failed, with no way to see why.
+ */
+export function ensureExtensionBuild(target: 'chrome-mv3' | 'firefox-mv3' = 'chrome-mv3'): string {
+  const dir = join(BRIDGE_DIR, '.output', target);
+  if (existsSync(join(dir, 'manifest.json'))) return dir;
+
+  const script = target === 'firefox-mv3' ? ['bun', 'run', 'build:firefox'] : ['bun', 'run', 'build'];
+  const proc = Bun.spawnSync(script, { cwd: BRIDGE_DIR, stdout: 'pipe', stderr: 'pipe' });
+  if (proc.exitCode !== 0) {
+    throw new Error(
+      `${script.join(' ')} failed (exit ${proc.exitCode})\n` +
+        `--- stdout ---\n${proc.stdout?.toString() ?? ''}\n` +
+        `--- stderr ---\n${proc.stderr?.toString() ?? ''}`,
+    );
+  }
+  return dir;
 }
 
 // -------------------------------------------------------------- recipe pack
@@ -274,9 +304,9 @@ fixtures:
     'name: e2e-pack',
     'version: 1',
     'files:',
-    ...Object.keys(files)
-      .sort()
-      .map((rel) => `  - { path: "${rel}", sha256: "${sha256(files[rel])}" }`),
+    ...Object.entries(files)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([rel, body]) => `  - { path: "${rel}", sha256: "${sha256(body)}" }`),
     '',
   ].join('\n');
   writeFileSync(join(PACK_DIR, 'manifest.yaml'), manifest);

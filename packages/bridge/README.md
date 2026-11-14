@@ -39,14 +39,71 @@ proceeds. The bridge never solves a challenge and never types credentials.
 
 1. Start Tomoshibi (the bridge is built in):
    `go run ./cmd/api` from `packages/api`, or the Docker image.
-2. Load this folder as an unpacked extension: `chrome://extensions` →
-   Developer mode → **Load unpacked** → pick this directory.
-3. Run `tomoshibi bridge code` (or read the startup log) and type the 6-digit
+2. Build this directory: `bun install && bun run build`. It compiles to
+   `.output/chrome-mv3` (Firefox: `bun run build:firefox` →
+   `.output/firefox-mv3`).
+3. Load the build as an unpacked extension: `chrome://extensions` → Developer
+   mode → **Load unpacked** → pick `.output/chrome-mv3` (not this directory — it
+   holds the sources, not the extension).
+4. Run `tomoshibi bridge code` (or read the startup log) and type the 6-digit
    code into the extension popup. One pairing per browser; the token is stored
    locally and revoked with `tomoshibi bridge unpair` (or by deleting
    `~/.config/tomoshi/bridge.json`, which the running server notices).
-4. Install a recipe pack and scrape with it: `POST /v1/scrape {"url": ...,
-   "recipe": "<id>"}`.
+
+You are now ready. **A recipe is not required.**
+
+## Recipe-free use (the normal path)
+
+Ask for the browser on the request itself:
+
+```bash
+curl -s -X POST http://127.0.0.1:7431/v1/scrape \
+  -H 'content-type: application/json' \
+  -d '{"url":"https://example.com/dashboard","transport":"bridge"}'
+```
+
+- `transport: "bridge"` drives the browser. `"auto"` tries the anonymous lanes
+  first and escalates into the browser only when the answer is a block or a shell.
+- An origin the server does not know yet answers **428 `consent-required`** with
+  the origin. That is the gate, not a bug:
+
+  ```bash
+  tomoshibi bridge allow example.com      # or *.example.com
+  tomoshibi bridge allowed                # what is allowed now
+  tomoshibi bridge deny example.com
+  ```
+
+  A fresh install already allows the three search hosts (DuckDuckGo, Google,
+  Bing) and nothing else — deliberately not `*.google.com`, which would include
+  mail.
+- `tomoshibi bridge status` shows the pairing and the allowlist.
+- A page budget (600 pages/hour, `BRIDGE_PAGES_PER_HOUR`) caps a runaway loop.
+
+Recipes are the specialization, not the price of admission: use one when a site
+needs its own actions, its own extraction schema, its own pace, or `io: turbo`.
+
+## Search without a search API
+
+The same browser rung turns the engines that block a datacenter address back on.
+The engine telemetry in `data/telemetry` is the reason this exists: DuckDuckGo
+returns `blocked` more often than `ok` from this machine's own egress.
+
+```bash
+# switch engines per request
+curl -s -X POST http://127.0.0.1:7431/v1/search \
+  -H 'content-type: application/json' \
+  -d '{"query":"svelte 5 runes","engine":"browser:ddg"}'
+
+# or ask for pages, not just links
+curl -s -X POST http://127.0.0.1:7431/v1/research \
+  -H 'content-type: application/json' \
+  -d '{"query":"svelte 5 runes","engine":"browser:google","pages":5,"summary":true}'
+```
+
+`browser:ddg`, `browser:google` and `browser:bing` are accepted; omit `engine`
+for the configured chain, which puts the free engines first and the paid API
+last. `research` returns the SERP and the read pages together, with
+`paid_api_used` telling you what it actually cost.
 
 The popup also holds the API port (default `7431`), the pairing code box, and a
 pause switch. The toolbar badge says which state it is in: green `on` means
@@ -57,8 +114,10 @@ why).
 The manifest asks for `host_permissions: ["<all_urls>"]`, because a recipe may
 name any host. Nothing is read until a fetch names a URL.
 
-Firefox: copy `manifest.firefox.json` over `manifest.json` before loading
-(`about:debugging` → This Firefox → Load Temporary Add-on). The Firefox
+Firefox: build it with `bun run build:firefox` and load
+`.output/firefox-mv3` through `about:debugging` → This Firefox → Load Temporary
+Add-on. The Firefox build has no `debugger` permission, so `io: turbo` fails with a
+readable message and the scripting layer keeps working. The Firefox
 manifest drops the `debugger` permission, so `io: turbo` recipes fail with a
 clear message and the scripting layer keeps working.
 
@@ -75,13 +134,15 @@ clear message and the scripting layer keeps working.
 - Fetches refuse to drive a page that has left the origin they asked for, and a
   scripting-layer screenshot is skipped if another tab becomes active first.
 - `debugger` permission exists for the turbo layer only. If you never use
-  `io: turbo` recipes, you can delete it and remove `runTurbo` from
-  `src/background.js`.
+  `io: turbo` recipes, delete it from `wxt.config.ts` and drop `runTurbo` from
+  `entrypoints/background/index.ts`.
 
 ## Development
 
-Zero build step. Edit the files and reload the extension. There is no icon, so
-the toolbar shows the default puzzle piece until one is added.
+WXT builds it. `bun run dev` starts Chrome with the extension loaded and HMR;
+`bun run build` writes `.output/chrome-mv3`, which is what you load and what the
+E2E suites load. `bun run check` is the typecheck plus the unit tests. There is no
+icon yet, so the toolbar shows the default puzzle piece.
 
 `AGENTS.md` is the contract for anyone changing this repo: the commands, the
 rules that tests enforce, and what a change here forces on the Tomoshibi side.

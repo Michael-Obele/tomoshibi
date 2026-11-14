@@ -127,6 +127,14 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      # The suites build the extension before asserting on its manifests (the
+      # shipped artifact is the build output, not a hand-written source file), so
+      # WXT has to be installed. Workspace root: the lockfile covers every
+      # package.
+      - name: Install dependencies
+        working-directory: .
+        run: bun install --frozen-lockfile
+
       # ~170 MB; the price of testing the extension in a real browser instead
       # of trusting the protocol suite to cover it.
       - name: Install Chrome for Testing

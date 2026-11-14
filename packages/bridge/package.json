@@ -1,0 +1,28 @@
+{
+  "name": "@tomoshibi/bridge",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Lets your local Tomoshibi read and drive pages in the browser you are already signed into. Loopback only; pairs with one code.",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "compile": "wxt prepare && tsc --noEmit",
+    "check": "bun run compile && bun test test/unit",
+    "test": "bun run check && bun test/e2e-protocol.ts && bun test/e2e-extension.ts",
+    "test:unit": "bun test test/unit",
+    "test:e2e": "bun test/e2e-protocol.ts && bun test/e2e-extension.ts",
+    "test:research": "bun test/live-research.ts"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^21.0.4",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/bun": "^1.4.4",
+    "@wxt-dev/module-svelte": "^2.0.5",
+    "svelte": "^5.57.3",
+    "typescript": "^5.9.3",
+    "wxt": "^0.21.5"
+  }
+}

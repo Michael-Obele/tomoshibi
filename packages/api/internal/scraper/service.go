@@ -102,6 +102,47 @@ func cacheKeyFor(url, mode string, opts domain.ScrapeOptions) string {
 	return "scrape:v2:" + hex.EncodeToString(sum[:])
 }
 
+// scrapeBorrow sends one request to the user's browser. rec may be nil: the
+// borrow lane no longer requires a recipe, only the consent that the allowlist
+// (or a pack) provides.
+func (s *Service) scrapeBorrow(ctx context.Context, url, mode string, rec *recipe.Recipe, opts domain.ScrapeOptions) (*domain.ScrapeResult, error) {
+	// The borrow lane drives the user's own signed-in browser, so only a direct
+	// scrape may use it. A crawl follows links nobody chose — and one of them
+	// could be a sign-out link that ends the real session — and a monitor repeats
+	// unattended. Those paths get a loud refusal rather than a browser they
+	// should not have.
+	if !opts.AllowBorrow {
+		return nil, fmt.Errorf("the borrow lane is only available to a direct scrape; a crawl, monitor or queued job will not drive your browser")
+	}
+	// Options the lane cannot honour are refused here rather than accepted and
+	// dropped: the caller has to know that this lane does not do them.
+	if mode == "static" {
+		return nil, fmt.Errorf("the borrow lane needs a browser, so mode static is not available")
+	}
+	if s.bridge == nil {
+		return nil, fmt.Errorf("the borrow lane requires the bridge, which is not configured")
+	}
+	return s.bridge.Scrape(ctx, url, rec, opts)
+}
+
+// needsBrowser reports whether an anonymous result is bad enough that the
+// browser is worth trying. A block is the obvious case, and so is a page that
+// came back as a shell (a client-rendered app with no server HTML). A real
+// failure is not: a 404 or a DNS error is not fixed by driving a browser at it.
+func needsBrowser(res *domain.ScrapeResult, err error) bool {
+	var blocked *BlockedError
+	if errors.As(err, &blocked) {
+		return true
+	}
+	if err != nil {
+		return false
+	}
+	if res == nil {
+		return true
+	}
+	return len(strings.TrimSpace(res.Markdown)) < 200
+}
+
 func (s *Service) Scrape(
 	ctx context.Context,
 	url string,
@@ -119,53 +160,65 @@ func (s *Service) Scrape(
 		opts.IncludeLinks = &t
 	}
 
-	// Recipe routing. A borrow-lane recipe hands the fetch to the
-	// user's own browser through the bridge; every other lane keeps the normal
-	// engine pipeline, with the recipe's actions, schema and expectations applied
-	// to it. An unknown host has no recipe and stays anonymous.
+	// Recipe routing. A borrow-lane recipe hands the fetch to the user's own
+	// browser through the bridge; every other lane keeps the normal engine
+	// pipeline, with the recipe's actions, schema and expectations applied to
+	// it. An unknown host has no recipe and stays anonymous.
 	var laneRecipe *recipe.Recipe
+	var rec *recipe.Recipe
 	if s.bridge != nil {
-		rec, rerr := s.bridge.ResolveRecipe(url, opts.Recipe)
+		var rerr error
+		rec, rerr = s.bridge.ResolveRecipe(url, opts.Recipe)
 		if rerr != nil {
 			return nil, rerr
 		}
-		if rec != nil {
-			switch rec.Access.Lane {
-			case recipe.LaneBorrow:
-				// The borrow lane drives the user's own signed-in browser, so only a
-				// direct scrape may use it. A crawl follows links nobody chose — and
-				// one of them could be a sign-out link that ends the real session —
-				// and a monitor repeats unattended. Those paths get a loud refusal
-				// rather than a browser they should not have.
-				if !opts.AllowBorrow {
-					return nil, fmt.Errorf("recipe %s: the borrow lane is only available to a direct scrape; a crawl, monitor or queued job will not drive your browser", rec.ID)
-				}
-				// Options the borrow lane cannot honour are refused here rather
-				// than accepted and dropped: the caller has to know that this
-				// lane does not do them.
-				if mode == "static" {
-					return nil, fmt.Errorf("recipe %s: lane borrow needs a browser, so mode static is not available", rec.ID)
-				}
-				if opts.CaptureNetwork {
-					return nil, fmt.Errorf("recipe %s: capture_network is not supported on the borrow lane", rec.ID)
-				}
-				return s.bridge.Scrape(ctx, url, rec, opts)
-			case recipe.LaneOfficial, recipe.LaneImport:
-				return nil, fmt.Errorf("recipe %s: lane %q is not implemented yet; use the plain lane or the site's own API", rec.ID, rec.Access.Lane)
-			case recipe.LanePlain:
-				// A plain recipe is still a recipe: its actions, extraction schema
-				// and expectations apply to the ordinary pipeline. Without this a
-				// pack's rules would be loaded, verified and then ignored.
-				merged, merr := applyRecipeToOptions(rec, opts)
-				if merr != nil {
-					return nil, merr
-				}
-				opts = merged
-				laneRecipe = rec
-			}
-		}
 	} else if opts.Recipe != "" {
 		return nil, fmt.Errorf("recipe %q requested but the bridge is not configured", opts.Recipe)
+	}
+
+	// Transport decides whose network and session answer (D30). It is the axis
+	// a caller picks directly; a recipe, when one matches, only adds to it.
+	switch opts.Transport {
+	case "", domain.TransportAnonymous:
+		// the default pipeline, with a recipe's specialization if there is one
+	case domain.TransportBridge:
+		return s.scrapeBorrow(ctx, url, mode, rec, opts)
+	case domain.TransportAuto:
+		if s.bridge == nil || !opts.AllowBorrow || mode == "static" || !s.bridge.MayDrive(rec, url) {
+			// No browser available, or this origin is not allowed: auto means
+			// "best effort", so it never turns a working anonymous fetch into a
+			// refusal.
+			opts.Transport = domain.TransportAnonymous
+			break
+		}
+		guest := opts
+		guest.Transport = domain.TransportAnonymous
+		res, err := s.Scrape(ctx, url, mode, guest)
+		if !needsBrowser(res, err) {
+			return res, err
+		}
+		return s.scrapeBorrow(ctx, url, mode, rec, opts)
+	default:
+		return nil, fmt.Errorf("unknown transport %q: use anonymous, bridge or auto", opts.Transport)
+	}
+
+	if rec != nil {
+		switch rec.Access.Lane {
+		case recipe.LaneBorrow:
+			return s.scrapeBorrow(ctx, url, mode, rec, opts)
+		case recipe.LaneOfficial, recipe.LaneImport:
+			return nil, fmt.Errorf("recipe %s: lane %q is not implemented yet; use the plain lane or the site's own API", rec.ID, rec.Access.Lane)
+		case recipe.LanePlain:
+			// A plain recipe is still a recipe: its actions, extraction schema
+			// and expectations apply to the ordinary pipeline. Without this a
+			// pack's rules would be loaded, verified and then ignored.
+			merged, merr := applyRecipeToOptions(rec, opts)
+			if merr != nil {
+				return nil, merr
+			}
+			opts = merged
+			laneRecipe = rec
+		}
 	}
 
 	// Page actions require a real browser: force dynamic mode.

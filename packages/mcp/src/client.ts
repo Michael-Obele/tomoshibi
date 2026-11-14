@@ -73,6 +73,20 @@ export interface ScreenshotData {
   captured_at?: string;
 }
 
+
+/**
+ * The API takes an options object for the bridge built-ins; the tool surface also
+ * accepts a bare `true` because that is how a caller writes "yes, please". This is
+ * the one place the two shapes are reconciled, so every scrape path shares it —
+ * sending `settle: true` verbatim failed gin's strict bind with a generic 400.
+ */
+export function coerceBuiltins<T extends Record<string, unknown>>(params: T): T {
+  const out = { ...params } as Record<string, unknown>;
+  if (out.settle === true) out.settle = {};
+  if (out.scroll_collect === true) out.scroll_collect = {};
+  return out as T;
+}
+
 export interface ScrapeParams {
   url: string;
   mode?: "smart" | "static" | "dynamic";
@@ -95,8 +109,90 @@ export interface ScrapeParams {
   capture_network?: boolean;
   /** Serve through an installed recipe by id (wins over the host auto-match). */
   recipe?: string;
+  /**
+   * Whose network and session answer: "anonymous" (default), "bridge" (your
+   * signed-in browser, no recipe needed), or "auto" (cheap lanes first, then the
+   * browser for an allowed origin).
+   */
+  transport?: "anonymous" | "bridge" | "auto";
+  /** Wait until the page stops moving instead of sleeping a guessed duration.
+   * `true` is shorthand for the defaults. */
+  settle?: boolean | { quiet_ms?: number; max_ms?: number; poll_ms?: number };
+  /** Walk a page that grows as you scroll (infinite feeds, lazy loading).
+   * `true` is shorthand for the defaults. */
+  scroll_collect?:
+    | boolean
+    | {
+        max_rounds?: number;
+        quiet_rounds?: number;
+        step_px?: number;
+        pause_ms?: number;
+        item_selector?: string;
+      };
+  /** Structural outline of the page: "dom" (works on Firefox), "ax" (real a11y tree), or "both". */
+  page_tree?: "dom" | "ax" | "both";
+  page_tree_options?: { max_nodes?: number; max_depth?: number; min_text_len?: number };
+  /** Report what is animating, what is pinned, and which element owns scrolling. */
+  motion?: boolean;
   /** @deprecated Use `mode: "dynamic"` instead. */
   render?: boolean;
+}
+
+/** One node of the page outline, from either the DOM or the accessibility tree. */
+export interface PageNode {
+  tag: string;
+  role: string;
+  path: string;
+  text_len: number;
+  text?: string;
+  box?: number[];
+  visible: boolean;
+  children?: PageNode[];
+}
+
+/** What is animating and what is pinned on a page. */
+export interface MotionReport {
+  animations: { play_state: string; infinite: boolean; duration_ms?: number; target?: string }[];
+  pinned: { path: string; position: string; box?: number[] }[];
+  scroll_container?: string;
+}
+
+/** A query and the pages behind it, from POST /v1/research. */
+export interface ResearchParams {
+  query: string;
+  /** How many SERP results to ask for (default 10). */
+  limit?: number;
+  /** How many of those to actually read (default 5, capped at 20). */
+  pages?: number;
+  /** `browser:ddg` | `browser:google` | `browser:bing`, or empty for the chain. */
+  engine?: string;
+  transport?: "anonymous" | "bridge" | "auto";
+  mode?: string;
+  summary?: boolean;
+  page_tree?: "dom" | "ax" | "both";
+  motion?: boolean;
+  scroll_collect?: boolean;
+}
+
+export interface ResearchPage {
+  url: string;
+  title?: string;
+  markdown?: string;
+  summary?: string;
+  word_count?: number;
+  provenance?: Provenance;
+  page_tree?: PageNode;
+  motion?: MotionReport;
+  error?: string;
+}
+
+export interface ResearchResult {
+  query: string;
+  results: { title: string; url: string; description?: string; engine?: string }[];
+  pages: ResearchPage[];
+  failures: ResearchPage[];
+  elapsed_ms: number;
+  paid_api_used: boolean;
 }
 
 export interface EvaluationResult {
@@ -104,9 +200,7 @@ export interface EvaluationResult {
   result?: unknown;
   error?: string;
   truncated?: boolean;
-}
-
-export interface DataSource {
+}export interface DataSource {
   source: string;
   data: unknown;
 }
@@ -291,6 +385,12 @@ export interface SearchParams {
   maxAge?: 1 | 7 | 30;
   category?: "general" | "news" | "code";
   rerank?: boolean;
+  /**
+   * Pick the backend by name: `browser:ddg`, `browser:google`, `browser:bing`.
+   * Those read the engine's results page inside your signed-in browser, which is
+   * the way an engine that blocks a datacenter address still answers.
+   */
+  engine?: string;
 }
 
 export interface SearchResult {
@@ -645,8 +745,22 @@ export class TomoshiClient {
     return this.request<ScrapeResult>(
       "POST",
       "/v1/scrape",
-      params,
+      coerceBuiltins(params as unknown as Record<string, unknown>),
       TOMOSHI_TIMEOUT.scrape,
+    );
+  }
+
+  /**
+   * Search plus the pages behind it, in one call and one budget.
+   * POST /v1/research — the query goes to `engine` (or the configured chain),
+   * then the top `pages` results are read with `transport`.
+   */
+  async research(params: ResearchParams): Promise<ResearchResult> {
+    return this.request<ResearchResult>(
+      "POST",
+      "/v1/research",
+      params,
+      TOMOSHI_TIMEOUT.scrape * 3,
     );
   }
 

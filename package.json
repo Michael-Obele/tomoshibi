@@ -1,7 +1,7 @@
 {
   "name": "tomoshibi",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Tomoshibi (灯火 — lamp light) — self-hosted search & scraping for AI agents",
   "workspaces": ["packages/*"],
   "scripts": {

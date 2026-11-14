@@ -23,7 +23,10 @@ package bridge
 
 import (
 	"errors"
+	"fmt"
 	"time"
+
+	"github.com/Michael-Obele/tomoshibi/internal/domain"
 )
 
 // ProtocolVersion is the wire version. The extension pins it and refuses a
@@ -75,6 +78,18 @@ var (
 	ErrDisconnected = errors.New("bridge: the browser disconnected mid-fetch")
 )
 
+// ConsentRequiredError is the refusal returned when a bridge request names an
+// origin the user has not allowed. It is a gate, not a failure: the caller can
+// show the origin to the human and retry once it is allowed.
+type ConsentRequiredError struct{ Origin string }
+
+func (e *ConsentRequiredError) Error() string {
+	return fmt.Sprintf(
+		"bridge: origin %s is not allowed yet; run `tomoshibi bridge allow %s` and retry (or POST with the same body after allowing it)",
+		e.Origin, e.Origin,
+	)
+}
+
 // Action is one page interaction the extension performs, in order, inside the
 // pinned tab before the page is read back.
 type Action struct {
@@ -106,6 +121,14 @@ type FetchRequest struct {
 	FullPage     bool     `json:"full_page,omitempty"`
 	IO           string   `json:"io,omitempty"` // scripting (default) | turbo
 
+	// Named built-ins (D33). A closed vocabulary: nothing here is caller JS, so
+	// a signed-in tab never executes code an agent supplied.
+	Settle        *domain.SettleOptions        `json:"settle,omitempty"`
+	ScrollCollect *domain.ScrollCollectOptions `json:"scroll_collect,omitempty"`
+	PageTree      string                       `json:"page_tree,omitempty"` // dom | ax | both
+	PageTreeOpts  *domain.PageTreeOptions      `json:"page_tree_options,omitempty"`
+	Motion        bool                         `json:"motion,omitempty"`
+
 	// Recipe metadata travels for the audit log only; the extension does not
 	// interpret it, and the API marks the page as untrusted in the response.
 	Recipe string `json:"recipe,omitempty"`
@@ -128,6 +151,13 @@ type FetchResult struct {
 	HTTPStatus    int            `json:"http_status,omitempty"`
 	Error         string         `json:"error,omitempty"`
 	Ms            int64          `json:"ms,omitempty"`
+
+	// What the named built-ins produced. SettledMS is -1 when settle was not
+	// requested; the rest are absent unless asked for.
+	SettledMS int64                 `json:"settled_ms,omitempty"`
+	Tree      *domain.PageNode      `json:"tree,omitempty"`
+	Motion    *domain.MotionReport  `json:"motion,omitempty"`
+	Collected *domain.ScrollHarvest `json:"collected,omitempty"`
 }
 
 // Message is the single envelope for every frame in both directions. One
@@ -153,6 +183,9 @@ type Message struct {
 	Paired   bool `json:"paired,omitempty"`
 	Paused   bool `json:"paused,omitempty"`
 	TabCount int  `json:"tab_count,omitempty"`
+	// Allowed is the origin allowlist, sent with status so the popup can show
+	// what the server is permitted to ask for.
+	Allowed []string `json:"allowed,omitempty"`
 
 	// fetch
 	URL          string   `json:"url,omitempty"`

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   ENV_HEADER,
   buildForwardEnvHeader,
+  coerceBuiltins,
   forwardEnvDisabled,
 } from "./client.js";
 
@@ -71,4 +72,23 @@ describe("buildForwardEnvHeader", () => {
     const big = { BRAVE_SEARCH_API_KEY: "x".repeat(7000) };
     expect(buildForwardEnvHeader(["BRAVE_SEARCH_API_KEY"], "", big)).toBeUndefined();
   });
+});
+
+// The API takes objects; the tool takes `true`. Sending `true` verbatim failed
+// gin's strict bind with a generic 400, which is why this exists.
+test("coerceBuiltins turns the boolean shorthand into the options object", () => {
+  // Cast the result: the input type says `boolean`, the point of the helper is
+  // that the value leaving is an object.
+  expect(
+    coerceBuiltins({ settle: true, scroll_collect: true }) as unknown as Record<string, unknown>,
+  ).toEqual({ settle: {}, scroll_collect: {} });
+});
+
+test("coerceBuiltins leaves an explicit options object alone", () => {
+  const opts = { settle: { quiet_ms: 200 }, scroll_collect: { max_rounds: 3 } };
+  expect(coerceBuiltins(opts)).toEqual(opts);
+});
+
+test("coerceBuiltins does not invent fields that were not asked for", () => {
+  expect(coerceBuiltins({ url: "https://example.com" })).toEqual({ url: "https://example.com" });
 });
