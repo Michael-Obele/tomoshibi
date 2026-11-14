@@ -140,9 +140,19 @@ clear message and the scripting layer keeps working.
 ## Development
 
 WXT builds it. `bun run dev` starts Chrome with the extension loaded and HMR;
-`bun run build` writes `.output/chrome-mv3`, which is what you load and what the
-E2E suites load. `bun run check` is the typecheck plus the unit tests. There is no
-icon yet, so the toolbar shows the default puzzle piece.
+`bun run check` is the typecheck plus the unit tests.
+
+To get something you can actually install:
+
+```bash
+bun run zip            # .output/tomoshibibridge-<version>-chrome.zip and -firefox.zip
+bun run verify:build   # asserts MV3 both targets, version matches package.json,
+                       # no forbidden permission, both zips present
+```
+
+CI runs both on every change to this package and uploads the zips as a build
+artifact; a `bridge-v*` tag attaches them to a GitHub release. There is no icon
+yet, so the toolbar shows the default puzzle piece.
 
 `AGENTS.md` is the contract for anyone changing this repo: the commands, the
 rules that tests enforce, and what a change here forces on the Tomoshibi side.

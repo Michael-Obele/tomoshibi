@@ -72,6 +72,7 @@ relaxing the rule.
 | `test/e2e-protocol.ts` | E2E-A: protocol against the real Go API with a scripted extension |
 | `test/e2e-extension.ts` | E2E-B: this extension in real Chrome, paired through the popup. 19 checks |
 | `test/live-research.ts` | E2E-C: real engines through the real browser — ddg, google, bing, then a research fan-out. Needs the internet |
+| `scripts/verify-build.mjs` | MV3 on both targets, version matches `package.json`, no forbidden permission, both zips exist. Run by CI, runnable locally |
 | `test/unit/` | `bun test`: the guards, and settle/collect/tree/motion against happy-dom |
 | `fixtures/` | The two pages the scripted extension serves in E2E-A |
 
@@ -81,10 +82,12 @@ Everything below was run on this machine and passed. Bun 1.4.4, Go 1.25.4,
 WXT 0.21.5, Vite 8.
 
 ```bash
-bun run check              # wxt prepare + tsc --noEmit + unit tests (25)
+bun run check              # wxt prepare + tsc --noEmit + unit tests
 bun run test               # check, then E2E-A and E2E-B
 bun run build              # .output/chrome-mv3
 bun run build:firefox      # .output/firefox-mv3
+bun run zip                # both targets -> .output/*.zip (the installable artifact)
+bun run verify:build       # assert the build is the one we meant to ship
 
 bun test/e2e-protocol.ts   # 25 checks, ~40 s. Builds the Go binaries and plays
                            # a scripted extension. No browser, no display.

@@ -1,0 +1,84 @@
+name: Extension
+
+# The bridge is the one package whose artifact a human has to install by hand,
+# so it gets its own pipeline that produces an installable zip rather than an
+# output directory that disappears with the runner.
+#
+#   PR / main  -> build both targets, verify the manifest, upload the zips
+#   bridge-v*  -> the same, and attach them to a GitHub release
+
+on:
+  push:
+    branches: [main]
+    # Tag pushes are not path-filtered on purpose: a `paths` filter is evaluated
+    # against the commits in the push, and a tag push usually carries none, so a
+    # release would silently never run.
+    tags: ["bridge-v*"]
+  pull_request:
+    paths:
+      - "packages/bridge/**"
+      - "bun.lock"
+      - ".github/workflows/extension.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: extension-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # the release step attaches assets to a tag
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: packages/bridge
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        working-directory: .
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck and unit tests
+        run: bun run check
+
+      - name: Build and zip both targets
+        run: bun run zip
+
+      # One implementation, run in CI and locally: `bun run verify:build`
+      # asserts MV3 on both targets, the version matches package.json, no
+      # forbidden permission crept in, and both zips exist.
+      - name: Verify the artifact
+        run: bun run verify:build
+
+      - name: Upload the extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: tomoshibi-bridge-${{ github.sha }}
+          path: packages/bridge/.output/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/bridge-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packages/bridge/.output/*.zip
+          fail_on_unmatched_files: true
+          body: |
+            The Tomoshibi bridge extension, built from this tag.
+
+            **Chrome / Edge** — download the `-chrome.zip`, unzip it, then
+            `chrome://extensions` → Developer mode → **Load unpacked** → pick the
+            unzipped directory. (Chrome will not install a zip directly.)
+
+            **Firefox** — download the `-firefox.zip`, then `about:debugging` →
+            This Firefox → **Load Temporary Add-on** → pick the zip.
+
+            Pair it once with `tomoshibi bridge code`. A recipe is not required:
+            `POST /v1/scrape {"url": "…", "transport": "bridge"}`.

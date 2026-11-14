@@ -9,6 +9,8 @@
     "dev": "wxt",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip && wxt zip -b firefox",
+    "verify:build": "node scripts/verify-build.mjs",
     "compile": "wxt prepare && tsc --noEmit",
     "check": "bun run compile && bun test test/unit",
     "test": "bun run check && bun test/e2e-protocol.ts && bun test/e2e-extension.ts",
