@@ -5,11 +5,11 @@
 <p align="center">
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"/></a>
   <a href="https://go.dev"><img src="https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go&logoColor=white" alt="Go 1.25+"/></a>
-  <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.2%2B-f9f1e1?logo=bun" alt="Bun"/></a>
+  <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.4%2B-f9f1e1?logo=bun" alt="Bun"/></a>
   <a href="https://svelte.dev"><img src="https://img.shields.io/badge/Svelte-5-ff3e00?logo=svelte&logoColor=white" alt="Svelte 5"/></a>
   <a href="https://www.npmjs.com/package/tomoshi"><img src="https://img.shields.io/npm/v/tomoshi?label=tomoshi&color=cb0000" alt="npm version"/></a>
   <a href="https://www.npmjs.com/package/tomoshi"><img src="https://img.shields.io/npm/dm/tomoshi" alt="npm downloads"/></a>
-  <a href="https://github.com/Michael-Obele/tomoshibi/actions/workflows/npm.yml"><img src="https://github.com/Michael-Obele/tomoshibi/actions/workflows/npm.yml/badge.svg" alt="npm provenance"/></a>
+  <a href="https://github.com/Michael-Obele/tomoshibi/actions/workflows/ci.yml"><img src="https://github.com/Michael-Obele/tomoshibi/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
   <a href="https://github.com/Michael-Obele/tomoshibi"><img src="https://img.shields.io/github/stars/Michael-Obele/tomoshibi?style=social" alt="GitHub stars"/></a>
 </p>
 
@@ -19,102 +19,109 @@
 
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
+  <a href="#compared-to-firecrawl-and-exa">Comparison</a> ·
   <a href="#packages">Packages</a> ·
   <a href="#api">API</a> ·
-  <a href="#mcp">MCP</a> ·
-  <a href="#web">Web</a> ·
-  <a href="#benchmarks">Benchmarks</a>
+  <a href="#borrow-your-own-browser">Your browser</a> ·
+  <a href="#agent-skills">Skills</a> ·
+  <a href="./CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
 
 ## Why Tomoshibi
 
-If you're paying Firecrawl/Exa by the token or spawning a Playwright per request, you're overpaying.
+If you're paying Firecrawl or Exa by the token, or spawning a Playwright per request, you're overpaying.
 
 | What hurts with hosted APIs             | What Tomoshibi gives you                            | Outcome                             |
 | --------------------------------------- | --------------------------------------------------- | ----------------------------------- |
 | **$0.01–0.10 per scrape** + rate limits | **$0 self-hosted** — one binary, hobby-tier RAM     | Ship RAG without a cloud bill       |
 | **500ms Chrome spawn per request**      | **One shared allocator + recycled tabs**            | ~200ms static, parallel pools       |
 | **JS SPAs return empty HTML**           | **Smart mode** — static first, fallback to Chromedp | Works on React/Vue without guessing |
-| **Noisy HTML (nav/ads/footer)**         | **Readability main-content** + ad block             | Clean markdown your LLM wants       |
+| **Sites that block datacenter traffic** | **Borrow your own browser** — no recipe needed      | Signed-in pages, real session       |
 | **Crawl needs a worker fleet**          | **Monolith** — Gin + Asynq in one process           | Pay per container, not per service  |
 
-**Proof:** SearXNG search benchmark (`scripts/search-bench.py`, 10 workers/30s) — **Tomoshibi 560 req/s p50 11ms** vs Firecrawl self-hosted **1.9 req/s p50 5.4s** — ~300× throughput, same $0. See [`docs/SEARCH_COMPARISON.md`](docs/SEARCH_COMPARISON.md).
+## Compared to Firecrawl and Exa
+
+Measured on one machine against live local instances (2026-08-30). Exa numbers are its published free-tier limits — its API is not load-testable here without a key.
+
+**Search** — `scripts/search-bench.py`, 10 workers, 30s, 10 real queries:
+
+| Metric | **Tomoshibi** | Firecrawl (self-hosted) | Exa (cloud) |
+| --- | --- | --- | --- |
+| Throughput | **560 req/s** | 1.9 req/s | rate-limited free tier |
+| p50 latency | **11 ms** | 5.4 s | n/a (paid) |
+| p95 latency | **21 ms** | 8.7 s | n/a (paid) |
+| Success rate | **100%** (16,809/16,809) | 100% (60/60) | n/a |
+| Cost | **$0** | $0 | paid API |
+
+~**300× the throughput** and ~**500× lower p50** than self-hosted Firecrawl's search, at the same $0. Firecrawl's search is slow because it fetches and extracts each result page rather than returning result metadata.
+
+**Scrape** — 5 concurrent `go.dev/blog`:
+
+| Metric | **Tomoshibi** | Firecrawl (self-hosted) |
+| --- | --- | --- |
+| Latency (repeat) | **7–14 ms** (Redis-cached) | ~17 s each (no cache) |
+| Cold latency | ~1–11 s (site-dependent) | ~17 s (always full Playwright) |
+| JS rendering | ✅ Chromedp | ✅ Playwright |
+
+**Footprint** (`docker images` + `docker stats`, 2026-08-31):
+
+| Stack | Pull size | Running RAM | Containers |
+| --- | --- | --- | --- |
+| **Tomoshibi** | ~1.79 GB | ~317 MiB | 4 |
+| Firecrawl | ~7.26 GB | ~4.1 GiB | 6 |
+
+**4× lighter, 13× less RAM.** Fits on a 512 MB Fly.io box / $5 Hetzner — Firecrawl doesn't.
+
+**Where Exa still wins:** semantic (vector) search and search highlights. Both are on the roadmap; everything else in the matrix below is here today.
+
+<details>
+<summary>Full feature matrix and how to reproduce the benchmarks</summary>
+
+| Capability | **Tomoshibi** | Exa | Firecrawl (self-hosted) |
+| --- | --- | --- | --- |
+| Clean markdown fetch | ✅ | ✅ | ✅ |
+| JS rendering (SPAs) | ✅ Chromedp | ❌ static | ✅ Playwright |
+| Screenshots | ✅ | ❌ | ✅ |
+| Image extraction (srcset/picture/lazy) | ✅ | ❌ | partial |
+| Structured extraction (CSS selectors) | ✅ | ❌ | ✅ (AI + selector) |
+| Extractive summary (LLM-free) | ✅ | ✅ | ❌ (LLM only) |
+| PII redaction | ✅ | ❌ | ❌ |
+| Page actions (click/wait/scroll) | ✅ | ❌ | ❌ |
+| Signed-in / bot-protected pages | ✅ own browser | ❌ | ❌ |
+| Multi-page crawl (BFS, globs, webhooks) | ✅ | partial | ✅ |
+| Change-tracking monitors | ✅ | ❌ | ❌ |
+| Semantic (vector) search | roadmap | ✅ | ❌ |
+| Search highlights / category filters | roadmap | ✅ | ❌ |
+| Self-hosted / no per-request cost | ✅ | ❌ paid | ✅ |
+
+```bash
+# search benchmark
+python3 scripts/search-bench.py --url http://localhost:7431/v1/search \
+  --concurrency 10 --duration 30 --label "Tomoshibi"
+
+# scrape burst
+for i in 1 2 3 4 5; do curl -s -o /dev/null -w "%{http_code} %{time_total}s\n" \
+  -X POST http://localhost:7431/v1/scrape -H 'Content-Type: application/json' \
+  -d '{"url":"https://go.dev/blog","mode":"smart"}' & done; wait
+```
+
+Methodology, the Firecrawl side of every number, and the caveats: [`docs/SEARCH_COMPARISON.md`](docs/SEARCH_COMPARISON.md).
+
+</details>
 
 ---
 
-## Borrowing your own browser
-
-Some sites block datacenter and headless traffic no matter what the scraper does.
-Install the [bridge extension](./packages/bridge),
-pair it once (`tomoshibi bridge code`, then paste the code in its popup), install
-a recipe pack, and those pages are fetched **inside your own signed-in browser**:
-`POST /v1/scrape {"url": ..., "recipe": "<id>"}`.
-
-Every bridged result carries `provenance` (transport, lane, recipe, io layer,
-actions run, and any action the browser refused) and is marked `untrusted`, never
-cached, and written to an access log. The listener is loopback-only, refuses any
-web-page origin, and the extension releases its token only to a process that
-proves it holds the pairing key. Revoke a browser with
-`tomoshibi bridge unpair`. Recipes are packs of data (`recipes add | list |
-verify | remove`) whose fixtures replay offline, so a pack that no longer parses
-fails before it ever drives a browser.
-
-See [the API package README](./packages/api/README.md#the-bridge-lane-borrow-your-own-browser)
-for the full walkthrough and [GLOSSARY.md](./GLOSSARY.md) for the vocabulary
-(bridge, lane, recipe, io layer, provenance, untrusted).
-
 ## Quick start
 
-### Full stack — Docker Compose (recommended)
-
 ```bash
 git clone https://github.com/Michael-Obele/tomoshibi.git && cd tomoshibi
-docker compose up -d              # api (7431) + redis (7434) — searxng opt-in: --profile searxng
+docker compose up -d                # api 7431 + redis 7434
 curl http://localhost:7431/health   # → {"status":"ok","service":"tomoshibi"}
-
-# optional front doors to the same API:
-docker compose -f packages/web/docker-compose.yml up -d --build   # web UI (7432)
-docker compose -f packages/mcp/docker-compose.yml up -d           # MCP   (7433)
 ```
 
-Ports `7431`–`7435` (avoids clashing with 3000/8000/8080). Every feature works out of the box — scrape, crawl, batch, monitor, search.
-
-### Individual services
-
-```bash
-# Pull from Docker Hub or GHCR — pick one image or all
-# Docker Hub
-docker pull michaelobele/tomoshibi-api:latest    # api only (7431)
-docker pull michaelobele/tomoshibi-mcp:latest    # mcp only (7433)
-docker pull michaelobele/tomoshibi-web:latest    # web only (7432)
-docker pull michaelobele/tomoshibi:latest        # all-in-one
-# GHCR (same images)
-docker pull ghcr.io/michael-obele/tomoshibi-api:latest
-docker pull ghcr.io/michael-obele/tomoshibi-mcp:latest
-docker pull ghcr.io/michael-obele/tomoshibi-web:latest
-docker pull ghcr.io/michael-obele/tomoshibi:latest
-
-# Run one service standalone (needs a running API on 7431)
-docker run --rm -p 7431:7431 michaelobele/tomoshibi-api
-docker run --rm -p 7433:7433 -e TOMOSHI_API_URL=http://host.docker.internal:7431 michaelobele/tomoshibi-mcp
-# web bakes its API URL at image build time (http://api:7431), so run it via its
-# compose file instead — that overrides the build arg: packages/web/docker-compose.yml
-
-# Or via compose per-package
-docker compose -f packages/api/docker-compose.yml up -d   # api + redis (searxng: --profile searxng)
-docker compose -f packages/mcp/docker-compose.yml up -d   # mcp (needs api)
-docker compose -f packages/web/docker-compose.yml up -d   # web (needs api)
-```
-
-### From source
-
-```bash
-git clone https://github.com/Michael-Obele/tomoshibi.git && cd tomoshibi
-go run ./packages/api/cmd/api              # needs Go 1.25+ and Chromium on PATH (7431)
-REDIS_URL=redis://localhost:7434 go run ./packages/api/cmd/api   # with async
-```
+Ports `7431`–`7435` (avoids 3000/8000/8080). Scrape, crawl, batch, monitor and search all work out of the box; SearXNG is an opt-in profile.
 
 ### Your first scrape
 
@@ -134,133 +141,79 @@ curl -X POST http://localhost:7431/v1/scrape \
 
 No `mode` needed — `smart` is default. `static` skips JS; `dynamic` always renders.
 
+### Other ways to run it
+
+```bash
+# from source (Go 1.25+ and Chromium on PATH)
+go run ./packages/api/cmd/api
+# with Redis for async work
+REDIS_URL=redis://localhost:7434 go run ./packages/api/cmd/api
+
+# published images
+docker pull michaelobele/tomoshibi          # all-in-one
+docker pull michaelobele/tomoshibi-api      # api only
+docker pull michaelobele/tomoshibi-mcp      # mcp only
+docker pull michaelobele/tomoshibi-web      # web only
+# same images on GHCR: ghcr.io/michael-obele/tomoshibi-*
+```
+
+Per-package compose files, image tags and the build-arg gotcha for web: [`CONTRIBUTING.md`](./CONTRIBUTING.md#running-the-stack).
+
 ---
 
 ## Packages
 
-| Package | Path                           | Description                                                                                    | Install                                                |
-| ------- | ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| **api** | [`packages/api`](packages/api) | Go scraping API — Gin + Chromedp + Colly + native search roster (21 engines)                   | `docker compose up` or `go run ./packages/api/cmd/api` |
-| **mcp** | [`packages/mcp`](packages/mcp) | MCP server — 3 tools, `tomoshi`/`tomoshibi` bin ([npm](https://www.npmjs.com/package/tomoshi)) | `npx -y tomoshi`                                       |
-| **web** | [`packages/web`](packages/web) | Svelte 5 playground — scrape/crawl/search UI                                                   | `bun --cwd packages/web dev`                           |
+Four packages, each with its own README. This file is the map; the detail lives next to the code.
 
-```bash
-# All packages
-bun install          # root (if using workspaces)
-# Or per-package
-bun --cwd packages/mcp install && bun --cwd packages/mcp dev
-bun --cwd packages/web install && bun --cwd packages/web dev
-```
-
-### Repository layout
-
-```text
-tomoshibi/
-├── packages/
-│   ├── api/            # Go scraping API — Gin + Chromedp + Colly + embedded Asynq worker (7431)
-│   ├── mcp/            # MCP server — 3 tools over the API, npm package `tomoshi` (7433)
-│   └── web/            # Svelte 5 playground — scrape/crawl/search in the browser (7432)
-├── docs/               # API reference, search comparison, SearXNG Fly guide (the rest is local-only)
-├── skills/             # agent skills published to skills.sh (mirrored to .agents/, .agent/)
-├── plan/               # local design plans (gitignored)
-├── test_reports/       # historical test runs (gitignored)
-├── .github/workflows/  # CI — ci.yml, docker.yml (images), npm.yml (publish)
-├── docker-compose.yml  # full stack: api 7431 + redis 7434 (+ searxng 7435 opt-in)
-├── package.json        # bun workspaces — dev:api · dev:mcp · dev:web · check
-├── AGENTS.md           # agent context source of truth (CLAUDE.md symlinks to it)
-├── README.md           # this file
-└── LICENSE             # MIT
-```
-
-Each package has its own README with its own tree: [api](packages/api/README.md) · [mcp](packages/mcp/README.md) · [web](packages/web/README.md).
-
----
-
-## Local telemetry
-
-Every search records one event (who answered, fallbacks, latency, trace id) and every native engine attempt one more (ok/empty/blocked/timeout + reason) into **daily JSONL files that never leave the machine**:
-
-```text
-data/telemetry/search-2026-09-27.jsonl   # one line per search
-data/telemetry/engine-2026-09-27.jsonl   # one line per engine attempt
-```
-
-- **View it:** `curl -s 'http://localhost:7431/v1/insights?hours=24' | jq` → per-engine scorecard (attempts, ok/empty/blocked, `last_error`, latency), chain stats (fallbacks, weak-result gates), p50/p95 latency, and `recent_errors` carrying `trace_id`s you can grep in `docker logs tomoshibi-api-1`.
-- **Raw:** `cat data/telemetry/engine-*.jsonl | jq -s 'group_by(.engine) | map({engine: .[0].engine, n: length})'`
-- **Config** (defaults): `TELEMETRY_ENABLED` (`true`) · `TELEMETRY_DIR` (`data/telemetry`) · `TELEMETRY_RETAIN_DAYS` (`14`, `0` = keep forever) — documented in `packages/api/.env.example`.
-- **Docker:** compose bind-mounts `./data:/app/data`, so files survive recreation; `/data/` is gitignored.
-- Off is instant: `TELEMETRY_ENABLED=false` → `/v1/insights` returns `{"enabled": false}`.
-
-## Updating Docker
-
-| You changed              | Do this locally                                                                                        | What CI does on push to `main`                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| Go code (`packages/api`) | `docker compose up -d --build api`                                                                     | Docker workflow builds & pushes `ghcr.io/michael-obele/tomoshibi-*` (+ Docker Hub) |
-| MCP (`packages/mcp`)     | `docker compose -f packages/mcp/docker-compose.yml up -d --build`                                      | npm workflow publishes `tomoshi` (auto-bump, e.g. 1.1.6 → 1.1.7)                   |
-| Web (`packages/web`)     | `docker compose -f packages/web/docker-compose.yml up -d --build` — the backend URL is a **build** arg | same Docker workflow                                                               |
-| compose / `.env` only    | `docker compose up -d` (no `--build`)                                                                  | —                                                                                  |
-
-Release checklist: `make check` in `packages/api` (or `bun run check` in `packages/mcp`) → commit → push → watch `gh run list` → rebuild locally → verify:
-
-```bash
-docker logs tomoshibi-api-1 2>&1 | grep -E "Native search engines loaded|Telemetry recording"
-curl -s localhost:7431/health
-```
-
-Self-hosters pull the same images CI pushed: `docker pull ghcr.io/michael-obele/tomoshibi-api:latest`.
-
-## FAQ / troubleshooting
-
-- **An engine stopped returning results.** Read the scorecard first: `curl -s 'localhost:7431/v1/insights?hours=24' | jq '.insights.engines'` → `blocked` / `last_error`. Confirm with a live probe (`CANARY_ENGINES=ddg go test -tags=canary ./internal/search/engines/ -run TestCanary -v` from `packages/api`), log the verdict in `plan/tomoshi-search/research.md` §3b, then fix `internal/search/engines/registry.default.yaml` (better `block_markers`, `proxy: webshare`, or `enabled: false`) and rebuild. **Roster rule: no edit without a live probe.**
-- **A new error string shows up in logs.** Start from `recent_errors[].trace_id` in `/v1/insights` and grep that id in `docker logs`. The chain explains itself: `search: backend failed, trying next`, `search: results concentrated on one domain` (weak-result gate firing), `proxy budget exhausted — engines degraded to direct egress`.
-- **My env var is ignored.** The api container takes an explicit `environment:` list (no `env_file`), and compose interpolation reads only the repo-root `.env` (gitignored). Add the var in **both** places, then `docker compose up -d` — use `--build` only when the code changed.
-- **401 on `/v1/*`.** New builds honor `APP_API_KEYS`/`API_KEYS`; Docker passes neither, so auth is off there. If you enable it, also set `TOMOSHI_API_KEY` in your MCP config — otherwise every MCP call 401s.
-- **Which search API keys do I need?** None; most engines are keyless. Optional quality boosts: `SERPER_API_KEY` (Google, 2,500 free), `TAVILY_API_KEY` (1,000 free/mo), `BRAVE_SEARCH_API_KEY` ($5/mo free credit). Set them in `packages/api/.env` **or** just in your MCP config; the MCP forwards whatever the backend asks for (`GET /v1/env`) on every request via `X-Tomoshi-Env`, so the key lives in one place (`TOMOSHI_FORWARD_ENV=false` opts out).
-- **Port 7431 already in use.** An older container or process holds it (`docker ps`). Experiments use `SERVER_PORT=7452`.
-- **`/v1/crawl`, `/v1/batch`, `/v1/monitor` return 503.** Redis is optional by design — scrape/search keep working; `docker compose up -d redis`.
-- **MCP tools fail with `{}` or a raw `Invalid arguments …` dump.** You're on `tomoshi` < 1.1.6, which published a root-level `oneOf` schema clients rendered as empty properties. Upgrade/restart the MCP — 1.1.6+ ships flat schemas and readable usage errors.
-- **Search results look thin or off-topic.** Check `backends` (who answered), `weak_gates` (how often native was single-domain and got merged with SearXNG/Brave hits), and `engines.<name>.empty` (corpus mismatches) in `/v1/insights`.
+| Package | What it is | Read |
+| --- | --- | --- |
+| **api** | Go scraping + search API. Gin, Colly, Chromedp, native engine roster (21 engines), embedded Asynq worker. Port 7431 | [**packages/api/README.md**](./packages/api/README.md) |
+| **mcp** | MCP server — 3 resource-oriented tools over the API. npm [`tomoshi`](https://www.npmjs.com/package/tomoshi). Port 7433 | [**packages/mcp/README.md**](./packages/mcp/README.md) |
+| **web** | Svelte 5 playground — scrape/crawl/search in a browser. Port 7432 | [**packages/web/README.md**](./packages/web/README.md) |
+| **bridge** | Browser extension that lends Tomoshibi your own signed-in session. **PolyForm Noncommercial**, not MIT | [**packages/bridge/README.md**](./packages/bridge/README.md) |
 
 ---
 
 ## API
 
-Base: `http://localhost:7431` — every endpoint under `/v1`.
+Base `http://localhost:7431`, everything under `/v1`.
 
-| Method | Endpoint              | What it does                                                                     | Needs Redis |
-| ------ | --------------------- | -------------------------------------------------------------------------------- | ----------- |
-| `POST` | `/v1/scrape`          | Single page → markdown (smart/static/dynamic, screenshots, `extract_schema`)     | No          |
-| `POST` | `/v1/scrape` + `urls` | Multi-URL sync (max 10, no Redis)                                                | No          |
-| `POST` | `/v1/map`             | Sitemap → robots.txt → link fallback                                             | No          |
-| `POST` | `/v1/search`          | Native 21-engine roster → SearXNG → stealth → Brave (keyed: brave/serper/tavily) | No          |
-| `GET`  | `/v1/env`             | env var names a client may send per request in `X-Tomoshi-Env` (MCP forwarding)  | No          |
-| `POST` | `/v1/crawl`           | Async BFS crawl → `202` + job ID                                                 | **Yes**     |
-| `GET`  | `/v1/crawl/:id`       | Poll crawl status                                                                | **Yes**     |
-| `POST` | `/v1/batch/scrape`    | Enqueue 20 URLs async                                                            | **Yes**     |
-| `GET`  | `/v1/batch/:id`       | Poll batch                                                                       | **Yes**     |
-| `POST` | `/v1/monitor`         | Hash markdown, webhook on change                                                 | **Yes**     |
+| Method | Endpoint | What it does | Redis |
+| --- | --- | --- | --- |
+| `POST` | `/v1/scrape` | Page → markdown. `smart` / `static` / `dynamic`, screenshots, `extract_schema`, `transport` | No |
+| `POST` | `/v1/search` | Native 21-engine roster → SearXNG → stealth → **your browser** → Brave | No |
+| `POST` | `/v1/research` | One query → search results **and** the pages behind them | No |
+| `POST` | `/v1/map` | Sitemap → robots.txt → link fallback | No |
+| `POST` | `/v1/crawl` · `/v1/batch/scrape` · `/v1/monitor` | Async BFS crawl, 20-URL batch, change-tracking webhooks | **Yes** |
 
-**Blocked pages:** anti-bot interstitials are served upstream with HTTP 200. Tomoshibi detects the challenge body and answers `502` with `{"code":"blocked","vendor":"cloudflare"}` instead of returning the challenge page as markdown. Set `ANTIBOT_SOLVER_URL` to attach an out-of-process solver addon.
+Blocked pages answer `502 {"code":"blocked","vendor":"cloudflare"}` — never the challenge body as markdown. Params, error codes and the full reference: [`docs/guides/API_REFERENCE.md`](docs/guides/API_REFERENCE.md) and [`packages/api/README.md`](packages/api/README.md#endpoints).
 
-**Network capture:** `capture_network: true` on a dynamic scrape returns the page's XHR/fetch JSON under `network.responses`, with text-only bodies, no headers or cookies, and 100-response / 512 KiB / 8 MiB caps. See [`docs/guides/API_REFERENCE.md`](docs/guides/API_REFERENCE.md#network-capture).
+## Borrow your own browser
 
-```
-Client → Gin Router → Scraper (Colly / Chromedp + Readability)
-                 ↘ Asynq (Redis) → Worker → same Scraper
-                                         ↘ Browser Pool (one allocator, recycled every 100 scrapes)
+Sites that block datacenter traffic can't be scraped honestly — so don't scrape them. Install the [bridge extension](./packages/bridge), pair it once, and ask for the browser:
+
+```bash
+curl -X POST http://localhost:7431/v1/scrape \
+  -d '{"url":"https://example.com/dashboard","transport":"bridge"}'
 ```
 
----
+**No recipe required.** A per-origin allowlist is the gate: the first touch answers `428 consent-required` naming the origin, and `tomoshibi bridge allow example.com` opens it. Results carry `provenance` and are marked `untrusted`, never cached, and every fetch lands in an access log.
+
+Recipes are the specialization, not the price of admission — use one when a site needs its own actions, extraction schema, pace, or the `turbo` layer:
+
+```bash
+tomoshibi recipes add <git-url>#<ref> && tomoshibi recipes verify
+```
 
 ## MCP
 
-3 tools, not 8 — resource-oriented (`action` enum, ≤7 philosophy).
+3 tools, not 8 — resource-oriented (`action` enum).
 
-| Tool               | `action`                                                       | Endpoint                             |
-| ------------------ | -------------------------------------------------------------- | ------------------------------------ |
-| `tomoshi_extract`  | `scrape` · `scrape_multi` · `links` · `batch` · `batch_status` | `/v1/scrape`, `/v1/batch`            |
-| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                    | `/v1/search`, `/v1/map`, `/v1/crawl` |
-| `tomoshi_monitor`  | `create` · `status` · `delete`                                 | `/v1/monitor`                        |
+| Tool | `action` |
+| --- | --- |
+| `tomoshi_extract` | `scrape` · `scrape_multi` · `links` · `batch` · `batch_status` · `research` |
+| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status` |
+| `tomoshi_monitor` | `create` · `status` · `delete` |
 
 ```jsonc
 // .vscode/mcp.json or Claude config
@@ -271,118 +224,63 @@ Client → Gin Router → Scraper (Colly / Chromedp + Readability)
       "args": ["-y", "tomoshi"],
       "env": {
         "TOMOSHI_API_URL": "http://localhost:7431",
-        // optional search keys — forwarded to the backend on every request
-        // as X-Tomoshi-Env, so configure them HERE, not in the backend's .env
-        "BRAVE_SEARCH_API_KEY": "BSB-...", // or SERPER_API_KEY / TAVILY_API_KEY
-      },
-    },
-  },
+        // optional search keys — forwarded per request as X-Tomoshi-Env,
+        // so configure them HERE, not in the backend's .env
+        "BRAVE_SEARCH_API_KEY": "BSB-..." // or SERPER_API_KEY / TAVILY_API_KEY
+      }
+    }
+  }
 }
 ```
 
-The MCP asks the backend which key names it accepts (`GET /v1/env`) once, then forwards the matching ones from its own env on every call. `TOMOSHI_FORWARD_ENV` tunes it: `""` = all requested (default), `"false"` = off, or a comma list to restrict.
-
-Also: `npx tomoshibi` (alias, same package).
-
----
+Full tool reference, `scrape` params and the shell-out story: [`packages/mcp/README.md`](./packages/mcp/README.md).
 
 ## Web
 
 Svelte 5 playground for scrape/crawl/search — same API, browser UI.
 
 ```bash
-bun --cwd packages/web dev   # http://localhost:5173 (dev) / 7432 (docker)
+bun --cwd packages/web dev   # http://localhost:5173
 ```
 
-Remote Functions proxy to the Go backend; API keys stay server-side.
+Details: [`packages/web/README.md`](./packages/web/README.md).
 
 ---
+
+## Verified
+
+Every number below was produced by running the thing, not by estimating it.
+
+| Surface | How it was checked |
+| --- | --- |
+| API | 23 Go packages under `go test ./...`, `-race` in CI, `gofmt` + `go vet` + `staticcheck` clean |
+| Extension | 27 unit tests (happy-dom), E2E-A protocol suite, E2E-B **19/19** in real Chrome |
+| MCP | 63 tests, `tsc -p tsconfig.build.json` build |
+| Live | `bun test/live-research.ts` — real DuckDuckGo, Google and Bing through a real browser, plus a research fan-out with `paid_api_used: false` |
+
+Versions: repo **1.1.0** · api **1.1** · bridge **0.2.0** · mcp **1.2.0** · web **0.1.0**.
 
 ## Agent Skills
 
-Reusable instructions for AI coding agents — discoverable via [skills.sh](https://skills.sh) and the [`skills` CLI](https://github.com/vercel-labs/skills) (supports 75+ agents: Claude Code, Cursor, OpenCode, Codex, etc.).
-
-This repo exposes skills from `skills/` (canonical, indexed by `skills.sh`) — mirrored to `.agents/skills/` and `.agent/skills/` for OpenCode/Cursor compatibility.
-
-| Skill         | Path                                   | What it does                                                                                                    |
-| ------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| **tomoshibi** | [`skills/tomoshibi`](skills/tomoshibi) | Use Tomoshibi MCP (`tomoshi`) — `tomoshi_extract` / `tomoshi_discover` / `tomoshi_monitor` → LLM-ready markdown |
-
-Verify discovery locally:
+An installable skill for AI coding agents, indexed by [skills.sh](https://skills.sh) and the [`skills` CLI](https://github.com/vercel-labs/skills) (75+ agents).
 
 ```bash
-npx skills add ./ --list   # → tomoshibi
+npx skills add Michael-Obele/tomoshibi -g      # all projects
+npx skills add Michael-Obele/tomoshibi         # this project only
 ```
 
-### Install globally (all projects)
-
-```bash
-# from GitHub (recommended) — installs to ~/<agent>/skills/ (e.g. ~/.claude/skills/, ~/.agents/skills/)
-npx skills add Michael-Obele/tomoshibi -g
-
-# only this skill (same when repo has one skill)
-npx skills add Michael-Obele/tomoshibi --skill tomoshibi -g
-
-# all skills, all detected agents, no prompts (CI-friendly)
-npx skills add Michael-Obele/tomoshibi --all -g -y
-
-# verify
-npx skills list -g
-```
-
-### Install to this project only (team-shared)
-
-```bash
-# installs to ./.claude/skills/, ./.agents/skills/, etc. — commit to share with team
-npx skills add Michael-Obele/tomoshibi
-
-# specific agents
-npx skills add Michael-Obele/tomoshibi -a claude-code -a opencode -a cursor
-
-# from local checkout
-npx skills add ./ --skill tomoshibi
-```
-
-### Use without installing
-
-```bash
-npx skills use Michael-Obele/tomoshibi --skill tomoshibi | claude
-npx skills use Michael-Obele/tomoshibi --skill tomoshibi --agent claude-code
-```
-
-Browse on the web: [`skills.sh/Michael-Obele/tomoshibi`](https://skills.sh/Michael-Obele/tomoshibi) (after first push/index).
-
-> **Adding a new skill:** create `skills/<name>/SKILL.md` with `name` + `description` frontmatter (see [`tomoshibi/SKILL.md`](skills/tomoshibi/SKILL.md)), then `npx skills add ./ --list` to verify. Keep `skills/` canonical — mirror to `.agents/skills/` / `.agent/skills/` if you need OpenCode compat.
-
----
-
-## Benchmarks
-
-| Stack         | Pull size | Running RAM | Containers |
-| ------------- | --------- | ----------- | ---------- |
-| **Tomoshibi** | ~1.79 GB  | ~317 MiB    | 4          |
-| Firecrawl     | ~7.26 GB  | ~4.1 GiB    | 6          |
-
-Measured 2026-08-31 (`docker images` + `docker stats`). **4× lighter, 13× less RAM.** Fits on 512 MB Fly.io / $5 Hetzner — Firecrawl doesn't.
+Source: [`skills/tomoshibi`](skills/tomoshibi) — mirrored to `.agents/skills/` and `.agent/skills/` for OpenCode/Cursor.
 
 ---
 
 ## Name
 
-**Tomoshibi** (灯火 — ともしび) — Japanese for _lamp light_, the glow of a paper lantern. Search as illumination: lighting up the web for AI agents. Short alias **tomoshi** (灯) for daily use. Formerly **Cinder** (extinct fire — wrong metaphor for discovery; `cinder` also collided with `github.com/cinder/Cinder` 5.5k★ and `npm/cinder`).
-
----
+**Tomoshibi** (灯火 — ともしび) — Japanese for _lamp light_, the glow of a paper lantern. Search as illumination. Short alias **tomoshi** (灯). Formerly **Cinder** (extinct fire — wrong metaphor, and the name collided with two unrelated projects).
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
 
-**One exception, by directory.** `packages/bridge/` (the browser extension) is
-PolyForm Noncommercial 1.0.0 — see
-[packages/bridge/LICENSE](packages/bridge/LICENSE). Read it, run it, fork it for
-yourself; do not sell it. Everything else in this repo stays MIT. The extension
-is the one piece someone could take wholesale and repackage, which is why it
-carries a different licence while living here; as the copyright holder Michael
-keeps full commercial rights and can dual-licence it later.
+**One exception, by directory.** [`packages/bridge/`](./packages/bridge) is PolyForm Noncommercial 1.0.0 — see [packages/bridge/LICENSE](./packages/bridge/LICENSE). Read it, run it, fork it for yourself; do not sell it. Everything else stays MIT.
 
-> **Migrating from Cinder?** `github.com/Michael-Obele/cinder` now redirects to `tomoshibi`. Docker image `ghcr.io/michael-obele/cinder` → `ghcr.io/michael-obele/tomoshibi`. No code changes needed beyond the import path (`github.com/Michael-Obele/tomoshibi`).
+> **Migrating from Cinder?** `github.com/Michael-Obele/cinder` redirects here. Images `ghcr.io/michael-obele/cinder` → `…/tomoshibi`. Only the import path changes (`github.com/Michael-Obele/tomoshibi`).

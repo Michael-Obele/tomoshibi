@@ -1,5 +1,8 @@
 # Search & Scrape Comparison — Tomoshibi vs Exa vs Firecrawl (2026-08-30)
 
+> **The headline numbers live in the [main README](../README.md#compared-to-firecrawl-and-exa).**
+> This file keeps the methodology, the caveats and the commands to reproduce them.
+
 Backed-by-benchmark comparison of Tomoshibi's search and scrape against Exa
 (paid API) and a self-hosted Firecrawl (`v2.11.162`). Every Tomoshibi and
 Firecrawl number below was measured on this machine against live local

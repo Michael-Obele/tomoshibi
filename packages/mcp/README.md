@@ -144,8 +144,8 @@ docker run --rm -p 7433:7433 -e TOMOSHI_API_URL=http://host.docker.internal:7431
 
 | Tool               | `action`                                                             | What it does                                                       |
 | ------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `tomoshi_extract`  | `scrape` · `scrape_multi` (≤10) · `links` · `batch` · `batch_status` | Single/multi-page → markdown, link extraction, async batch (Redis) |
-| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                          | Web search (native roster → SearXNG → Brave/Serper/Tavily), sitemap, async BFS crawl |
+| `tomoshi_extract`  | `scrape` · `scrape_multi` (≤10) · `links` · `batch` · `batch_status` · `research` | Single/multi-page → markdown, link extraction, async batch (Redis), and a query → SERP → read pages |
+| `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                          | Web search (native roster → SearXNG → **your browser** → Brave/Serper/Tavily), sitemap, async BFS crawl. `engine` picks a backend: `browser:ddg`, `browser:google`, `browser:bing` |
 | `tomoshi_monitor`  | `create` · `status` · `delete`                                       | Hash markdown, webhook on change                                   |
 
 Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status` until done.
@@ -153,6 +153,24 @@ Async actions (`batch`, `crawl`, `monitor`) are Redis-backed — poll `*_status`
 **Example — scrape + search in one turn:**
 
 > `tomoshi_discover` `search` "svelte 5 runes" → `tomoshi_extract` `scrape_multi` on top 3 URLs → LLM-ready markdown
+
+### Borrowing your own browser
+
+`scrape` takes `transport`: `anonymous` (default) · `bridge` · `auto`. `bridge`
+drives the browser you are signed into and needs **no recipe** — just a paired
+[bridge extension](../bridge) and an allowed origin (`tomoshibi bridge allow
+<host>`; the first touch answers `428 consent-required`). `auto` tries the cheap
+lanes first and escalates into the browser only for an allowed origin.
+
+Four named built-ins run in the page before it is read. A bare `true` is shorthand
+for the defaults:
+
+| Param | What it does |
+| --- | --- |
+| `settle` | wait until the page stops moving (quiet DOM, stable height, no *finite* animation). Infinite spinners are excluded, or nothing ever settles |
+| `scroll_collect` | scroll in steps and report what each round added — infinite feeds and lazy lists |
+| `page_tree` | `dom` (works on Firefox) · `ax` (real accessibility tree) · `both` |
+| `motion` | what animates, what is pinned, which element owns scrolling |
 
 ### Scrape params for JS-rendered extraction (dynamic mode)
 

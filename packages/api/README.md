@@ -139,10 +139,11 @@ Base URL `http://localhost:7431` — everything lives under `/v1`.
 
 | Method | Endpoint                   | What it does                                                                              | Redis   |
 | ------ | -------------------------- | ----------------------------------------------------------------------------------------- | ------- |
-| `POST` | `/v1/scrape`               | single page → markdown (modes: `smart`/`static`/`dynamic`, screenshots, `extract_schema`) | No      |
+| `POST` | `/v1/scrape`               | single page → markdown (`smart`/`static`/`dynamic`, screenshots, `extract_schema`, `transport`) | No      |
 | `POST` | `/v1/scrape` + `urls`      | multi-URL sync (max 10)                                                                   | No      |
 | `POST` | `/v1/map`                  | sitemap → robots.txt → link discovery                                                     | No      |
-| `POST` | `/v1/search`               | aggregated search (Native → SearXNG → Stealth → Brave)                                    | No      |
+| `POST` | `/v1/search`               | aggregated search (Native → SearXNG → stealth → **browser** → Brave); `engine=browser:ddg\|google\|bing` | No      |
+| `POST` | `/v1/research`             | one query → search results **and** the pages behind them (`pages`, `summary`, `paid_api_used`) | No      |
 | `GET`  | `/v1/env`                  | env var names a client may supply per request in `X-Tomoshi-Env` (see Search key forwarding below) | No |
 | `POST` | `/v1/crawl`                | async BFS crawl → `202` + job ID                                                          | **Yes** |
 | `GET`  | `/v1/crawl/:id`            | poll crawl status                                                                         | **Yes** |
@@ -170,14 +171,44 @@ A client may supply allowlisted search API keys **per request** in the `X-Tomosh
 
 ### The bridge lane (borrow your own browser)
 
-Some sites block datacenter and headless traffic no matter what the scraper does. The bridge is the escape hatch: a Chrome extension you pair once, which dials out to the API on loopback (`ws://127.0.0.1:7431/bridge`) and fetches pages **inside your own signed-in browser** when a recipe says the borrow lane can be used.
+Some sites block datacenter and headless traffic no matter what the scraper does.
+The bridge is the honest answer: a browser extension you pair once, which dials
+out to the API on loopback (`ws://127.0.0.1:7431/bridge`) and fetches the page
+**inside your own signed-in browser**.
+
+**A recipe is not required.** Ask for the browser on the request:
 
 ```bash
 # 1. Start the API; it prints a pairing code (also shown by the CLI).
 tomoshibi bridge code          # 6 digits, rotates every 10 minutes
-# 2. Load the extension, paste the code in its popup.
-# 3. Install a recipe pack that knows the site, then scrape normally.
+# 2. Load packages/bridge's build in chrome://extensions, paste the code in its popup.
+
+# 3. Ask for the browser. No YAML, no pack.
+curl -X POST localhost:7431/v1/scrape \
+  -d '{"url":"https://example.com/dashboard","transport":"bridge"}'
 ```
+
+The gate is a per-origin allowlist, because removing the recipe removed the only
+thing that used to authorize a fetch:
+
+```bash
+# first touch of an unknown origin answers 428 {"code":"consent-required","origin":"…"}
+tomoshibi bridge allow example.com      # or *.example.com
+tomoshibi bridge allowed                # what is allowed now
+tomoshibi bridge deny example.com
+```
+
+A fresh state already allows the three search hosts (DuckDuckGo, Google, Bing)
+and nothing else — deliberately not `*.google.com`, which would include mail.
+A page budget (600/hour, `BRIDGE_PAGES_PER_HOUR=0` disables) and a 64-action cap
+stop a runaway loop before it spends a real session.
+
+`transport: "auto"` walks static → dynamic → bridge and only escalates into the
+browser for an origin that is already allowed, so a working anonymous fetch is
+never turned into a refusal.
+
+Recipes remain the specialization: use one when a site needs its own actions,
+extraction schema, pace, or the `turbo` layer.
 
 Every bridged result carries a `provenance` block and is marked `untrusted`, never cached:
 
@@ -333,6 +364,37 @@ Keep `SHUTDOWN_TIMEOUT` (default 20s) below `kill_timeout` so in-flight requests
 
 ---
 
+## Local telemetry
+
+Every search records one event (who answered, fallbacks, latency, trace id) and
+every native engine attempt one more (ok/empty/blocked/timeout + reason) into
+**daily JSONL files that never leave the machine**:
+
+```text
+data/telemetry/search-2026-11-14.jsonl   # one line per search
+data/telemetry/engine-2026-11-14.jsonl   # one line per engine attempt
+```
+
+```bash
+# scorecard: per-engine attempts, ok/empty/blocked, last_error, latency
+curl -s 'localhost:7431/v1/insights?hours=24' | jq '.insights.engines'
+
+# raw
+cat data/telemetry/engine-*.jsonl | jq -s 'group_by(.engine) | map({engine: .[0].engine, n: length})'
+```
+
+Config (defaults): `TELEMETRY_ENABLED` (`true`) · `TELEMETRY_DIR`
+(`data/telemetry`) · `TELEMETRY_RETAIN_DAYS` (`14`, `0` = keep forever). Docker
+bind-mounts `./data:/app/data`, so the files survive container recreation.
+`TELEMETRY_ENABLED=false` makes `/v1/insights` answer `{"enabled": false}`
+immediately.
+
+This is the first thing to read when an engine starts misbehaving — the roster
+rule is **no edit without a live probe**, and the scorecard is why: it is how
+"the engine is broken" was distinguished from "the engine is blocked from this
+address" (DuckDuckGo answered 30 times and refused 40 in one week, which is what
+led to the browser search rung).
+
 ## Troubleshooting
 
 | Symptom                                               | Fix                                                                                                                                                          |
@@ -344,6 +406,15 @@ Keep `SHUTDOWN_TIMEOUT` (default 20s) below `kill_timeout` so in-flight requests
 | `static` returns empty content on a React/Vue page    | expected — use `smart` (default) or `dynamic`; the SPA-shell heuristic triggers the Chromedp fallback                                                        |
 | Outbound fetch refused as private/loopback            | SSRF guard — set `SSRF_ALLOW_PRIVATE=true` only for internal targets                                                                                         |
 | Port already in use                                   | `SERVER_PORT=7432 go run ./cmd/api`                                                                                                                          |
+| An engine stopped returning results                   | Read the scorecard first: `curl -s 'localhost:7431/v1/insights?hours=24' \| jq '.insights.engines'` → `blocked` / `last_error`. Confirm with a live probe (`CANARY_ENGINES=ddg go test -tags=canary ./internal/search/engines/ -run TestCanary -v`), log the verdict, then fix `internal/search/engines/registry.default.yaml` (`block_markers`, `proxy: webshare`, or `enabled: false`). **No roster edit without a live probe.** |
+| A new error string shows up                            | Start from `recent_errors[].trace_id` in `/v1/insights` and grep that id in `docker logs`. The chain narrates itself: `backend failed, trying next`, `results concentrated on one domain` (weak-result gate), `proxy budget exhausted — engines degraded to direct egress`. |
+| Search results look thin or off-topic                  | Check `backends` (who answered), `weak_gates` (native single-domain sets merged with fallbacks) and `engines.<name>.empty` (corpus mismatch). |
+| `428` with `code: "consent-required"`                  | `transport: bridge` reached an origin the allowlist does not name: `tomoshibi bridge allow <host>`. |
+| `502` with `code: "blocked"`                           | The site served a challenge (or the engine did). A human clears it in the bridge tab, then retry. Never returned as content. |
+| My env var is ignored                                  | The api container takes an explicit `environment:` list (no `env_file`), and compose interpolation reads only the repo-root `.env` (gitignored). Add it in **both** places, then `docker compose up -d` — `--build` only when code changed. |
+| `401` on `/v1/*`                                       | `APP_API_KEYS`/`API_KEYS` is set. Docker passes neither, so auth is off there. If you enable it, set `TOMOSHI_API_KEY` in your MCP config too. |
+| Which search API keys do I need?                       | None — most engines are keyless. Optional boosts: `SERPER_API_KEY`, `TAVILY_API_KEY`, `BRAVE_SEARCH_API_KEY`. Configure them in the **MCP** config and the backend receives them per request via `X-Tomoshi-Env` (`TOMOSHI_FORWARD_ENV=false` opts out). |
+| MCP tools fail with `{}` or a raw `Invalid arguments` dump | `tomoshi` < 1.1.6 published a root-level `oneOf` schema clients rendered as empty properties. Upgrade and restart the MCP. |
 
 ---
 
