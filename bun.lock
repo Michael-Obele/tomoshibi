@@ -7,7 +7,7 @@
     },
     "packages/mcp": {
       "name": "tomoshi",
-      "version": "1.1.5",
+      "version": "1.1.13",
       "bin": {
         "tomoshi": "dist/stdio.js",
         "tomoshibi": "dist/stdio.js",
