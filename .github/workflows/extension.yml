@@ -63,6 +63,9 @@ jobs:
           path: packages/bridge/.output/*.zip
           if-no-files-found: error
           retention-days: 30
+          # `.output` starts with a dot, and upload-artifact skips hidden files
+          # by default — without this the zips build fine and then upload nothing.
+          include-hidden-files: true
 
       - name: Attach to the release
         if: startsWith(github.ref, 'refs/tags/bridge-v')
