@@ -45,6 +45,19 @@ type ScrapeResult struct {
 	// built-in engines produced it (currently: the browser bridge). Absent for
 	// plain static/dynamic scrapes.
 	Provenance *Provenance `json:"provenance,omitempty"`
+
+	// PageTree is the structural outline of the page, when the request asked
+	// for one. `dom` comes from the scripting layer (works on Firefox); `ax` is
+	// the real accessibility tree and needs the turbo layer.
+	PageTree *PageNode `json:"page_tree,omitempty"`
+
+	// Motion reports what is moving and what is pinned — the question you answer
+	// before parsing a page of carousels and sticky headers.
+	Motion *MotionReport `json:"motion,omitempty"`
+
+	// Collected is the scroll-and-collect log for a page that grows as you
+	// scroll: what each round added and whether the bottom was reached.
+	Collected *ScrollHarvest `json:"collected,omitempty"`
 }
 
 // Provenance is the receipt for a bridged fetch: which lane ran, through which
@@ -66,6 +79,10 @@ type Provenance struct {
 	Pages         int      `json:"pages,omitempty"`
 	Ms            int64    `json:"ms,omitempty"`
 	Untrusted     bool     `json:"untrusted,omitempty"`
+	// SettledMS is how long the page took to go quiet before it was read. It is
+	// the receipt for the settle built-in: a page read while it was still
+	// animating is visible here instead of being invisible everywhere.
+	SettledMS int64 `json:"settled_ms,omitempty"`
 }
 
 // CapturedResponse is one XHR/fetch response observed while a dynamic scrape
@@ -140,6 +157,26 @@ type ScrapeOptions struct {
 	// an unknown domain stays on the plain lane.
 	Recipe string `json:"recipe,omitempty"`
 
+	// Transport names whose network and session answer this request. It is
+	// orthogonal to Mode (which is about rendering):
+	//
+	//	"" / "anonymous"  Tomoshibi's own IP, no cookies (the default)
+	//	"bridge"          the user's signed-in browser, via the extension
+	//	"auto"            static → dynamic → bridge, allowed origins only
+	//
+	// A recipe is not required for "bridge": it is infrastructure, and recipes
+	// are the opt-in specialization for a site the generic driver cannot handle.
+	Transport string `json:"transport,omitempty"`
+
+	// Settle, ScrollCollect, PageTree and Motion are the named built-ins the
+	// bridge runs before reading the page (D33). They are a closed vocabulary:
+	// no caller-supplied JS reaches a signed-in tab.
+	Settle        *SettleOptions        `json:"settle,omitempty"`
+	ScrollCollect *ScrollCollectOptions `json:"scroll_collect,omitempty"`
+	PageTree      string                `json:"page_tree,omitempty"` // "dom" | "ax" | "both"
+	PageTreeOpts  *PageTreeOptions      `json:"page_tree_options,omitempty"`
+	Motion        bool                  `json:"motion,omitempty"`
+
 	// AllowBorrow lets this request reach the borrow lane, which drives the
 	// user's own signed-in browser. Only entry points where a human chose the
 	// URL set it (a direct scrape). Crawl and monitor deliberately do not: a
@@ -186,6 +223,115 @@ type ExtractedData struct {
 	Sources   []DataSource `json:"sources"`
 	Canvases  int          `json:"canvases,omitempty"`
 	Truncated bool         `json:"truncated,omitempty"`
+}
+
+// Transport values for ScrapeOptions.Transport.
+const (
+	// TransportAnonymous is the zero value: Tomoshibi fetches as itself, with no
+	// cookies, from its own address.
+	TransportAnonymous = "anonymous"
+	// TransportBridge drives the page in the browser the user is signed into,
+	// through the bridge extension. Needs no recipe.
+	TransportBridge = "bridge"
+	// TransportAuto walks static → dynamic → bridge, and only escalates into the
+	// browser for an origin the allowlist already permits.
+	TransportAuto = "auto"
+)
+
+// SettleOptions configures the settle built-in: wait until the page stops
+// moving, instead of sleeping for a guessed duration.
+type SettleOptions struct {
+	// QuietMS is how long the DOM must be mutation-free before a page counts as
+	// settled. Default 500.
+	QuietMS int `json:"quiet_ms,omitempty"`
+	// MaxMS caps the wait. Default 10000.
+	MaxMS int `json:"max_ms,omitempty"`
+	// PollMS is the observation interval. Default 120.
+	PollMS int `json:"poll_ms,omitempty"`
+}
+
+// ScrollCollectOptions configures the scroll-and-collect built-in: walk a page
+// that grows as you scroll and report what each round added.
+type ScrollCollectOptions struct {
+	// MaxRounds caps the walk. Default 8.
+	MaxRounds int `json:"max_rounds,omitempty"`
+	// QuietRounds is how many consecutive rounds with no growth end the walk.
+	// Default 3.
+	QuietRounds int `json:"quiet_rounds,omitempty"`
+	// StepPX is the scroll distance per round. 0 means ~0.9 of a viewport.
+	StepPX int `json:"step_px,omitempty"`
+	// PauseMS is the wait after each scroll. Default 350.
+	PauseMS int `json:"pause_ms,omitempty"`
+	// ItemSelector is the repeated element that defines "an item" (a card, a
+	// row). When set it is the precise growth signal; text length is the
+	// fallback for feeds that recycle nodes.
+	ItemSelector string `json:"item_selector,omitempty"`
+}
+
+// PageTreeOptions caps the outline size.
+type PageTreeOptions struct {
+	// MaxNodes caps emitted nodes. Default 1200.
+	MaxNodes int `json:"max_nodes,omitempty"`
+	// MaxDepth caps nesting. Default 12.
+	MaxDepth int `json:"max_depth,omitempty"`
+	// MinTextLen drops empty wrappers from the outline. Default 0.
+	MinTextLen int `json:"min_text_len,omitempty"`
+}
+
+// PageNode is one node of the page outline. Both the DOM outline (scripting)
+// and the accessibility tree (turbo) use this shape, so a caller parses one
+// structure whichever layer answered.
+type PageNode struct {
+	Tag      string     `json:"tag"`
+	Role     string     `json:"role"`
+	Path     string     `json:"path"`
+	TextLen  int        `json:"text_len"`
+	Text     string     `json:"text,omitempty"`
+	Box      []int      `json:"box,omitempty"` // [x, y, w, h]
+	Visible  bool       `json:"visible"`
+	Children []PageNode `json:"children,omitempty"`
+}
+
+// MotionReport is what is animating and what is pinned on the page.
+type MotionReport struct {
+	Animations []MotionAnimation `json:"animations"`
+	Pinned     []MotionPinned    `json:"pinned"`
+	// ScrollContainer names the element that owns scrolling when the page
+	// scrolls an inner div rather than the document.
+	ScrollContainer string `json:"scroll_container,omitempty"`
+}
+
+// MotionAnimation is one running animation. Infinite animations (spinners,
+// pulses) are flagged, because they never settle and must not be waited on.
+type MotionAnimation struct {
+	PlayState  string `json:"play_state"`
+	Infinite   bool   `json:"infinite"`
+	DurationMS int    `json:"duration_ms,omitempty"`
+	Target     string `json:"target,omitempty"`
+}
+
+// MotionPinned is one fixed or sticky element.
+type MotionPinned struct {
+	Path     string `json:"path"`
+	Position string `json:"position"`
+	Box      []int  `json:"box,omitempty"`
+}
+
+// ScrollHarvest is the log of a scroll-and-collect walk.
+type ScrollHarvest struct {
+	Rounds   []ScrollRound `json:"rounds"`
+	AtBottom bool          `json:"at_bottom"`
+	TextLen  int           `json:"text_len"`
+	Items    int           `json:"items"`
+}
+
+// ScrollRound is one step of a scroll walk.
+type ScrollRound struct {
+	Round   int  `json:"round"`
+	ScrollY int  `json:"scroll_y"`
+	TextLen int  `json:"text_len"`
+	Items   int  `json:"items"`
+	Grew    bool `json:"grew"`
 }
 
 type Scraper interface {

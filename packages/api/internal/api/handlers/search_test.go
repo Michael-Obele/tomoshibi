@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Michael-Obele/tomoshibi/internal/domain"
 	"github.com/Michael-Obele/tomoshibi/internal/search"
 	"github.com/gin-gonic/gin"
 )
@@ -474,5 +475,69 @@ func TestSearchHandlerCategoryQueryOverridesJSON(t *testing.T) {
 	}
 	if gotCategory != "code" {
 		t.Errorf("Category = %q, want code (query should override JSON)", gotCategory)
+	}
+}
+
+// errorPageFetcher is a PageFetcher that is never reached: the search fails first.
+type errorPageFetcher struct{}
+
+func (errorPageFetcher) Scrape(context.Context, string, string, domain.ScrapeOptions) (*domain.ScrapeResult, error) {
+	return nil, fmt.Errorf("should not be reached")
+}
+
+// TestBothSearchEndpointsReportAChallenge: a challenge from an engine has to
+// carry the same branchable code on /v1/search and /v1/research. A client that
+// reads `code` must not have to know which of the two it called, and 500 would
+// say our server broke when the engine answered.
+func TestBothSearchEndpointsReportAChallenge(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mock := &MockSearchService{
+		SearchFunc: func(context.Context, search.SearchOptions) ([]search.Result, int, error) {
+			return nil, 0, fmt.Errorf("search: %w (google)", search.ErrBrowserChallenge)
+		},
+	}
+	handler := NewSearchHandler(mock, WithPageFetcher(errorPageFetcher{}))
+	router := gin.New()
+
+	router.GET("/v1/search", handler.Search)
+	router.POST("/v1/research", handler.Research)
+	router.GET("/v1/research", handler.Research)
+
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{"search", http.MethodGet, "/v1/search?query=x", ""},
+		{"research POST", http.MethodPost, "/v1/research", `{"query":"x","pages":2}`},
+		{"research GET", http.MethodGet, "/v1/research?query=x&pages=2", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var body *bytes.Reader
+			if tc.body == "" {
+				body = bytes.NewReader(nil)
+			} else {
+				body = bytes.NewReader([]byte(tc.body))
+			}
+			req := httptest.NewRequest(tc.method, tc.path, body)
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+
+			if w.Code != http.StatusBadGateway {
+				t.Fatalf("status = %d, want 502: %s", w.Code, w.Body.String())
+			}
+			var resp map[string]any
+			if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("body: %v", err)
+			}
+			if resp["code"] != "awaiting-human" {
+				t.Fatalf("code = %v, want awaiting-human: %s", resp["code"], w.Body.String())
+			}
+		})
 	}
 }

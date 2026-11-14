@@ -31,6 +31,18 @@ type Server struct {
 	pending map[string]chan Message
 }
 
+// AllowsOrigin reports whether the bridge may drive an origin without a recipe.
+// The transport asks this before it touches the browser: the allowlist is what
+// replaced the recipe as the borrow lane's gate.
+func (s *Server) AllowsOrigin(origin string) bool { return s.state.Allows(origin) }
+
+// AllowedOrigins returns the recipe-free allowlist (for the CLI and status).
+func (s *Server) AllowedOrigins() []string { return s.state.AllowedOrigins() }
+
+// State exposes the pairing state, so the transport can audit with the same
+// writer and a CLI can mutate the allowlist under the same lock.
+func (s *Server) State() *State { return s.state }
+
 type client struct {
 	conn    *websocket.Conn
 	remote  string
@@ -333,7 +345,7 @@ func (s *Server) handle(c *client, msg Message) {
 			s.mu.Lock()
 			c.tokenSHA = DeviceTokenSHA(msg.Token)
 			s.mu.Unlock()
-			s.send(c, Message{Type: MsgStatus, Paired: true})
+			s.send(c, Message{Type: MsgStatus, Paired: true, Allowed: s.state.AllowedOrigins()})
 			s.state.Audit(AuditEvent{Event: "hello", Note: "paired " + c.browser + " " + c.version})
 			return
 		}

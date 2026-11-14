@@ -78,10 +78,17 @@ func bridgeCmd(args []string) error {
 		return err
 	}
 	if len(args) == 0 {
-		return fmt.Errorf("bridge: want code, status, or unpair")
+		return fmt.Errorf("bridge: want code, status, unpair, allow, deny or allowed")
 	}
 	if args[0] == "unpair" {
 		return unpairCmd(dir, args[1:])
+	}
+	// The allowlist verbs work before the API has ever run: they are the way a
+	// new user gets the recipe-free lane open, and requiring a prior `bridge
+	// code` to do that would be a silly order to demand.
+	switch args[0] {
+	case "allow", "deny", "allowed":
+		return allowCmd(dir, args[0], args[1:])
 	}
 	info, err := bridge.ReadInfo(dir)
 	if err != nil {
@@ -125,6 +132,68 @@ func bridgeCmd(args []string) error {
 	default:
 		return fmt.Errorf("bridge: unknown subcommand %q", args[0])
 	}
+}
+
+// allowCmd manages the per-origin allowlist: the gate that replaced the recipe
+// as the borrow lane's authorization (D31). The server re-reads the state file
+// on its next consent check, so a change lands on the running instance without a
+// restart.
+func allowCmd(dir, verb string, args []string) error {
+	st, err := bridge.NewState(dir, nil)
+	if err != nil {
+		return fmt.Errorf("bridge state at %s: %w", dir, err)
+	}
+	switch verb {
+	case "allowed":
+		list := st.AllowedOrigins()
+		if len(list) == 0 {
+			fmt.Println("no origins allowed for recipe-free borrow")
+			fmt.Println("add one:  tomoshibi bridge allow example.com")
+			return nil
+		}
+		for _, o := range list {
+			fmt.Println(o)
+		}
+		return nil
+	case "allow":
+		if len(args) == 0 {
+			return fmt.Errorf("bridge allow: want a host, e.g. `bridge allow google.com` or `bridge allow *.example.com`")
+		}
+		added := 0
+		for _, a := range args {
+			ok, aerr := st.Allow(a)
+			if aerr != nil {
+				return aerr
+			}
+			if ok {
+				added++
+				fmt.Printf("allowed %s\n", bridge.NormalizeHostPattern(a))
+			} else {
+				fmt.Printf("already allowed: %s\n", bridge.NormalizeHostPattern(a))
+			}
+		}
+		if added > 0 {
+			fmt.Println("\nThe running server uses this on its next bridge request; no restart needed.")
+		}
+		return nil
+	case "deny":
+		if len(args) == 0 {
+			return fmt.Errorf("bridge deny: want a host already on the list (see `bridge allowed`)")
+		}
+		for _, a := range args {
+			ok, aerr := st.Deny(a)
+			if aerr != nil {
+				return aerr
+			}
+			if ok {
+				fmt.Printf("denied %s\n", bridge.NormalizeHostPattern(a))
+			} else {
+				fmt.Printf("not on the list: %s\n", bridge.NormalizeHostPattern(a))
+			}
+		}
+		return nil
+	}
+	return nil
 }
 
 // unpairCmd revokes tokens. It edits the state file the running server

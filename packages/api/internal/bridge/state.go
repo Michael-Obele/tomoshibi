@@ -11,8 +11,12 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
+	"net"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -46,6 +50,11 @@ type State struct {
 	// mtime of the file we last wrote, to notice an external edit (a CLI
 	// unpair, or the documented "delete bridge.json to revoke").
 	mtime time.Time
+	// allowed is the per-origin allowlist: the gate that replaced the recipe for
+	// the recipe-free borrow lane. Empty means "no recipe-less borrow"; a recipe
+	// is its own consent (installing the pack was the act), and a non-empty
+	// allowlist can still narrow it.
+	allowed []string
 }
 
 // Device is one paired browser (token hash + label).
@@ -62,6 +71,10 @@ type stateFile struct {
 	CodeAt    string   `json:"code_at,omitempty"`
 	ServerKey string   `json:"server_key,omitempty"`
 	Devices   []Device `json:"devices,omitempty"`
+	// AllowedOrigins holds host patterns (`example.com`, `*.example.com`) the
+	// bridge may drive without a recipe. Managed by
+	// `tomoshibi bridge allow|deny`; hand-editable.
+	AllowedOrigins []string `json:"allowed_origins,omitempty"`
 }
 
 // CodeTTL is how long a pairing code stays valid; the server rotates the code
@@ -84,13 +97,16 @@ func NewState(dir string, logger *slog.Logger) (*State, error) {
 		return nil, fmt.Errorf("bridge: state dir: %w", err)
 	}
 	s := &State{dir: dir, path: filepath.Join(dir, "bridge.json"), logger: logger}
+	existed := false
 	if raw, err := os.ReadFile(s.path); err == nil {
+		existed = true
 		var f stateFile
 		if err := json.Unmarshal(raw, &f); err == nil {
 			s.port = f.Port
 			s.code = f.Code
 			s.serverKey = f.ServerKey
 			s.devices = f.Devices
+			s.allowed = f.AllowedOrigins
 			if t, err := time.Parse(time.RFC3339, f.CodeAt); err == nil {
 				s.codeAt = t
 			}
@@ -101,6 +117,13 @@ func NewState(dir string, logger *slog.Logger) (*State, error) {
 	}
 	if s.serverKey == "" {
 		s.serverKey = randomHex(32)
+	}
+	if !existed {
+		// First run: the three search engines the browser rung exists for are
+		// allowed out of the box (D32). Deliberately the search hosts only — not
+		// `*.google.com`, which would include mail — so the default is useful
+		// without being a key to every account the user has.
+		s.allowed = DefaultAllowedOrigins()
 	}
 	if s.code == "" || time.Since(s.codeAt) > CodeTTL {
 		s.rotateLocked()
@@ -135,6 +158,9 @@ type Info struct {
 	CodeAt    time.Time `json:"code_at,omitempty"`
 	Devices   []Device  `json:"devices,omitempty"`
 	StatePath string    `json:"state_path,omitempty"`
+	// AllowedOrigins is the recipe-free allowlist, so `tomoshibi bridge status`
+	// answers "what may the bridge drive without a pack".
+	AllowedOrigins []string `json:"allowed_origins,omitempty"`
 }
 
 // ReadInfo reads the state file without side effects.
@@ -148,7 +174,7 @@ func ReadInfo(dir string) (Info, error) {
 	if err := json.Unmarshal(raw, &f); err != nil {
 		return Info{}, fmt.Errorf("bridge: state file unreadable: %w", err)
 	}
-	info := Info{Port: f.Port, Code: f.Code, Devices: f.Devices, StatePath: path}
+	info := Info{Port: f.Port, Code: f.Code, Devices: f.Devices, StatePath: path, AllowedOrigins: f.AllowedOrigins}
 	if t, err := time.Parse(time.RFC3339, f.CodeAt); err == nil {
 		info.CodeAt = t
 	}
@@ -304,6 +330,163 @@ func (s *State) HasDevice(tokenSHA string) bool {
 // remember which device it authenticated as.
 func DeviceTokenSHA(tok string) string { return hashToken(tok) }
 
+// DefaultAllowedOrigins is the allowlist a fresh state starts with: the search
+// hosts the browser rung exists for (D32), and nothing else. It is the exact
+// hosts, not `*.google.com`, so the default never covers mail or any other
+// signed-in surface.
+func DefaultAllowedOrigins() []string {
+	return []string{
+		"duckduckgo.com", "html.duckduckgo.com", "lite.duckduckgo.com",
+		"google.com", "www.google.com",
+		"bing.com", "www.bing.com",
+	}
+}
+
+// AllowedOrigins returns a copy of the host patterns the bridge may drive
+// without a recipe.
+func (s *State) AllowedOrigins() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reloadIfChangedLocked()
+	out := make([]string, len(s.allowed))
+	copy(out, s.allowed)
+	return out
+}
+
+// Allow adds one host pattern (`example.com`, `*.example.com`). It reports
+// whether the pattern was new, so the CLI can say "already allowed" instead of
+// silently duplicating a line.
+func (s *State) Allow(pattern string) (bool, error) {
+	p := NormalizeHostPattern(pattern)
+	if p == "" {
+		return false, fmt.Errorf("bridge: %q is not a host pattern (try example.com or *.example.com)", pattern)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reloadIfChangedLocked()
+	for _, cur := range s.allowed {
+		if cur == p {
+			return false, nil
+		}
+	}
+	s.allowed = append(s.allowed, p)
+	sort.Strings(s.allowed)
+	return true, s.saveLocked()
+}
+
+// Deny removes one host pattern. It reports whether anything was removed.
+func (s *State) Deny(pattern string) (bool, error) {
+	p := NormalizeHostPattern(pattern)
+	if p == "" {
+		return false, fmt.Errorf("bridge: %q is not a host pattern", pattern)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reloadIfChangedLocked()
+	kept := make([]string, 0, len(s.allowed))
+	removed := false
+	for _, cur := range s.allowed {
+		if cur == p {
+			removed = true
+			continue
+		}
+		kept = append(kept, cur)
+	}
+	if !removed {
+		return false, nil
+	}
+	s.allowed = kept
+	return true, s.saveLocked()
+}
+
+// Allows reports whether an origin (or bare host) is on the allowlist.
+func (s *State) Allows(origin string) bool {
+	host := HostOfOrigin(origin)
+	if host == "" {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reloadIfChangedLocked()
+	return MatchesHostPatterns(s.allowed, host)
+}
+
+// NormalizeHostPattern reduces user input to the one shape the allowlist
+// stores: a lowercase hostname, optionally prefixed with "*.". Anything with a
+// scheme, a path, a port or an empty label is cleaned or refused.
+func NormalizeHostPattern(p string) string {
+	p = strings.ToLower(strings.TrimSpace(p))
+	p = strings.TrimPrefix(p, "http://")
+	p = strings.TrimPrefix(p, "https://")
+	if i := strings.IndexAny(p, "/?#"); i >= 0 {
+		p = p[:i]
+	}
+	if h, _, err := net.SplitHostPort(p); err == nil {
+		p = h
+	}
+	wild := strings.HasPrefix(p, "*.")
+	body := strings.TrimPrefix(p, "*.")
+	if body == "" {
+		return ""
+	}
+	// A pattern that survives normalization but can never match is a silent
+	// hole, so anything that is not a hostname is refused here: "*", "not a
+	// host", "a..b", "-x.example", "exam_ple.com".
+	for _, label := range strings.Split(body, ".") {
+		if label == "" {
+			return ""
+		}
+		if label[0] == '-' || label[len(label)-1] == '-' {
+			return ""
+		}
+		for i := 0; i < len(label); i++ {
+			c := label[i]
+			if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' {
+				continue
+			}
+			return ""
+		}
+	}
+	if wild {
+		return "*." + body
+	}
+	return body
+}
+
+// HostOfOrigin extracts a hostname from an origin, a URL or a bare host.
+func HostOfOrigin(origin string) string {
+	origin = strings.TrimSpace(origin)
+	if origin == "" {
+		return ""
+	}
+	if u, err := url.Parse(origin); err == nil && u.Hostname() != "" {
+		return strings.ToLower(u.Hostname())
+	}
+	return NormalizeHostPattern(origin)
+}
+
+// MatchesHostPatterns reports whether a host matches one of the patterns.
+// `*.example.com` matches subdomains *and* the bare domain, which is what a
+// person means when they type it.
+func MatchesHostPatterns(patterns []string, host string) bool {
+	host = strings.ToLower(host)
+	for _, p := range patterns {
+		if p == "" {
+			continue
+		}
+		if body, ok := strings.CutPrefix(p, "*."); ok {
+			if host == body || strings.HasSuffix(host, "."+body) {
+				return true
+			}
+			continue
+		}
+		if host == p {
+			return true
+		}
+	}
+	return false
+}
+
 // reloadIfChangedLocked re-reads the state file when something else wrote it
 // (the CLI, or a user deleting it to revoke). Callers hold s.mu.
 func (s *State) reloadIfChangedLocked() {
@@ -328,6 +511,7 @@ func (s *State) reloadIfChangedLocked() {
 	}
 	s.mtime = st.ModTime()
 	s.devices = f.Devices
+	s.allowed = f.AllowedOrigins
 	if f.ServerKey != "" {
 		s.serverKey = f.ServerKey
 	}
@@ -377,7 +561,7 @@ func (s *State) rotateLocked() {
 func (s *State) saveLocked() error {
 	f := stateFile{
 		Port: s.port, Code: s.code, CodeAt: s.codeAt.Format(time.RFC3339),
-		ServerKey: s.serverKey, Devices: s.devices,
+		ServerKey: s.serverKey, Devices: s.devices, AllowedOrigins: s.allowed,
 	}
 	raw, err := json.MarshalIndent(f, "", "  ")
 	if err != nil {

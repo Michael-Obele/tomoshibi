@@ -61,6 +61,10 @@ type SearchOptions struct {
 	Mode           string
 	Category       string
 	Rerank         bool
+	// BrowserEngine names the engine the browser rung reads ("ddg", "google",
+	// "bing"). Empty uses that rung's default. Selecting one directly is how a
+	// caller compares engines without changing configuration.
+	BrowserEngine string
 }
 
 // validCategories is the allowed set for Category (unexported; use IsValidCategory).

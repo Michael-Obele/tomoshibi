@@ -43,6 +43,18 @@ type ScrapeRequest struct {
 	CaptureNetwork bool `json:"capture_network,omitempty"`
 	// Recipe names an installed recipe: explicit wins over host matching.
 	Recipe string `json:"recipe,omitempty"`
+	// Transport picks whose network and session answer: "" / "anonymous"
+	// (default), "bridge" (your signed-in browser), or "auto" (escalate into the
+	// browser only when the anonymous answer is a block or a shell, and only for
+	// an allowed origin). A recipe is not required for "bridge": see D30.
+	Transport string `json:"transport,omitempty"`
+	// Named built-ins on the bridge lane (D33). A closed vocabulary: no
+	// caller-supplied JS ever runs in a signed-in tab.
+	Settle        *domain.SettleOptions        `json:"settle,omitempty"`
+	ScrollCollect *domain.ScrollCollectOptions `json:"scroll_collect,omitempty"`
+	PageTree      string                       `json:"page_tree,omitempty"` // dom | ax | both
+	PageTreeOpts  *domain.PageTreeOptions      `json:"page_tree_options,omitempty"`
+	Motion        bool                         `json:"motion,omitempty"`
 }
 
 // maxMultiScrapeURLs caps sync multi-URL scrape, mirroring web_fetch_exa.
@@ -73,7 +85,11 @@ type MultiScrapeItem struct {
 	Network *domain.NetworkCapture `json:"network,omitempty"`
 	// Provenance names how this URL was fetched, when a recipe routed it.
 	Provenance *domain.Provenance `json:"provenance,omitempty"`
-	Error      string             `json:"error,omitempty"`
+	// PageTree, Motion and Collected are the bridge's named built-ins.
+	PageTree  *domain.PageNode      `json:"page_tree,omitempty"`
+	Motion    *domain.MotionReport  `json:"motion,omitempty"`
+	Collected *domain.ScrollHarvest `json:"collected,omitempty"`
+	Error     string                `json:"error,omitempty"`
 }
 
 // MultiScrapeResponse is returned when `urls` is used.
@@ -174,6 +190,15 @@ func scrapeErrorStatus(err error) int {
 		return http.StatusBadGateway
 	}
 
+	// 428 Precondition Required: the browser lane needs a human decision about
+	// this origin, and the caller can retry the identical request once it is
+	// allowed. It is not a 403 (the caller is authorised) and not a 500 (nothing
+	// broke).
+	var consent *bridge.ConsentRequiredError
+	if errors.As(err, &consent) {
+		return http.StatusPreconditionRequired
+	}
+
 	var se *scraper.StatusError
 	if !errors.As(err, &se) {
 		return http.StatusInternalServerError
@@ -191,12 +216,19 @@ func scrapeErrorStatus(err error) int {
 func scrapeErrorBody(err error) gin.H {
 	body := gin.H{"error": err.Error()}
 	var blocked *scraper.BlockedError
+	var consent *bridge.ConsentRequiredError
 	switch {
 	case errors.As(err, &blocked):
 		body["code"] = "blocked"
 		if blocked.Vendor != "" {
 			body["vendor"] = blocked.Vendor
 		}
+	case errors.As(err, &consent):
+		// The browser may not be pointed here until a human says so. The origin
+		// travels separately so a client can offer one Allow button instead of
+		// parsing the sentence.
+		body["code"] = "consent-required"
+		body["origin"] = consent.Origin
 	case errors.Is(err, bridge.ErrOffline):
 		body["code"] = "bridge-offline"
 	case errors.Is(err, bridge.ErrUnpaired):
@@ -368,6 +400,13 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		imageFormat = domain.ImageFormatURL
 	}
 
+	switch req.PageTree {
+	case "", "dom", "ax", "both":
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "page_tree must be one of: dom, ax, both"})
+		return
+	}
+
 	// include_links defaults to true for Firecrawl parity.
 	if req.IncludeLinks == nil {
 		t := true
@@ -392,6 +431,12 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 		AutoExtract:        req.AutoExtract,
 		CaptureNetwork:     req.CaptureNetwork,
 		Recipe:             req.Recipe,
+		Transport:          req.Transport,
+		Settle:             req.Settle,
+		ScrollCollect:      req.ScrollCollect,
+		PageTree:           req.PageTree,
+		PageTreeOpts:       req.PageTreeOpts,
+		Motion:             req.Motion,
 		// A direct scrape is a URL a person or an agent chose, so the borrow
 		// lane is allowed here and nowhere else (crawl and monitor deliberately
 		// leave this false).
@@ -400,6 +445,9 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 	// Recipe also arrives as a query param for GET requests.
 	if opts.Recipe == "" {
 		opts.Recipe = c.Query("recipe")
+	}
+	if opts.Transport == "" {
+		opts.Transport = c.Query("transport")
 	}
 
 	// Multi-URL sync path (sync, errgroup limit 5, reuse Service.Scrape)
@@ -440,6 +488,9 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 					ExtractedData: res.ExtractedData,
 					Network:       res.Network,
 					Provenance:    res.Provenance,
+					PageTree:      res.PageTree,
+					Motion:        res.Motion,
+					Collected:     res.Collected,
 				}
 				return nil
 			})
@@ -494,6 +545,16 @@ func (h *ScrapeHandler) Scrape(c *gin.Context) {
 	}
 	if result.Network != nil {
 		resp["network"] = result.Network
+	}
+	// The bridge's named built-ins. Same rule: absent unless asked for.
+	if result.PageTree != nil {
+		resp["page_tree"] = result.PageTree
+	}
+	if result.Motion != nil {
+		resp["motion"] = result.Motion
+	}
+	if result.Collected != nil {
+		resp["collected"] = result.Collected
 	}
 	c.JSON(http.StatusOK, resp)
 }

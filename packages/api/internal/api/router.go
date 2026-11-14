@@ -41,7 +41,7 @@ func NewRouter(
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"service": "tomoshibi",
-			"version": "1.0",
+			"version": "1.1",
 			"status":  "ok",
 			"docs":    "/swagger/index.html",
 			"endpoints": gin.H{
@@ -87,6 +87,11 @@ func NewRouter(
 		v1.GET("/scrape", scrapeHandler.Scrape)
 		v1.POST("/search", searchHandler.Search)
 		v1.GET("/search", searchHandler.Search)
+		// Research is search plus the pages behind it, in one call and one
+		// budget: a composition of two things that already exist, not a new
+		// pipeline.
+		v1.POST("/research", searchHandler.Research)
+		v1.GET("/research", searchHandler.Research)
 		v1.GET("/insights", handlers.NewInsightsHandler(cfg.Telemetry).Insights)
 
 		// Discovery for env forwarding: which env var names this backend

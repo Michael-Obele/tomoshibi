@@ -94,6 +94,7 @@ func searchCacheKey(opts SearchOptions) string {
 		Mode           string   `json:"mode,omitempty"`
 		Category       string   `json:"cat,omitempty"`
 		Rerank         bool     `json:"rerank,omitempty"`
+		BrowserEngine  string   `json:"browserEngine,omitempty"`
 	}{
 		Query:          opts.Query,
 		Offset:         opts.Offset,
@@ -105,6 +106,7 @@ func searchCacheKey(opts SearchOptions) string {
 		Mode:           opts.Mode,
 		Category:       opts.Category,
 		Rerank:         opts.Rerank,
+		BrowserEngine:  opts.BrowserEngine,
 	}
 	data, err := json.Marshal(payload)
 	if err != nil {

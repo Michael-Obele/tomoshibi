@@ -182,6 +182,7 @@ func run() error {
 	// BRIDGE_STATE_DIR, defaulting to ~/.config/tomoshi. A failure here
 	// disables the borrow lane; it never blocks the plain API.
 	var bridgeServer *bridge.Server
+	var bridgeTransport *scraper.BridgeTransport
 	if bridgeDir := bridgeStateDir(); bridgeDir != "" {
 		if st, err := bridge.NewState(bridgeDir, logger.Log); err != nil {
 			logger.Log.Warn("Bridge disabled: state init failed", "error", err)
@@ -195,7 +196,10 @@ func run() error {
 			for _, w := range registry.Warnings() {
 				logger.Log.Warn("Recipe skipped", "reason", w)
 			}
-			scraperOpts = append(scraperOpts, scraper.WithBridge(scraper.NewBridgeTransport(bridgeServer, registry)))
+			// Held in a variable because the search rung drives the same
+			// transport: one budget, one pace gate, one allowlist for both.
+			bridgeTransport = scraper.NewBridgeTransport(bridgeServer, registry)
+			scraperOpts = append(scraperOpts, scraper.WithBridge(bridgeTransport))
 			logger.Log.Info("Bridge ready", "pairing_code", bridgeServer.Code(), "state", bridgeDir,
 				"recipes", len(registry.All()))
 		}
@@ -256,12 +260,16 @@ func run() error {
 			logger.Log.Info("Native search engines loaded", "count", len(nativeSvc.Engines()))
 		}
 	}
-	searchSvc := search.NewHybridServiceWithNative(recorder, nativeSvc, cfg.Brave.APIKey, cfg.Search.SearXNGEndpoint, stealthFetcher)
+	// The browser rung sits before the paid API: free access first, money last
+	// (D32). An explicit `engine: browser:<name>` on /v1/search reaches it
+	// directly; the chain uses it when the cheaper rungs came back thin.
+	browserSvc := browserSearchRung(bridgeTransport)
+	searchSvc := search.NewHybridServiceWithLadder(recorder, nativeSvc, browserSvc, cfg.Brave.APIKey, cfg.Search.SearXNGEndpoint, stealthFetcher)
 	searchSvc = search.NewCachedService(searchSvc, redisClient)
 	// scrapeHandler's service also backs search-time content composition, so a
 	// scrapeContent search and an explicit scrape share one browser allocator
 	// and one cache.
-	searchHandler := handlers.NewSearchHandler(searchSvc, handlers.WithScraper(scraperService))
+	searchHandler := handlers.NewSearchHandler(searchSvc, handlers.WithScraper(scraperService), handlers.WithBrowserSearch(browserSvc), handlers.WithPageFetcher(scraperService))
 
 	// SearXNG-compat listener: same JSON contract on its own port so the
 	// service can replace a SearXNG container (and so shadow diffing can
