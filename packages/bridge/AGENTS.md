@@ -196,7 +196,8 @@ not guessed.
 
 ## Where to go deeper
 
-`README.md` is the human door. `AI-Plans/plans/lanyard/bridge.md` holds the
+`README.md` is the human door and `docs/USAGE.md` is the manual (install → pair →
+request fields → error codes → troubleshooting). `AI-Plans/plans/lanyard/bridge.md` holds the
 protocol detail and prior art, `decisions.md` holds D19–D27, and `milestones.md`
 holds the M1b evidence and the gaps. `docs/product.md` is the product this spike
 becomes, including why the extension UI is Svelte and not SvelteKit.

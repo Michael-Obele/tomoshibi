@@ -24,6 +24,9 @@ usage: tomoshibi <command>
   bridge code                 print the current pairing code and port
   bridge status               print paired devices and last-seen times
   bridge unpair [name|all]    revoke a paired browser (default: all)
+  bridge allow <host...>      add hosts to the recipe-free allowlist
+  bridge deny <host...>       remove hosts from it
+  bridge allowed              print the allowlist
   recipes add <dir|git-url>   verify and install a recipe pack
   recipes list                installed packs and their recipes
   recipes verify [id]         offline fixture check (no network)

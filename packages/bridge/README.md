@@ -8,6 +8,10 @@ TLS stack pretending to be Chrome. Modern bot protection scores whether all
 those layers *agree*. The honest fix is not a sneakier bot; it is to be your
 browser. That is all this extension does.
 
+**New here?** [**docs/USAGE.md**](docs/USAGE.md) is the full walkthrough —
+install, pair, the popup, every request field, every error code, and a
+troubleshooting table. This README is the short version.
+
 ## What It Does
 
 The extension opens one loopback WebSocket to Tomoshibi on `127.0.0.1` and
