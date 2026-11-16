@@ -52,6 +52,11 @@ proceeds. The bridge never solves a challenge and never types credentials.
 
 You are now ready. **A recipe is not required.**
 
+**Firefox:** build with `bun run build:firefox` and load
+`.output/firefox-mv3` through `about:debugging` → This Firefox → Load Temporary
+Add-on. The Firefox build has no `debugger` permission, so `io: turbo` recipes
+fail with a readable message while the scripting layer keeps working.
+
 ## Recipe-free use (the normal path)
 
 Ask for the browser on the request itself:
@@ -113,13 +118,6 @@ why).
 
 The manifest asks for `host_permissions: ["<all_urls>"]`, because a recipe may
 name any host. Nothing is read until a fetch names a URL.
-
-Firefox: build it with `bun run build:firefox` and load
-`.output/firefox-mv3` through `about:debugging` → This Firefox → Load Temporary
-Add-on. The Firefox build has no `debugger` permission, so `io: turbo` fails with a
-readable message and the scripting layer keeps working. The Firefox
-manifest drops the `debugger` permission, so `io: turbo` recipes fail with a
-clear message and the scripting layer keeps working.
 
 ## Security notes
 
