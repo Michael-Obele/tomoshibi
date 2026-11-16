@@ -378,7 +378,7 @@ Two rules worth remembering:
 says so instead of falling back silently.
 
 Pack format, the `expect` contract and the full schema: see the
-[API README's recipes section](../api/README.md#recipes) (from the repo root).
+[API README's recipes section](../../api/README.md#recipes).
 
 ## Search and research through your browser
 
