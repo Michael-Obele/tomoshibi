@@ -12,6 +12,44 @@ http://localhost:8080/v1
 
 ---
 
+## Documentation for agents
+
+The API serves the documentation you are reading, generated from the tracked
+markdown in this repository. It is unauthenticated on purpose — an agent needs to
+learn the API before it has a key.
+
+| Route | What it is |
+| --- | --- |
+| `GET /llms.txt` | The [llmstxt.org](https://llmstxt.org/) v2 index: H1, blockquote summary, guidance, then H2 file lists of `[name](url): notes` |
+| `GET /llms-full.txt` | Every published document concatenated, for a large context window |
+| `GET /docs` | The manifest as JSON: `version`, `api_version`, `doc_count`, and per document `slug`, `title`, `summary`, `url`, `source`, `bytes`, `sha256` |
+| `GET /docs/<slug>.md` | One document as markdown |
+
+```bash
+curl -s localhost:7431/docs | jq '.version, .api_version'
+# "7404a7f7fd33"
+# "1.1"
+```
+
+Every response carries:
+
+| Header | Meaning |
+| --- | --- |
+| `X-Docs-Version` | A digest of every document's content. Same value means the same documentation, byte for byte |
+| `X-API-Version` | The API version these docs describe, read from the same constant `GET /` advertises |
+| `X-Docs-Count` | How many documents are published |
+| `ETag` | `"docs-<version>"`. Send it back as `If-None-Match` for a `304` |
+| `Cache-Control` | `public, max-age=0, must-revalidate` — the docs change with the code, so a stale cached copy is the failure mode being prevented |
+
+**Recommended agent loop:** `GET /docs` (cheap, JSON) → compare `version` with what
+you cached → if it changed, re-read `llms.txt` and follow only the links whose
+`sha256` changed. There is no need to re-read the whole corpus to notice a change.
+
+The served copy is generated, not written: `packages/api/cmd/docsgen` reads the
+tracked markdown and `make docs` (which CI runs) fails when it is stale. `source`
+in the manifest is where each document came from, so a wrong sentence can be fixed
+at its origin.
+
 ## 1. Scrape
 
 Scrapes a given URL and returns its markdown content, metadata, and optionally captures a screenshot or extracts images if enabled.

@@ -48,6 +48,13 @@ jobs:
       - name: staticcheck
         run: staticcheck ./...
 
+      # The docs the API serves (/llms.txt, /docs) are generated from the tracked
+      # markdown in this repo. If a README or the API reference changed and nobody
+      # regenerated, this fails here — instead of shipping docs that describe a
+      # different API than the one answering.
+      - name: Docs are up to date
+        run: go run ./cmd/docsgen -check
+
       # Chromium is preinstalled on ubuntu-latest runners, so the chromedp
       # tests exercise a real browser rather than skipping.
       - name: Test (race)

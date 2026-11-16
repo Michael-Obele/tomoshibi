@@ -1,0 +1,107 @@
+{
+  "version": "d6d4dcacf4e7",
+  "api_version": "1.1",
+  "doc_count": 10,
+  "docs": [
+    {
+      "slug": "glossary",
+      "title": "Glossary",
+      "summary": "The vocabulary this project uses: lane, recipe, bridge, provenance, untrusted, borrow, turbo",
+      "section": "Start here",
+      "url": "/docs/glossary.md",
+      "source": "GLOSSARY.md",
+      "bytes": 4310,
+      "sha256": "6ac35e0702734359a7334d4f2bfd72a3b99421df6de3544ba2886ca1c56f2664"
+    },
+    {
+      "slug": "api-reference",
+      "title": "API reference",
+      "summary": "Every endpoint, parameter, request and response shape, and the error codes worth branching on",
+      "section": "API",
+      "url": "/docs/api-reference.md",
+      "source": "docs/guides/API_REFERENCE.md",
+      "bytes": 48814,
+      "sha256": "6128dffb93e06f0ef932c92257c0f1acf155f88d5fc1565f4cd72db7d3dbd4d7"
+    },
+    {
+      "slug": "api-readme",
+      "title": "API package",
+      "summary": "Running the Go API: configuration, search backends, the bridge lane, recipes, telemetry, troubleshooting",
+      "section": "API",
+      "url": "/docs/api-readme.md",
+      "source": "packages/api/README.md",
+      "bytes": 28040,
+      "sha256": "b7da947cec4de2784bba323d8298daf9a1adfcf0fe908c752d2b7eb4101e37fb"
+    },
+    {
+      "slug": "mcp",
+      "title": "MCP server",
+      "summary": "The three MCP tools (tomoshi_extract, tomoshi_discover, tomoshi_monitor), their actions, and the scrape params for JS-heavy pages",
+      "section": "Packages",
+      "url": "/docs/mcp.md",
+      "source": "packages/mcp/README.md",
+      "bytes": 13124,
+      "sha256": "4b0cf7fff95a1b0f289eba6889edb253457c475a0009e0c44dc6ea7da8c86354"
+    },
+    {
+      "slug": "web",
+      "title": "Web playground",
+      "summary": "The Svelte 5 UI: running it, configuration, Docker",
+      "section": "Packages",
+      "url": "/docs/web.md",
+      "source": "packages/web/README.md",
+      "bytes": 9043,
+      "sha256": "7df3e274908e4c4e66c77c3ababecd2a3c653d931070436f4536d55fcf690b31"
+    },
+    {
+      "slug": "bridge",
+      "title": "Bridge extension",
+      "summary": "The browser extension that lends Tomoshibi your signed-in session: install, pair, and what it refuses to do",
+      "section": "Packages",
+      "url": "/docs/bridge.md",
+      "source": "packages/bridge/README.md",
+      "bytes": 8804,
+      "sha256": "b000a26cdbbf1492d596b1fff625da38978b8de086a42d13a219ff730fbb5c64"
+    },
+    {
+      "slug": "bridge-usage",
+      "title": "Bridge usage manual",
+      "summary": "The full walkthrough: popup controls, badge states, the allowlist, transport values, extraction built-ins, every error code, troubleshooting",
+      "section": "Packages",
+      "url": "/docs/bridge-usage.md",
+      "source": "packages/bridge/docs/USAGE.md",
+      "bytes": 25562,
+      "sha256": "719a4ef216d1fb48f7929d6ae7e4fbdeba035e5e416daa482401a82cc4b745f1"
+    },
+    {
+      "slug": "search-comparison",
+      "title": "Search and scrape benchmarks",
+      "summary": "Measured throughput, latency and footprint against self-hosted Firecrawl and Exa, with the method and the caveats",
+      "section": "Search",
+      "url": "/docs/search-comparison.md",
+      "source": "docs/SEARCH_COMPARISON.md",
+      "bytes": 7463,
+      "sha256": "dbde5154069ebd2a00e2aa90c5420daa9d951ac47b1a75266b88820b880325f6"
+    },
+    {
+      "slug": "searxng-fly",
+      "title": "SearXNG on Fly",
+      "summary": "Optional: running a SearXNG sidecar on Fly.io as a search fallback",
+      "section": "Optional",
+      "url": "/docs/searxng-fly.md",
+      "source": "docs/guides/SEARXNG_FLY.md",
+      "bytes": 9171,
+      "sha256": "bd3e079baa59209b6b140cded767c230e751c6022d3c43cfa2e5e27eef2125c6"
+    },
+    {
+      "slug": "contributing",
+      "title": "Contributing",
+      "summary": "Repository layout, local development, the checks to run before a PR, release mechanics",
+      "section": "Optional",
+      "url": "/docs/contributing.md",
+      "source": "CONTRIBUTING.md",
+      "bytes": 5071,
+      "sha256": "2e44a7f5d01c01ffa22e41edda9ed16b125a859236ba667b1cc45c5c08e27d40"
+    }
+  ]
+}

@@ -150,6 +150,46 @@ Support package: `internal/extract` (deterministic CSS-selector schema extractio
 - **Swagger:** API documentation is auto-generated using `swag`. In debug mode, the API attempts to re-generate docs on startup.
 - **Concurrency:** The worker is configured for 10 concurrent jobs by default (adjustable in `internal/worker/server.go`).
 
+## 📚 Agent-facing documentation (keep it current)
+
+The API serves its own documentation, generated from the tracked markdown in this
+repo. There is one copy of the truth; the served copy is an artifact.
+
+| Route | What it is |
+| --- | --- |
+| `GET /llms.txt` | The [llmstxt.org](https://llmstxt.org/) v2 index: H1, summary, guidance, then H2 file lists |
+| `GET /llms-full.txt` | Every published document concatenated, for a large context window |
+| `GET /docs` | The manifest as JSON: `version` (content digest), `api_version`, per-doc `sha256` and `source` |
+| `GET /docs/<slug>.md` | One document as markdown |
+
+Every response carries `X-Docs-Version`, `X-API-Version` and an `ETag`, so an agent
+can ask "anything new?" with `If-None-Match` instead of re-reading everything.
+
+**The rule: if you change a published doc, regenerate.**
+
+```bash
+cd packages/api
+make docs            # go run ./cmd/docsgen -check  (CI runs this)
+make docs-generate   # go run ./cmd/docsgen         (when it fails)
+```
+
+`make check` includes it, and CI fails the `check` job when the served copy is
+stale. A stale copy is caught, not reviewed — which is the only way a rule like
+this survives.
+
+**Sources** are listed in one place: `sources` in `packages/api/cmd/docsgen/main.go`.
+Today that is `GLOSSARY.md`, `docs/guides/API_REFERENCE.md`, `docs/guides/SEARXNG_FLY.md`,
+`docs/SEARCH_COMPARISON.md`, `CONTRIBUTING.md`, and the four package READMEs plus
+`packages/bridge/docs/USAGE.md`. To publish a new document, add it there; the
+generator refuses to run if a listed path is missing, so a rename cannot silently
+drop a page.
+
+**When you add an endpoint, an option, a CLI verb or an env var:** the API reference
+and/or the relevant package README is the source. Update it, run `make docs`, and
+the served docs follow. `api_version` in the manifest is read from
+`internal/version/version.go`, the same constant `GET /` advertises — so the docs
+cannot claim to describe a version the service does not report.
+
 ## ⚠️ Gotchas
 
 - `.gitignore` used to end with a bare `*.json` that kept EVERY json file out of git (incl. `internal/api/docs/swagger.json`); patterns are now scoped (`/testdata-*.json`, `/scratch*.json`, `/*.local.json`) so testdata/fixtures CAN be tracked — before committing a JSON file, check it against those scoped patterns.

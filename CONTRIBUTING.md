@@ -69,7 +69,7 @@ bun --cwd packages/bridge dev                 # extension in a dev Chrome, HMR
 
 | Package | Command | What it covers |
 | --- | --- | --- |
-| api | `make check` | gofmt, `go vet`, `staticcheck`, tests |
+| api | `make check` | gofmt, `go vet`, `staticcheck`, docs up to date, tests |
 | bridge | `bun run check` | `wxt prepare`, `tsc --noEmit`, unit tests |
 | bridge (E2E) | `bun test/e2e-protocol.ts` · `bun test/e2e-extension.ts` | protocol against real binaries; the extension in real Chrome |
 | mcp | `bun run check && bun test` | typecheck, 60+ tests |
@@ -77,6 +77,11 @@ bun --cwd packages/bridge dev                 # extension in a dev Chrome, HMR
 
 CI runs the same commands, plus `-race` for Go and both E2E suites. A failing
 check is never fixed by relaxing it.
+
+The docs the API serves (`/llms.txt`, `/docs`) are generated from the tracked
+markdown. If you edit a published doc — this file, a package README, the API
+reference, the glossary — run `make docs-generate` in `packages/api`. `make docs`
+verifies it, and CI fails when the served copy is stale.
 
 ## Updating Docker
 

@@ -174,6 +174,23 @@ Four packages, each with its own README. This file is the map; the detail lives 
 
 ---
 
+## Documentation for agents
+
+The API serves its own documentation, generated from the tracked markdown in this
+repo — so the routes cannot describe a different API than the one answering.
+
+| Route | What it is |
+| --- | --- |
+| `GET /llms.txt` | [llmstxt.org](https://llmstxt.org/) v2 index: summary, guidance, then links to every document |
+| `GET /llms-full.txt` | Everything concatenated, for a large context window |
+| `GET /docs` | Manifest as JSON: `version` (content digest), `api_version`, per-doc `sha256` and `source` |
+| `GET /docs/<slug>.md` | One document as markdown |
+
+Every response carries `X-Docs-Version` and an `ETag`, so an agent can ask
+"anything new?" with one conditional request instead of re-reading the repo. Point
+a coding agent at `http://localhost:7431/llms.txt` and it has the API, the MCP
+tools, the bridge manual and the glossary — versioned together.
+
 ## API
 
 Base `http://localhost:7431`, everything under `/v1`.
