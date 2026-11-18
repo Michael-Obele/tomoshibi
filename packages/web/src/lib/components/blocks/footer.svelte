@@ -19,16 +19,31 @@
 <footer class="border-t border-border bg-background py-12">
   <div class="container mx-auto px-4">
     <!-- Sponsor banner -->
-    <div class="mb-10 flex flex-col items-center justify-between gap-4 rounded-xl border border-amber-500/20 bg-amber-500/5 px-6 py-5 sm:flex-row">
+    <div
+      class="mb-10 flex flex-col items-center justify-between gap-4 rounded-xl border border-amber-500/20 bg-amber-500/5 px-6 py-5 sm:flex-row"
+    >
       <div class="text-center sm:text-left">
         <p class="text-sm font-semibold">Keep Tomoshibi free & open</p>
-        <p class="text-xs text-muted-foreground">Stars drive discovery · Sponsors fund maintenance</p>
+        <p class="text-xs text-muted-foreground">
+          Stars drive discovery · Sponsors fund maintenance
+        </p>
       </div>
       <div class="flex gap-2">
-        <Button href="https://github.com/sponsors/Michael-Obele" target="_blank" size="sm" class="gap-1.5 bg-[#ea4aaa] hover:bg-[#d63f98] text-white border-0">
+        <Button
+          href="https://github.com/sponsors/Michael-Obele"
+          target="_blank"
+          size="sm"
+          class="gap-1.5 bg-[#ea4aaa] hover:bg-[#d63f98] text-white border-0"
+        >
           <HeartHandshake class="h-4 w-4" /> Sponsor
         </Button>
-        <Button href="https://github.com/Michael-Obele/tomoshibi" target="_blank" variant="outline" size="sm" class="gap-1.5">
+        <Button
+          href="https://github.com/Michael-Obele/tomoshibi"
+          target="_blank"
+          variant="outline"
+          size="sm"
+          class="gap-1.5"
+        >
           <Star class="h-4 w-4" /> Star
         </Button>
       </div>
@@ -39,10 +54,13 @@
       <div class="flex flex-col gap-4 lg:col-span-2">
         <div class="flex items-center gap-2">
           <Logo size="md" class="rounded-lg bg-primary/10 shadow-sm" />
-          <span class="text-xl font-bold tracking-tight text-foreground">Tomoshibi</span>
+          <span class="text-xl font-bold tracking-tight text-foreground"
+            >Tomoshibi</span
+          >
         </div>
         <p class="max-w-xs text-sm leading-relaxed text-muted-foreground">
-          Self-hosted scraping API. Turn any site into LLM-ready markdown in 200ms. One binary, $5/mo infra.
+          Self-hosted scraping API. Turn any site into LLM-ready markdown in
+          200ms. One binary, $5/mo infra.
         </p>
         <div class="mt-1 flex flex-wrap gap-2">
           <Tooltip.Root>
@@ -99,15 +117,34 @@
 
       <!-- Self-host -->
       <div class="flex flex-col gap-4">
-        <h3 class="text-sm font-semibold tracking-wider text-foreground/80 uppercase">Self-host</h3>
+        <h3
+          class="text-sm font-semibold tracking-wider text-foreground/80 uppercase"
+        >
+          Self-host
+        </h3>
         <nav class="flex flex-col gap-3">
-          <a href="/docs/api-readme" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
+          <a
+            href="/docs/api-readme"
+            class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
             <Container class="h-3.5 w-3.5" /> Docker Compose
           </a>
-          <a href="https://hub.docker.com/r/michaelobele/tomoshibi-api" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
-            <Box class="h-3.5 w-3.5" /> Docker Hub <ExternalLink class="h-3 w-3" />
+          <a
+            href="https://hub.docker.com/r/michaelobele/tomoshibi-api"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
+            <Box class="h-3.5 w-3.5" /> Docker Hub <ExternalLink
+              class="h-3 w-3"
+            />
           </a>
-          <a href="https://github.com/Michael-Obele/tomoshibi/pkgs/container/tomoshibi-api" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
+          <a
+            href="https://github.com/Michael-Obele/tomoshibi/pkgs/container/tomoshibi-api"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
             GHCR <ExternalLink class="h-3 w-3" />
           </a>
         </nav>
@@ -115,31 +152,77 @@
 
       <!-- Docs -->
       <div class="flex flex-col gap-4">
-        <h3 class="text-sm font-semibold tracking-wider text-foreground/80 uppercase">Docs</h3>
+        <h3
+          class="text-sm font-semibold tracking-wider text-foreground/80 uppercase"
+        >
+          Docs
+        </h3>
         <nav class="flex flex-col gap-3">
-          <a href="/docs/api-readme" class="text-sm text-muted-foreground transition-colors hover:text-primary">Quick Start</a>
-          <a href="/docs/api-reference" class="text-sm text-muted-foreground transition-colors hover:text-primary">API Reference</a>
-          <a href="/docs/mcp" class="text-sm text-muted-foreground transition-colors hover:text-primary">MCP Server</a>
-          <a href="/playground" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
-            Playground <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono">limited</span>
+          <a
+            href="/docs/api-readme"
+            class="text-sm text-muted-foreground transition-colors hover:text-primary"
+            >Quick Start</a
+          >
+          <a
+            href="/docs/api-reference"
+            class="text-sm text-muted-foreground transition-colors hover:text-primary"
+            >API Reference</a
+          >
+          <a
+            href="/docs/mcp"
+            class="text-sm text-muted-foreground transition-colors hover:text-primary"
+            >MCP Server</a
+          >
+          <a
+            href="/playground"
+            class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
+            Playground <span
+              class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono"
+              >limited</span
+            >
           </a>
         </nav>
       </div>
 
       <!-- Support -->
       <div class="flex flex-col gap-4">
-        <h3 class="text-sm font-semibold tracking-wider text-foreground/80 uppercase">Support</h3>
+        <h3
+          class="text-sm font-semibold tracking-wider text-foreground/80 uppercase"
+        >
+          Support
+        </h3>
         <nav class="flex flex-col gap-3">
-          <a href="https://github.com/sponsors/Michael-Obele" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm font-medium text-[#ea4aaa] hover:text-[#d63f98]">
+          <a
+            href="https://github.com/sponsors/Michael-Obele"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-2 text-sm font-medium text-[#ea4aaa] hover:text-[#d63f98]"
+          >
             <HeartHandshake class="h-4 w-4" /> Sponsor
           </a>
-          <a href="https://github.com/Michael-Obele/tomoshibi" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
+          <a
+            href="https://github.com/Michael-Obele/tomoshibi"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
             <Star class="h-4 w-4" /> Star on GitHub
           </a>
-          <a href="https://github.com/Michael-Obele/tomoshibi/discussions" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
+          <a
+            href="https://github.com/Michael-Obele/tomoshibi/discussions"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
             <MessageCircle class="h-4 w-4" /> Discussions
           </a>
-          <a href="https://github.com/Michael-Obele/tomoshibi" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
+          <a
+            href="https://github.com/Michael-Obele/tomoshibi"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
+          >
             <FileText class="h-4 w-4" /> MIT License
           </a>
         </nav>
@@ -148,13 +231,21 @@
 
     <div class="border-t border-border"></div>
 
-    <div class="flex flex-col items-center justify-between gap-6 py-8 md:flex-row">
+    <div
+      class="flex flex-col items-center justify-between gap-6 py-8 md:flex-row"
+    >
       <div class="flex flex-col items-center gap-1 md:items-start">
-        <p class="text-sm text-muted-foreground">&copy; 2026 Tomoshibi. MIT licensed.</p>
-        <p class="text-xs text-muted-foreground/60">SvelteKit 5 · Tailwind v4 · shadcn-svelte · Lucide</p>
+        <p class="text-sm text-muted-foreground">
+          &copy; 2026 Tomoshibi. MIT licensed.
+        </p>
+        <p class="text-xs text-muted-foreground/60">
+          SvelteKit 5 · Tailwind v4 · shadcn-svelte · Lucide
+        </p>
       </div>
       <div class="flex items-center gap-1 text-sm text-muted-foreground">
-        Made with <Heart class="mx-0.5 h-4 w-4 animate-pulse fill-red-500 text-red-500" /> by Tomoshibi Team
+        Made with <Heart
+          class="mx-0.5 h-4 w-4 animate-pulse fill-red-500 text-red-500"
+        /> by Tomoshibi Team
       </div>
     </div>
   </div>

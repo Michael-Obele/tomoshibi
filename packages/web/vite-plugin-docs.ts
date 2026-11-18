@@ -170,21 +170,48 @@ function build(catalog: { intro: string; sources: Source[] }, repo: string) {
 	return { manifest, llmsIndex: index, llmsFull: full, documents, sections: sectionList };
 }
 
+const themes = { light: 'github-light', dark: 'github-dark' } as const;
+
 let highlighter: Promise<Highlighter> | undefined;
 
 function getHighlighter(): Promise<Highlighter> {
-	highlighter ??= createHighlighter({ themes: ['github-dark'], langs: languages });
+	highlighter ??= createHighlighter({ themes: [themes.light, themes.dark], langs: languages });
 	return highlighter;
 }
 
+// The copy/check icons are lucide-svelte components rendered by the page and
+// cloned in at mount, so this markup leaves the button's icon slot empty.
+
+/**
+ * Every code block is this shell: a bar with the fence language and a copy
+ * button. The page adds one delegated click handler and the icons, the markup
+ * stays static.
+ */
+function codeBlock(html: string, lang: string): string {
+	const label = /^[a-z][\w+#.-]*$/.test(lang) ? lang : 'text';
+	return (
+		`<div class="code-block" data-lang="${label}">` +
+		`<div class="code-block__bar"><span class="code-block__lang">${label}</span>` +
+		`<button type="button" class="code-block__copy" data-copy aria-label="Copy code">` +
+		`<span class="code-block__label" aria-live="polite">Copy</span>` +
+		`</button></div>${html}</div>`
+	);
+}
+
 async function highlight(code: string, lang: string): Promise<string> {
-	const shiki = await getHighlighter();
-	if (!lang) return `<pre class="shiki"><code>${escapeHtml(code)}</code></pre>`;
-	try {
-		return shiki.codeToHtml(code, { lang, theme: 'github-dark' });
-	} catch {
-		return `<pre class="shiki"><code>${escapeHtml(code)}</code></pre>`;
+	if (lang) {
+		try {
+			const shiki = await getHighlighter();
+			// Dual themes: tokens carry both colours, layout.css picks one.
+			return codeBlock(shiki.codeToHtml(code, { lang, themes, defaultColor: false }), lang);
+		} catch {
+			// Unknown fence language falls through to the plain block below.
+		}
 	}
+	return codeBlock(
+		`<pre class="shiki" tabindex="0"><code>${escapeHtml(code)}</code></pre>`,
+		lang
+	);
 }
 
 const token = (index: number) => `<!--tomoshibi-code:${index}-->`;

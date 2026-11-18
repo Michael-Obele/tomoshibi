@@ -210,9 +210,125 @@ body {
   font-weight: 500;
 }
 
+/* Docs code blocks. The build emits the shell (language bar + copy button),
+   so the surface tokens live here instead of in a component. White panel on
+   the light page, card tone in dark; the bar is the one contrast step. */
+.prose .code-block {
+  --code-surface: var(--card);
+  --code-bar: var(--muted);
+  margin: 1.6667em 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 4px);
+  background: var(--code-surface);
+}
+
+.dark .prose .code-block {
+  --code-bar: color-mix(in oklab, var(--card) 85%, white);
+}
+
+.code-block__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 2.25rem;
+  padding: 0 0.375rem 0 0.875rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--code-bar);
+}
+
+.code-block__lang {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  user-select: none;
+}
+
+/* Hidden until the page action attaches its handler, so a load without JS
+   never shows a button that cannot copy. */
+.code-block__copy {
+  display: inline-flex;
+  visibility: hidden;
+  align-items: center;
+  gap: 0.3125rem;
+  min-height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+[data-copy-ready] .code-block__copy {
+  visibility: visible;
+}
+
+.code-block__copy:hover {
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+
+.code-block__copy:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+  color: var(--foreground);
+}
+
+.code-block__copy[data-copied] {
+  color: oklch(0.696 0.17 162.48);
+}
+
+.code-block__icon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  flex: none;
+}
+
+.code-block__copy [data-icon='check'],
+.code-block__copy[data-copied] [data-icon='copy'] {
+  display: none;
+}
+
+.code-block__copy[data-copied] [data-icon='check'] {
+  display: block;
+}
+
 /* Long code lines scroll inside the block, not the page. */
-.prose pre {
+.prose .code-block pre.shiki {
+  margin: 0;
+  padding: 0.875rem 1.125rem;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+
+.prose .code-block pre.shiki:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+/* Shiki dual-theme tokens: light by default, dark under the site's class. */
+.code-block pre.shiki,
+.code-block pre.shiki span {
+  color: var(--shiki-light, inherit);
+}
+
+.dark .code-block pre.shiki,
+.dark .code-block pre.shiki span {
+  color: var(--shiki-dark, inherit);
 }
 
 /* Wide config tables scroll inside the page, not the page itself. */
