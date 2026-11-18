@@ -2,19 +2,23 @@
   import { IsMobile } from "$lib/hooks/is-mobile.svelte";
   import * as Sheet from "$lib/components/ui/sheet";
   import { Button } from "$lib/components/ui/button";
-  import { BookOpen, Play, PanelLeft } from "@lucide/svelte";
+  import { BookOpen, FileText, Play, PanelLeft } from "@lucide/svelte";
   import { page } from "$app/state";
-  import { documentationGroups } from "$lib/docs-content";
 
   const isMobile = new IsMobile();
   let sidebarOpen = $state(true);
 
-  let { children } = $props();
+  let { data, children } = $props();
 
-  function isActive(url: string): boolean {
-    return page.url.pathname === url;
+  function isActive(slug: string): boolean {
+    return page.url.pathname === `/docs/${slug}`;
   }
 </script>
+
+<svelte:head>
+  <!-- llmstxt.org v2: this page's index for agents -->
+  <link rel="describedby" href="/llms.txt" />
+</svelte:head>
 
 {#snippet docsNav()}
   <div class="flex h-full flex-col">
@@ -25,10 +29,9 @@
       <BookOpen class="size-4 text-muted-foreground" />
       <h2 class="text-sm font-semibold">Documentation</h2>
     </div>
-
     <!-- Nav — scrollable, like history list -->
     <div class="flex-1 space-y-6 overflow-y-auto p-3">
-      {#each documentationGroups as group (group.title)}
+      {#each data.sections as group (group.title)}
         <div>
           <h3
             class="mb-2 px-2 text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
@@ -36,17 +39,17 @@
             {group.title}
           </h3>
           <nav class="space-y-1">
-            {#each group.items as item (item.url)}
+            {#each group.docs as doc (doc.slug)}
               <a
-                href={item.url}
+                href={`/docs/${doc.slug}`}
                 class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors {isActive(
-                  item.url,
+                  doc.slug,
                 )
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
               >
-                <item.icon class="size-4 shrink-0" />
-                {item.title}
+                <FileText class="size-4 shrink-0" />
+                {doc.title}
               </a>
             {/each}
           </nav>
@@ -65,6 +68,12 @@
         <Play class="size-3.5" />
         Go to Playground
       </Button>
+      <a
+        href="/llms.txt"
+        class="mt-2 block text-center text-[11px] text-muted-foreground underline-offset-2 hover:underline"
+      >
+        For agents: llms.txt
+      </a>
     </div>
   </div>
 {/snippet}
@@ -109,7 +118,7 @@
           </Button>
         {/if}
         <div class="mx-2 h-4 w-px bg-border"></div>
-        <h1 class="text-sm font-medium">Documentation</h1>
+        <span class="text-sm font-medium">Documentation</span>
       </div>
 
       <div class="p-6">

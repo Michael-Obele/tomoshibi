@@ -101,7 +101,7 @@
       <div class="flex flex-col gap-4">
         <h3 class="text-sm font-semibold tracking-wider text-foreground/80 uppercase">Self-host</h3>
         <nav class="flex flex-col gap-3">
-          <a href="/docs/setup" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
+          <a href="/docs/api-readme" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
             <Container class="h-3.5 w-3.5" /> Docker Compose
           </a>
           <a href="https://hub.docker.com/r/michaelobele/tomoshibi-api" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
@@ -110,9 +110,6 @@
           <a href="https://github.com/Michael-Obele/tomoshibi/pkgs/container/tomoshibi-api" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
             GHCR <ExternalLink class="h-3 w-3" />
           </a>
-          <a href="/docs/deployment" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
-            Deploy to Fly / Render
-          </a>
         </nav>
       </div>
 
@@ -120,9 +117,9 @@
       <div class="flex flex-col gap-4">
         <h3 class="text-sm font-semibold tracking-wider text-foreground/80 uppercase">Docs</h3>
         <nav class="flex flex-col gap-3">
-          <a href="/docs/setup" class="text-sm text-muted-foreground transition-colors hover:text-primary">Quick Start</a>
-          <a href="/docs/api" class="text-sm text-muted-foreground transition-colors hover:text-primary">API Reference</a>
-          <a href="/docs/deployment" class="text-sm text-muted-foreground transition-colors hover:text-primary">Self-hosting</a>
+          <a href="/docs/api-readme" class="text-sm text-muted-foreground transition-colors hover:text-primary">Quick Start</a>
+          <a href="/docs/api-reference" class="text-sm text-muted-foreground transition-colors hover:text-primary">API Reference</a>
+          <a href="/docs/mcp" class="text-sm text-muted-foreground transition-colors hover:text-primary">MCP Server</a>
           <a href="/playground" class="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary">
             Playground <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] font-mono">limited</span>
           </a>

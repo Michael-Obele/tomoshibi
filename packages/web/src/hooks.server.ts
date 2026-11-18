@@ -4,6 +4,17 @@ import { globalLimiter, ipLimiter, burstLimiter } from '$lib/server/rate-limiter
 import type { RateLimiterRes } from 'rate-limiter-flexible';
 
 export const handle: Handle = async ({ event, resolve }) => {
+	// The docs an agent reads before it has a key: no auth wall, no rate limit.
+	if (isAgentDocs(event.url.pathname)) {
+		const response = await resolve(event);
+		// /docs answers JSON or HTML by Accept, so shared caches must key on it.
+		const vary = response.headers.get('vary');
+		if (!vary?.toLowerCase().includes('accept')) {
+			response.headers.set('vary', vary ? `${vary}, accept` : 'accept');
+		}
+		return response;
+	}
+
 	const password = env.MASTRA_PASSWORD;
 
 	// 1. AUTH BYPASS
@@ -66,3 +77,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	return resolve(event);
 };
+
+// Exact shapes, not a prefix: a route added under /docs/ later must not inherit
+// "no auth, no limit" by accident.
+function isAgentDocs(pathname: string): boolean {
+	return (
+		pathname === '/llms.txt' ||
+		pathname === '/llms-full.txt' ||
+		pathname === '/docs' ||
+		/^\/docs\/[^/]+$/.test(pathname)
+	);
+}

@@ -7,6 +7,7 @@ node_modules
 .wrangler
 /.svelte-kit
 /build
+/build-netlify
 
 # OS
 .DS_Store
@@ -22,4 +23,6 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-docs
+# Anchored: a bare `docs` matched src/routes/docs, so new route files there were
+# silently untracked (same trap as the repo-root `*.json`).
+/docs

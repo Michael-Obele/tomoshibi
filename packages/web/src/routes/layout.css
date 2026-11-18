@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -192,4 +193,30 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Docs markdown: typography decorates inline code with literal backticks and
+   leaves it flat. Match the chip style the rest of the UI uses instead. */
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: none;
+}
+
+.prose :not(pre) > code {
+  border-radius: var(--radius-sm);
+  background: var(--muted);
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85em;
+  font-weight: 500;
+}
+
+/* Long code lines scroll inside the block, not the page. */
+.prose pre {
+  overflow-x: auto;
+}
+
+/* Wide config tables scroll inside the page, not the page itself. */
+.prose table {
+  display: block;
+  overflow-x: auto;
 }
