@@ -14,9 +14,10 @@ http://localhost:8080/v1
 
 ## Documentation for agents
 
-The API serves the documentation you are reading, generated from the tracked
-markdown in this repository. It is unauthenticated on purpose — an agent needs to
-learn the API before it has a key.
+The web app serves the documentation you are reading, generated at build time from
+the tracked markdown in this repository. It is unauthenticated on purpose — an
+agent needs to learn the API before it has a key. The Go API does not serve these
+routes.
 
 | Route | What it is |
 | --- | --- |
@@ -26,12 +27,12 @@ learn the API before it has a key.
 | `GET /docs/<slug>.md` | One document as markdown |
 
 ```bash
-curl -s localhost:7431/docs | jq '.version, .api_version'
-# "7404a7f7fd33"
+curl -s localhost:5173/docs | jq '.version, .api_version'
+# "<docs digest>"
 # "1.1"
 ```
 
-Every response carries:
+Every successful response carries:
 
 | Header | Meaning |
 | --- | --- |
@@ -45,10 +46,10 @@ Every response carries:
 you cached → if it changed, re-read `llms.txt` and follow only the links whose
 `sha256` changed. There is no need to re-read the whole corpus to notice a change.
 
-The served copy is generated, not written: `packages/api/cmd/docsgen` reads the
-tracked markdown and `make docs` (which CI runs) fails when it is stale. `source`
-in the manifest is where each document came from, so a wrong sentence can be fixed
-at its origin.
+The served copy is generated, not written: `packages/web/vite-plugin-docs.ts` reads
+`docs.sources.json` and the tracked markdown during the build. `source` in the
+manifest is where each document came from, so a wrong sentence can be fixed at its
+origin.
 
 ## 1. Scrape
 

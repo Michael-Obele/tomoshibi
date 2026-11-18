@@ -140,6 +140,7 @@ Support package: `internal/extract` (deterministic CSS-selector schema extractio
 
 ## 📝 Development Conventions
 
+- **Comments are short.** One to three lines saying *why*, next to the code they explain — no essays, no design rationale, no restating what the next line does. Reasoning that needs a paragraph goes in `DESIGN.md`, under the section the comment names; a decision that must outlive a refactor graduates to `docs/adr/NNNN-*.md`. A file-long package comment is a smell: move it.
 - Log through `pkg/logger` (`logger.Log`). No `fmt.Println`, no raw `log`. Package whose test exercise real callback need `TestMain` calling `logger.Init("error")` or `logger.Log` is nil and they panic.
 - Handle every error explicit; wrap with `fmt.Errorf("...: %w", err)`. No `_ = err`, no `panic` for control flow, no start goroutine without lifecycle.
 - Propagate `context.Context` into anything blocking or networked.
@@ -152,8 +153,10 @@ Support package: `internal/extract` (deterministic CSS-selector schema extractio
 
 ## 📚 Agent-facing documentation (keep it current)
 
-The API serves its own documentation, generated from the tracked markdown in this
-repo. There is one copy of the truth; the served copy is an artifact.
+The docs are generated from the tracked markdown in this repo and served by **the web
+app** (`packages/web`), the only public host — the Go API serves `/v1` and its
+probes. Rendered at build time, so a deployed site cannot describe a different API
+than the one it documents. See "Docs pipeline" in `DESIGN.md`.
 
 | Route | What it is |
 | --- | --- |
@@ -162,33 +165,32 @@ repo. There is one copy of the truth; the served copy is an artifact.
 | `GET /docs` | The manifest as JSON: `version` (content digest), `api_version`, per-doc `sha256` and `source` |
 | `GET /docs/<slug>.md` | One document as markdown |
 
-Every response carries `X-Docs-Version`, `X-API-Version` and an `ETag`, so an agent
-can ask "anything new?" with `If-None-Match` instead of re-reading everything.
+Every response carries `X-Docs-Version`, `X-API-Version`, `X-Docs-Count`, an `ETag` and
+the spec's `Link` relations, so an agent can ask "anything new?" with `If-None-Match`
+instead of re-reading everything.
 
-**The rule: if you change a published doc, regenerate.**
+**How it is built:** `packages/web/vite-plugin-docs.ts` reads `docs.sources.json` at
+the repo root plus the tracked markdown and exposes the set as `virtual:docs` during
+every Vite build and dev request, so there is no artifact to forget. The routes are
+`+server.ts` files in `src/routes/llms.txt`, `llms-full.txt`, `docs` and
+`docs/[file=md]`; `/docs` and `/docs/<slug>` are the human pages, and SvelteKit picks
+the `+server` handler when `Accept` does not prioritise `text/html`.
 
-```bash
-cd packages/api
-make docs            # go run ./cmd/docsgen -check  (CI runs this)
-make docs-generate   # go run ./cmd/docsgen         (when it fails)
-```
+**The rule: if you change a published doc, there is nothing to regenerate.** Edit the
+source; the next build renders it. CI's `web` job builds the site, so a missing or
+empty source file fails a pull request instead of a deploy.
 
-`make check` includes it, and CI fails the `check` job when the served copy is
-stale. A stale copy is caught, not reviewed — which is the only way a rule like
-this survives.
-
-**Sources** are listed in one place: `sources` in `packages/api/cmd/docsgen/main.go`.
-Today that is `GLOSSARY.md`, `docs/guides/API_REFERENCE.md`, `docs/guides/SEARXNG_FLY.md`,
-`docs/SEARCH_COMPARISON.md`, `CONTRIBUTING.md`, and the four package READMEs plus
-`packages/bridge/docs/USAGE.md`. To publish a new document, add it there; the
-generator refuses to run if a listed path is missing, so a rename cannot silently
-drop a page.
+**Sources** are listed in one place: `docs.sources.json`. Today that is `GLOSSARY.md`,
+`docs/guides/API_REFERENCE.md`, `docs/guides/SEARXNG_FLY.md`, `docs/SEARCH_COMPARISON.md`,
+`CONTRIBUTING.md`, and the four package READMEs plus `packages/bridge/docs/USAGE.md`. To
+publish a new document, add it there; the build refuses to run if a listed path is
+missing, so a rename cannot silently drop a page.
 
 **When you add an endpoint, an option, a CLI verb or an env var:** the API reference
-and/or the relevant package README is the source. Update it, run `make docs`, and
-the served docs follow. `api_version` in the manifest is read from
-`internal/version/version.go`, the same constant `GET /` advertises — so the docs
-cannot claim to describe a version the service does not report.
+and/or the relevant package README is the source. Update it and the served docs
+follow. `api_version` in the manifest is read from `internal/version/version.go`, the
+same constant `GET /` advertises — so the docs cannot claim to describe a version the
+service does not report.
 
 ## ⚠️ Gotchas
 

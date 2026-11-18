@@ -176,8 +176,9 @@ Four packages, each with its own README. This file is the map; the detail lives 
 
 ## Documentation for agents
 
-The API serves its own documentation, generated from the tracked markdown in this
-repo — so the routes cannot describe a different API than the one answering.
+The documentation is served by the web app (`packages/web`), generated at build
+time from the tracked markdown in this repo — so a deployed site cannot describe a
+different API than the one it documents. The Go API serves only `/v1`.
 
 | Route | What it is |
 | --- | --- |
@@ -187,9 +188,11 @@ repo — so the routes cannot describe a different API than the one answering.
 | `GET /docs/<slug>.md` | One document as markdown |
 
 Every response carries `X-Docs-Version` and an `ETag`, so an agent can ask
-"anything new?" with one conditional request instead of re-reading the repo. Point
-a coding agent at `http://localhost:7431/llms.txt` and it has the API, the MCP
-tools, the bridge manual and the glossary — versioned together.
+"anything new?" with one conditional request instead of re-reading the repo.
+
+Locally: `bun run dev:web`, then point an agent at
+`http://localhost:5173/llms.txt` — the API, the MCP tools, the bridge manual and
+the glossary, versioned together.
 
 ## API
 

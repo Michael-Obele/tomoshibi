@@ -75,7 +75,7 @@ Details worth knowing:
 
 - The backend URL is a **build argument** (`$env/static/private`), so the container URL is fixed at image build time — re-run `--build` when it changes. The compose file defaults to `http://host.docker.internal:7431` and maps `host.docker.internal` to the host gateway, so it reaches an API running outside Docker (e.g. the root `docker compose up -d` stack, or `go run ./cmd/api`).
 - `MASTRA_PASSWORD` is a **runtime** env var — pass it with `-e MASTRA_PASSWORD=...` or add it to a `.env` next to the compose file.
-- Image is two-stage: `oven/bun:1` builds (`DOCKER_BUILD=1` → `adapter-node`), `oven/bun:1-slim` serves `build/index.js` on port `7432`.
+- Image is two-stage: `oven/bun:1` builds (no `NETLIFY` set → `adapter-node`), `oven/bun:1-slim` serves `build/index.js` on port `7432`.
 
 ### With the rest of the stack
 
@@ -96,29 +96,47 @@ packages/web/
 │   ├── routes/                 # SvelteKit file-based routing
 │   │   ├── +page.svelte        # / — homepage: pitch, features, curl examples
 │   │   ├── playground/         # /playground — interactive scrape / crawl / search UI
-│   │   ├── docs/               # /docs — API documentation pages
+│   │   ├── docs/               # /docs — generated documentation pages + sidebar
+│   │   ├── llms.txt/           # /llms.txt — the agent index, generated at build time
+│   │   ├── llms-full.txt/      # /llms-full.txt — every document concatenated
 │   │   ├── login/              # /login — password gate (MASTRA_PASSWORD)
 │   │   ├── +layout.svelte      # app shell: nav, theme, toasts
 │   │   └── layout.css          # Tailwind v4 theme tokens
 │   ├── lib/
 │   │   ├── remote/             # SvelteKit remote functions → server-side API proxy
-│   │   ├── server/             # rate-limiter (global / IP / burst) + server helpers
+│   │   ├── server/             # rate limiter + the generated docs bundle
 │   │   ├── components/         # shadcn-svelte-style UI — ui/ · blocks/ · brand/
 │   │   ├── hooks/              # reusable runes (is-mobile.svelte.ts)
 │   │   ├── assets/             # images used by components
-│   │   ├── docs-content.ts     # copy for the /docs pages
 │   │   ├── index.ts            # barrel exports
 │   │   └── utils.ts            # cn() — clsx + tailwind-merge
 │   ├── hooks.server.ts         # auth cookie check + 3-tier rate limiting
 │   ├── app.html / app.d.ts     # HTML shell + global types
+│   └── virtual-docs.d.ts       # types for the generated docs modules
+├── vite-plugin-docs.ts         # docs.sources.json → virtual:docs, rendered with Shiki
 ├── static/                     # favicon.svg, robots.txt (served at /)
-├── svelte.config.js            # adapter-auto (local) / adapter-node (DOCKER_BUILD=1)
-├── vite.config.ts              # Vite + Tailwind + SvelteKit plugins
+├── svelte.config.js            # adapter-netlify (NETLIFY) · adapter-node otherwise
+├── netlify.toml                # build command + publish dir for the Netlify site
+├── vite.config.ts              # Vite + Tailwind + SvelteKit + docs plugins
 ├── Dockerfile                  # bun build → bun:1-slim runtime, port 7432
 ├── docker-compose.yml          # web on 7432; backend URL passed as a build arg
 ├── package.json                # dev · build · preview · check · lint · format
 └── .env.example                # PRIVATE_TOMOSHI_* + MASTRA_PASSWORD
 ```
+
+---
+
+## Documentation for agents
+
+The pages under `/docs`, the index at `/llms.txt` and the manifest at `/docs` are
+generated during the build from `docs.sources.json` at the repo root plus the
+tracked markdown (this README included). Edit the source document; the next build
+shows the change. Every document is also served as markdown at
+`/docs/<slug>.md`, and responses carry `X-Docs-Version`, an `ETag` and the
+[llmstxt.org](https://llmstxt.org/) v2 `Link` relations.
+
+Those four routes are exempt from the rate limiter and the password gate on
+purpose: an agent needs the docs before it has a key.
 
 ---
 
