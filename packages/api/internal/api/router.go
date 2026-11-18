@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/Michael-Obele/tomoshibi/internal/agentdocs"
 	"github.com/Michael-Obele/tomoshibi/internal/api/handlers"
 	"github.com/Michael-Obele/tomoshibi/internal/api/middleware"
 	"github.com/Michael-Obele/tomoshibi/internal/config"
@@ -29,10 +28,6 @@ func NewRouter(
 	}
 
 	r := gin.New()
-
-	// Filled in below once the embedded docs are loaded; "unknown" tells a caller
-	// the build has no docs rather than an empty string.
-	docsVersion := "unknown"
 
 	r.Use(gin.Recovery())
 	r.Use(middleware.Logger(logger))
@@ -61,28 +56,8 @@ func NewRouter(
 				"insights": "/v1/insights",
 				"research": "/v1/research",
 			},
-			// The documentation an agent should read first. Unauthenticated like
-			// this endpoint, and generated from the repo rather than written here:
-			// see internal/agentdocs.
-			"llms_txt":      "/llms.txt",
-			"docs_manifest": "/docs",
-			"docs_version":  docsVersion,
 		})
 	})
-
-	// Agent documentation: /llms.txt (llmstxt.org v2), /llms-full.txt, /docs and
-	// /docs/<slug>.md. Every route carries X-Docs-Version and an ETag, and the
-	// content is generated from the tracked markdown by cmd/docsgen — so it
-	// cannot describe a different API than the one answering here.
-	if bundle, err := agentdocs.Load(); err != nil {
-		// A broken docs embed is a build problem, not a request problem. Say so
-		// loudly and keep the API serving: refusing to boot over documentation
-		// would be worse than serving without it.
-		logger.Error("Agent docs unavailable", "error", err)
-	} else {
-		bundle.Routes(r)
-		docsVersion = bundle.Manifest().Version
-	}
 
 	// Liveness probes: unauthenticated so load balancers and uptime
 	// monitors can check the API without an API key.
