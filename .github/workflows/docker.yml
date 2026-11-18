@@ -166,7 +166,9 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: ./packages/web
+          # Repo root: the web build reads docs.sources.json + the tracked markdown.
+          context: .
+          file: packages/web/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

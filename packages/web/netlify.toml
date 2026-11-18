@@ -1,0 +1,6 @@
+# Netlify builds this package (base directory: packages/web). `bun run build`
+# picks adapter-netlify because NETLIFY is set; it writes the client to build/
+# and the server routes to .netlify/functions-internal.
+[build]
+	command = "bun run build"
+	publish = "build-netlify"

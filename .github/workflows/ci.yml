@@ -48,13 +48,6 @@ jobs:
       - name: staticcheck
         run: staticcheck ./...
 
-      # The docs the API serves (/llms.txt, /docs) are generated from the tracked
-      # markdown in this repo. If a README or the API reference changed and nobody
-      # regenerated, this fails here — instead of shipping docs that describe a
-      # different API than the one answering.
-      - name: Docs are up to date
-        run: go run ./cmd/docsgen -check
-
       # Chromium is preinstalled on ubuntu-latest runners, so the chromedp
       # tests exercise a real browser rather than skipping.
       - name: Test (race)
@@ -152,3 +145,21 @@ jobs:
 
       - name: Browser suite (real extension, real Chrome)
         run: bun test/e2e-extension.ts
+
+  # The site: typecheck plus a real Netlify build, so a missing or empty source
+  # document fails the pull request instead of the deploy.
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Check
+        run: bun --cwd packages/web check
+      - name: Build for Netlify
+        working-directory: packages/web
+        env:
+          NETLIFY: "true"
+        run: bun run build

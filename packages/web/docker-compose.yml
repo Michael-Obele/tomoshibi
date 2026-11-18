@@ -8,7 +8,8 @@
 services:
   web:
     build:
-      context: .
+      context: ../..
+      dockerfile: packages/web/Dockerfile
       args:
         PRIVATE_TOMOSHI_BACKEND_URL: ${PRIVATE_TOMOSHI_BACKEND_URL:-http://host.docker.internal:7431}
         PRIVATE_TOMOSHI_API_KEY: ${PRIVATE_TOMOSHI_API_KEY:-dummy}

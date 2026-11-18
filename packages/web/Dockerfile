@@ -1,19 +1,21 @@
 # ─── Stage 1: Build ────────────────────────────────────────────────────
+# Build from the REPO ROOT: the docs pipeline reads docs.sources.json and the
+# tracked markdown, which live outside packages/web.
+#
+#   docker build -f packages/web/Dockerfile .
 FROM oven/bun:1 AS builder
 WORKDIR /app
 
-COPY package.json ./
-COPY src ./src
-COPY static ./static
-COPY svelte.config.js vite.config.ts tsconfig.json components.json ./
-RUN bun install
+# .dockerignore keeps node_modules, .git and .env out of the context.
+COPY . .
+RUN bun install --frozen-lockfile
 
-# PRIVATE_TOMOSHI_* required at build time for $env/static/private
+# PRIVATE_TOMOSHI_* are read at build time by $env/static/private
 ARG PRIVATE_TOMOSHI_BACKEND_URL=http://api:7431
 ARG PRIVATE_TOMOSHI_API_KEY=dummy
 ENV PRIVATE_TOMOSHI_BACKEND_URL=$PRIVATE_TOMOSHI_BACKEND_URL
 ENV PRIVATE_TOMOSHI_API_KEY=$PRIVATE_TOMOSHI_API_KEY
-RUN DOCKER_BUILD=1 bun run build
+RUN cd packages/web && bun run build
 
 # ─── Stage 2: Runtime (Bun) ────────────────────────────────────────────
 FROM oven/bun:1-slim
@@ -24,10 +26,12 @@ USER root
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
 USER bun
 
-# Only the built output + production deps
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/package.json ./package.json
+# Only the built output + production deps. Dependencies resolve upwards from
+# packages/web/node_modules to the workspace root.
+COPY --from=builder /app/packages/web/build ./build
+COPY --from=builder /app/packages/web/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/web/node_modules ./packages/web/node_modules
 
 ENV NODE_ENV=production
 ENV PORT=7432
