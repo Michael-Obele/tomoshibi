@@ -7,19 +7,21 @@ FROM oven/bun:1 AS builder
 WORKDIR /app
 
 # .dockerignore keeps node_modules, .git and .env out of the context.
+# packages/web/Dockerfile.dockerignore keeps the docs the build reads.
 COPY . .
 RUN bun install --frozen-lockfile
 
-# PRIVATE_TOMOSHI_* are read at build time by $env/static/private
-ARG PRIVATE_TOMOSHI_BACKEND_URL=http://api:7431
-ARG PRIVATE_TOMOSHI_API_KEY=dummy
-ENV PRIVATE_TOMOSHI_BACKEND_URL=$PRIVATE_TOMOSHI_BACKEND_URL
-ENV PRIVATE_TOMOSHI_API_KEY=$PRIVATE_TOMOSHI_API_KEY
+# No backend URL is baked in: the app reads PRIVATE_TOMOSHI_* from
+# $env/dynamic/private at runtime, so the same image works against any API.
 RUN cd packages/web && bun run build
 
 # ─── Stage 2: Runtime (Bun) ────────────────────────────────────────────
 FROM oven/bun:1-slim
 WORKDIR /app
+
+# Default for a bare `docker run`; compose and -e override it.
+ENV PRIVATE_TOMOSHI_BACKEND_URL=http://api:7431
+ENV PRIVATE_TOMOSHI_API_KEY=
 
 # curl for healthcheck (wget not in slim)
 USER root

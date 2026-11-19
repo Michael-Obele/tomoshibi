@@ -1,6 +1,7 @@
 import * as v from "valibot";
 import { query, form, command, getRequestEvent } from "$app/server";
-import { PRIVATE_TOMOSHI_BACKEND_URL } from "$env/static/private";
+// Dynamic, not static: the value is read from process.env at runtime, so one
+// image works with any backend and `svelte-check` does not need an .env file.
 import { env } from "$env/dynamic/private";
 import { error } from "@sveltejs/kit";
 import { dev } from "$app/environment";
@@ -258,13 +259,14 @@ const MonitorOptionsSchema = v.object({
 // --- Helper ---
 
 async function fetchTomoshi(endpoint: string, method: string, body?: any) {
-  if (!PRIVATE_TOMOSHI_BACKEND_URL) {
+  const backendUrl = env.PRIVATE_TOMOSHI_BACKEND_URL;
+  if (!backendUrl) {
     throw new Error("PRIVATE_TOMOSHI_BACKEND_URL is not set");
   }
 
   // Normalize: strip trailing slash and any '/v1' suffix from base URL
   // so it works regardless of how the user configured it
-  const baseUrl = PRIVATE_TOMOSHI_BACKEND_URL.replace(/\/\/+$/, "").replace(
+  const baseUrl = backendUrl.replace(/\/\/+$/, "").replace(
     /\/v1$/,
     "",
   );
@@ -333,7 +335,7 @@ async function fetchTomoshi(endpoint: string, method: string, body?: any) {
   } catch (err: any) {
     console.error("Tomoshibi API Error:", err);
     // Include more detail in the error for debugging
-    const detail = `Backend URL: ${PRIVATE_TOMOSHI_BACKEND_URL} | Endpoint: ${endpoint} | Method: ${method}`;
+    const detail = `Backend URL: ${backendUrl} | Endpoint: ${endpoint} | Method: ${method}`;
     const errorMsg = dev ? `${err.message} — ${detail}` : err.message;
     // Preserve SvelteKit HttpError (e.g. 429) without wrapping
     if (err?.status && err.status >= 400 && err.status < 600) throw err;

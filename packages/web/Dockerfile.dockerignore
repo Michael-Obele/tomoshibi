@@ -1,0 +1,63 @@
+# Build context for THIS Dockerfile only.
+#
+# BuildKit uses `packages/web/Dockerfile.dockerignore` instead of the repo-root
+# `.dockerignore` whenever the build is `-f packages/web/Dockerfile`. That
+# matters because the root file excludes `docs/` and `*.md` to keep the API
+# context small, and the web build READS those files at build time — without
+# this file `virtual:docs` fails with
+#   ENOENT: no such file or directory, lstat '/app/docs/guides/API_REFERENCE.md'
+#
+# So: keep every path docs.sources.json publishes, drop everything else heavy.
+
+# ── Dependencies & caches ───────────────────────────────────────────
+**/node_modules/
+**/.bun/
+**/.output/
+**/.svelte-kit/
+**/build/
+**/dist/
+**/.vite/
+**/coverage/
+**/*.tsbuildinfo
+
+# ── VCS / CI / editor ───────────────────────────────────────────────
+.git/
+.github/
+.vscode/
+.idea/
+.zed/
+
+# ── Secrets & env ───────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Local-only, never part of a published doc ───────────────────────
+# docs/adr/ and docs/features/ are fine to keep; these are not.
+data/
+plan/
+test_reports/
+.superpowers/
+mastra_plan/
+cinder-js/
+cinder-js-gpt/
+
+# ── Agent scratch ───────────────────────────────────────────────────
+.agent/
+.agents/
+.gemini/
+.kiro/
+.windsurf/
+
+# ── Stale compiled binaries at the repo root ────────────────────────
+/api
+/app
+/tomoshibi-api
+/tomoshibi-worker
+/worker
+/tomoshibi
+
+# ── Other packages' heavyweight dirs (their sources stay) ───────────
+packages/bridge/.wxt/
+packages/bridge/.output/
+packages/api/data/
