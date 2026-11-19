@@ -46,6 +46,10 @@ services:
       - SERVER_MODE=release
       - SEARXNG_ENDPOINT=http://searxng:8080
       - STEALTH_ENABLED=true
+      # Browser-bridge pairing state must outlive the container, or every
+      # `up --build` silently unpairs the browser. Set explicitly because the
+      # default (~/.config/tomoshi) is inside the container's home.
+      - BRIDGE_STATE_DIR=/app/bridge-state
       # SEARCH_NATIVE_ENABLED defaults to true in code; set it in
       # packages/api/.env to A/B the native layer without editing this file.
       #
@@ -61,6 +65,10 @@ services:
     volumes:
       # Local-only search telemetry (JSONL) survives container recreation.
       - ./data:/app/data
+      # Bridge pairing + allowlist survive `docker compose up --build`.
+      # A named volume, not ./data: bridge.json holds token hashes, and ./data
+      # is a repo path that would show the file up in git.
+      - bridge_state:/app/bridge-state
     depends_on:
       redis:
         condition: service_healthy
@@ -97,3 +105,4 @@ services:
 volumes:
   redis_data:
   searxng_data:
+  bridge_state:

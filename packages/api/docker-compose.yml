@@ -40,6 +40,12 @@ services:
       # the project directory and blank a key env_file had loaded, because
       # `environment` takes precedence over `env_file`.
       - STEALTH_ENABLED=true
+      # Pairing state survives container recreation. Explicit because the
+      # default (~/.config/tomoshi) lives inside the container's home.
+      - BRIDGE_STATE_DIR=/app/bridge-state
+    volumes:
+      # A named volume, not a repo path: bridge.json holds token hashes.
+      - bridge_state:/app/bridge-state
     depends_on:
       redis:
         condition: service_healthy
@@ -67,3 +73,4 @@ services:
 volumes:
   redis_data:
   searxng_data:
+  bridge_state:

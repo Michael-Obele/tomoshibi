@@ -207,6 +207,19 @@ stop a runaway loop before it spends a real session.
 browser for an origin that is already allowed, so a working anonymous fetch is
 never turned into a refusal.
 
+The same controls exist over HTTP, so a client that is not on this machine (the
+MCP) can set the lane up without the CLI:
+
+```bash
+curl 'localhost:7431/v1/bridge?code=1'                       # status + pairing code
+curl -X POST localhost:7431/v1/bridge/allow -d '{"hosts":["example.com"]}'
+curl -X POST localhost:7431/v1/bridge/unpair -d '{"name":"all"}'
+```
+
+**Docker:** the compose files set `BRIDGE_STATE_DIR=/app/bridge-state` and mount
+a named `bridge_state` volume. Without that the pairing lives inside the
+container and disappears on the next `up --build`.
+
 Recipes remain the specialization: use one when a site needs its own actions,
 extraction schema, pace, or the `turbo` layer.
 
@@ -233,7 +246,7 @@ Every bridged result carries a `provenance` block and is marked `untrusted`, nev
 | Extension (PolyForm Noncommercial, not MIT) | [`packages/bridge`](../../packages/bridge) |
 | Recipes (private packs: host, actions, fixtures) | `plans/` + `tomoshibi-recipes` |
 | CLI (`bridge code\|status\|unpair`, `recipes add\|list\|verify\|remove`, `access log`) | `cmd/tomoshibi` |
-| State (code, port, device hashes, server key) | `~/.config/tomoshi/bridge.json`, mode `0600` |
+| State (code, port, device hashes, server key) | `BRIDGE_STATE_DIR`, default `~/.config/tomoshi/bridge.json` (mode `0600`) |
 
 The listener is loopback-only, refuses any `http(s)` origin (a web page in your own browser is a loopback peer), and runs a mutual-auth handshake: the extension will not release its token to a process that cannot prove it holds the pairing key. A blocked or challenge page is reported as an error (`502`, `code: "blocked"`), never as content. Revoke a browser with `tomoshibi bridge unpair`.
 

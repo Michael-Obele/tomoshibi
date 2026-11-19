@@ -144,7 +144,7 @@ docker run --rm -p 7433:7433 -e TOMOSHI_API_URL=http://host.docker.internal:7431
 
 | Tool               | `action`                                                             | What it does                                                       |
 | ------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `tomoshi_extract`  | `scrape` · `scrape_multi` (≤10) · `links` · `batch` · `batch_status` · `research` | Single/multi-page → markdown, link extraction, async batch (Redis), and a query → SERP → read pages |
+| `tomoshi_extract`  | `scrape` · `scrape_multi` (≤10) · `links` · `batch` · `batch_status` · `research` · `bridge` | Single/multi-page → markdown, link extraction, async batch (Redis), a query → SERP → read pages, and bridge pairing/allowlist |
 | `tomoshi_discover` | `search` · `map` · `crawl` · `crawl_status`                          | Web search (native roster → SearXNG → **your browser** → Brave/Serper/Tavily), sitemap, async BFS crawl. `engine` picks a backend: `browser:ddg`, `browser:google`, `browser:bing` |
 | `tomoshi_monitor`  | `create` · `status` · `delete`                                       | Hash markdown, webhook on change                                   |
 
@@ -161,6 +161,20 @@ drives the browser you are signed into and needs **no recipe** — just a paired
 [bridge extension](../bridge) and an allowed origin (`tomoshibi bridge allow
 <host>`; the first touch answers `428 consent-required`). `auto` tries the cheap
 lanes first and escalates into the browser only for an allowed origin.
+
+The setup half lives on the same tool, so an agent never has to send you to a
+terminal. `tomoshi_extract` action=`bridge`:
+
+| `op` | What it does |
+| --- | --- |
+| `status` | port, paired browsers, allowed origins. Add `code: true` to include the current 6-digit pairing code (it rotates every 10 minutes and works once) |
+| `allow` | `hosts: ["example.com", "*.example.com"]` — clears a `428 consent-required` |
+| `deny` | `hosts: [...]` — take a host back off the allowlist |
+| `unpair` | `name: "<device>"`, or `all`, revokes a browser |
+
+The bridge is loopback-only, so the API the MCP talks to must be the one running
+on the same machine as the browser. It answers `enabled: false` when the bridge is
+off (no writable state dir).
 
 Four named built-ins run in the page before it is read. A bare `true` is shorthand
 for the defaults:
@@ -214,7 +228,7 @@ packages/mcp/
 │   ├── adapter.ts          # valibot → JSON Schema adapter for tool inputs
 │   ├── auth-provider.ts    # optional OAuth 2.1 (SimpleProvider)
 │   └── tools/              # one file per tool, colocated bun tests
-│       ├── extract.ts      # tomoshi_extract  — scrape · scrape_multi · links · batch · batch_status
+│       ├── extract.ts      # tomoshi_extract  — scrape · scrape_multi · links · batch · batch_status · research · bridge
 │       ├── discover.ts     # tomoshi_discover — search · map · crawl · crawl_status
 │       ├── monitor.ts      # tomoshi_monitor  — create · status · delete
 │       ├── schema.ts       # shared field builders (num, url, …)

@@ -328,7 +328,11 @@ func run() error {
 	}
 
 	// 4. Init Router
-	router := api.NewRouter(cfg, logger.Log, scrapeHandler, crawlHandler, searchHandler, redisClient)
+	// Bridge admin surface: status + allowlist over HTTP so a remote client
+	// (the MCP) can set up the extension without shelling out to the CLI.
+	bridgeHandler := handlers.NewBridgeHandler(bridgeServer)
+
+	router := api.NewRouter(cfg, logger.Log, scrapeHandler, crawlHandler, searchHandler, bridgeHandler, redisClient)
 
 	// 5. Run Server
 	//

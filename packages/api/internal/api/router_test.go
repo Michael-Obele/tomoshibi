@@ -19,7 +19,7 @@ func TestRouter_HealthEndpoints(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	// nil handlers are fine for the health routes; crawl routes degrade to 503.
-	r := NewRouter(cfg, logger, nil, nil, nil, nil)
+	r := NewRouter(cfg, logger, nil, nil, nil, nil, nil)
 
 	for _, path := range []string{"/health", "/v1/ping"} {
 		t.Run(path, func(t *testing.T) {

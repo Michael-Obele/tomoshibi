@@ -495,6 +495,38 @@ export interface MonitorStatusResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Browser bridge types (GET /v1/bridge, POST /v1/bridge/*)
+// ---------------------------------------------------------------------------
+
+/** One paired browser, minus its token hash. */
+export interface BridgeDevice {
+  name: string;
+  paired_at: string;
+  last_seen?: string;
+  /** First few hex chars of the stored hash — an identifier, not a credential. */
+  token_hint?: string;
+}
+
+export interface BridgeStatus {
+  enabled: boolean;
+  port?: string;
+  paired: BridgeDevice[];
+  allowed_origins: string[];
+  /** Present only when the status call asked for the code. */
+  pairing_code?: string;
+  hint?: string;
+}
+
+export interface BridgeMutationResult {
+  added?: string[];
+  already?: string[];
+  removed?: string[];
+  invalid?: string[];
+  allowed_origins?: string[];
+  paired?: BridgeDevice[];
+}
+
+// ---------------------------------------------------------------------------
 // SSRF Prevention
 // ---------------------------------------------------------------------------
 
@@ -555,6 +587,7 @@ export const TOMOSHI_TIMEOUT = {
   batch: 30_000,
   batchStatus: 15_000,
   links: 60_000,
+  bridge: 15_000,
 } as const;
 
 /** Header the backend accepts per-request env overrides on (JSON object of NAME → value). */
@@ -905,6 +938,58 @@ export class TomoshiClient {
       "/v1/scrape",
       { url, include_links: true },
       TOMOSHI_TIMEOUT.links,
+    );
+  }
+
+  /**
+   * Browser-bridge pairing state: port, paired browsers, allowed origins.
+   * GET /v1/bridge — pass includeCode to get the 6-digit pairing code.
+   */
+  async bridgeStatus(includeCode = false): Promise<BridgeStatus> {
+    return this.request<BridgeStatus>(
+      "GET",
+      `/v1/bridge${includeCode ? "?code=1" : ""}`,
+      undefined,
+      TOMOSHI_TIMEOUT.bridge,
+    );
+  }
+
+  /**
+   * Add hosts to the recipe-free bridge allowlist.
+   * POST /v1/bridge/allow
+   */
+  async bridgeAllow(hosts: string[]): Promise<BridgeMutationResult> {
+    return this.request<BridgeMutationResult>(
+      "POST",
+      "/v1/bridge/allow",
+      { hosts },
+      TOMOSHI_TIMEOUT.bridge,
+    );
+  }
+
+  /**
+   * Remove hosts from the bridge allowlist.
+   * POST /v1/bridge/deny
+   */
+  async bridgeDeny(hosts: string[]): Promise<BridgeMutationResult> {
+    return this.request<BridgeMutationResult>(
+      "POST",
+      "/v1/bridge/deny",
+      { hosts },
+      TOMOSHI_TIMEOUT.bridge,
+    );
+  }
+
+  /**
+   * Revoke one paired browser, or every browser when name is empty/"all".
+   * POST /v1/bridge/unpair
+   */
+  async bridgeUnpair(name?: string): Promise<BridgeMutationResult> {
+    return this.request<BridgeMutationResult>(
+      "POST",
+      "/v1/bridge/unpair",
+      { name: name ?? "" },
+      TOMOSHI_TIMEOUT.bridge,
     );
   }
 

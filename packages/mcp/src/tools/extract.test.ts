@@ -47,6 +47,34 @@ function stubClient() {
         tasks: [],
       };
     },
+    async bridgeStatus(includeCode: boolean) {
+      calls.push({ method: "bridgeStatus", params: includeCode });
+      return {
+        enabled: true,
+        port: "7431",
+        paired: [
+          {
+            name: "Chrome",
+            paired_at: "2026-11-19T00:00:00Z",
+            token_hint: "ab12cd34",
+          },
+        ],
+        allowed_origins: ["example.com"],
+        pairing_code: includeCode ? "123456" : undefined,
+      };
+    },
+    async bridgeAllow(hosts: string[]) {
+      calls.push({ method: "bridgeAllow", params: hosts });
+      return { added: hosts, allowed_origins: hosts };
+    },
+    async bridgeDeny(hosts: string[]) {
+      calls.push({ method: "bridgeDeny", params: hosts });
+      return { removed: hosts, allowed_origins: [] };
+    },
+    async bridgeUnpair(name?: string) {
+      calls.push({ method: "bridgeUnpair", params: name });
+      return { removed: 1, paired: [] };
+    },
   };
   return { client: client as unknown as TomoshiClient, calls };
 }
@@ -65,6 +93,7 @@ describe("tomoshi_extract schema", () => {
       "batch",
       "batch_status",
       "research",
+      "bridge",
     ]);
     expect(json.properties.url).toMatchObject({ type: "string" });
     expect(json.properties.urls).toMatchObject({ type: "array" });
@@ -92,6 +121,44 @@ describe("tomoshi_extract handler", () => {
     expect(res.content[0].text).toContain("Valid actions");
     expect(res.content[0].text).toContain("batch_status");
     expect(calls).toHaveLength(0);
+  });
+
+  test("bridge status shows the pairing code when asked", async () => {
+    const { client, calls } = stubClient();
+    const res = (await createExtractHandler(client)({
+      action: "bridge",
+      op: "status",
+      code: true,
+    })) as Result;
+    expect(res.isError).toBeFalsy();
+    expect(res.content[0].text).toContain("123456");
+    expect(res.content[0].text).toContain("Chrome");
+    expect(calls).toEqual([{ method: "bridgeStatus", params: true }]);
+  });
+
+  test("bridge allow requires hosts", async () => {
+    const { client, calls } = stubClient();
+    const res = (await createExtractHandler(client)({
+      action: "bridge",
+      op: "allow",
+    })) as Result;
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toContain("hosts");
+    expect(calls).toHaveLength(0);
+  });
+
+  test("bridge allow forwards the hosts and reports the allowlist", async () => {
+    const { client, calls } = stubClient();
+    const res = (await createExtractHandler(client)({
+      action: "bridge",
+      op: "allow",
+      hosts: ["example.com"],
+    })) as Result;
+    expect(res.isError).toBeFalsy();
+    expect(res.content[0].text).toContain("example.com");
+    expect(calls).toEqual([
+      { method: "bridgeAllow", params: ["example.com"] },
+    ]);
   });
 
   test("returns a usage error when the action's url is missing", async () => {

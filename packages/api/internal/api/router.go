@@ -21,6 +21,7 @@ func NewRouter(
 	scrapeHandler *handlers.ScrapeHandler,
 	crawlHandler *handlers.CrawlHandler,
 	searchHandler *handlers.SearchHandler,
+	bridgeHandler *handlers.BridgeHandler,
 	redisClient *redis.Client,
 ) *gin.Engine {
 	if cfg.Server.Mode == "release" {
@@ -55,6 +56,7 @@ func NewRouter(
 				"monitor":  "/v1/monitor",
 				"insights": "/v1/insights",
 				"research": "/v1/research",
+				"bridge":   "/v1/bridge",
 			},
 		})
 	})
@@ -99,6 +101,16 @@ func NewRouter(
 		// Discovery for env forwarding: which env var names this backend
 		// accepts per request in X-Tomoshi-Env (used by the MCP client).
 		v1.GET("/env", handlers.Env)
+
+		// Browser-bridge admin surface: pairing state and allowlist over HTTP,
+		// so a remote client (the MCP) can set it up without the CLI. The WS
+		// itself stays outside /v1.
+		if bridgeHandler != nil {
+			v1.GET("/bridge", bridgeHandler.Status)
+			v1.POST("/bridge/allow", bridgeHandler.Allow)
+			v1.POST("/bridge/deny", bridgeHandler.Deny)
+			v1.POST("/bridge/unpair", bridgeHandler.Unpair)
+		}
 
 		// URL discovery via sitemap/link traversal.
 		v1.POST("/map", handlers.NewMapHandler().Map)

@@ -570,6 +570,49 @@ const ExtractResearchShape = v.object({
   ),
 });
 
+// ── bridge (pairing state + allowlist) ─────────────────────────────────
+// The setup half of `transport: bridge`. Without it an agent can only report
+// "bridge-unpaired" or "428 consent-required" and tell the user to find a
+// terminal; with it, the agent can read the code, allow the host, and retry.
+const ExtractBridgeShape = v.object({
+  action: v.pipe(
+    v.picklist(["bridge"]),
+    v.description(
+      "Inspect or fix the browser bridge: pairing, the 6-digit code, and the origin allowlist — everything a `transport: bridge` scrape needs",
+    ),
+  ),
+  op: v.pipe(
+    v.picklist(["status", "allow", "deny", "unpair"]),
+    v.description(
+      "status: port, paired browsers, allowed origins (set `code: true` to include the pairing code); allow/deny: add or remove `hosts`; unpair: revoke `name` (empty or \"all\" revokes every browser)",
+    ),
+  ),
+  hosts: v.optional(
+    v.pipe(
+      v.array(v.string()),
+      v.description(
+        'Hosts for op=allow|deny, e.g. ["example.com","*.example.com"]',
+      ),
+    ),
+  ),
+  name: v.optional(
+    v.pipe(
+      v.string(),
+      v.description(
+        'Device name for op=unpair. Omit or "all" to revoke every paired browser',
+      ),
+    ),
+  ),
+  code: v.optional(
+    v.pipe(
+      v.boolean(),
+      v.description(
+        "op=status: include the current pairing code so you can show it to the user",
+      ),
+    ),
+  ),
+});
+
 /**
  * Flat extraction schema: ONE object, with `action` forced into the required
  * list of the emitted JSON Schema (see `discover.ts` for the why — a root-level
@@ -586,6 +629,7 @@ export const ExtractSchema = v.object(
       ExtractBatchShape,
       ExtractBatchStatusShape,
       ExtractResearchShape,
+      ExtractBridgeShape,
     ],
     {
       action: v.optional(
@@ -597,9 +641,10 @@ export const ExtractSchema = v.object(
             "batch",
             "batch_status",
             "research",
+            "bridge",
           ]),
           v.description(
-            "Extraction action — required. scrape needs `url`; scrape_multi needs `urls` (max 10); links needs `url`; batch needs `urls` (max 20, Redis); batch_status needs `batch_id`; research needs `query`",
+            "Extraction action — required. scrape needs `url`; scrape_multi needs `urls` (max 10); links needs `url`; batch needs `urls` (max 20, Redis); batch_status needs `batch_id`; research needs `query`; bridge needs `op` (status|allow|deny|unpair)",
           ),
         ),
       ),
@@ -646,7 +691,7 @@ export const ExtractSchema = v.object(
       },
     },
   ),
-  'tomoshi_extract requires "action": scrape | scrape_multi | links | batch | batch_status — e.g. {"action":"scrape","url":"https://example.com"}',
+  'tomoshi_extract requires "action": scrape | scrape_multi | links | batch | batch_status | research | bridge — e.g. {"action":"scrape","url":"https://example.com"}',
 );
 export type ExtractInput = v.InferOutput<typeof ExtractSchema>;
 
@@ -684,9 +729,13 @@ const EXTRACT_ACTIONS: Record<string, ActionSpec> = {
       pages: 4,
     },
   },
+  bridge: {
+    required: ["op"],
+    example: { action: "bridge", op: "status", code: true },
+  },
 };
 const EXTRACT_USAGE =
-  "scrape → url, scrape_multi → urls, links → url, batch → urls, batch_status → batch_id";
+  "scrape → url, scrape_multi → urls, links → url, batch → urls, batch_status → batch_id, research → query, bridge → op";
 
 /** Fields that may arrive as strings from untyped MCP clients. */
 const EXTRACT_SHAPE = {
@@ -702,9 +751,11 @@ const EXTRACT_SHAPE = {
     "auto_extract",
     "capture_network",
     "render",
+    "code",
   ],
   json: [
     "urls",
+    "hosts",
     "screenshot_opts",
     "image_process",
     "actions",
@@ -1113,6 +1164,120 @@ export function createExtractHandler(client: TomoshiClient) {
           "Requires Redis-backed Tomoshibi instance.",
         );
         return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+      }
+
+      if (action === "bridge") {
+        const { op, hosts, name, code } = args as {
+          op: "status" | "allow" | "deny" | "unpair";
+          hosts?: string[];
+          name?: string;
+          code?: boolean;
+        };
+        if (op === "status") {
+          const s = await client.bridgeStatus(Boolean(code));
+          if (!s.enabled) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: [
+                    "# Browser bridge",
+                    "",
+                    "The bridge is **disabled** on this API.",
+                    s.hint ? `\n${s.hint}` : "",
+                    "",
+                    "The bridge is built into the API and needs no extra service. Run Tomoshibi on the same machine as the browser with a writable state dir.",
+                  ].join("\n"),
+                },
+              ],
+            };
+          }
+          const lines: string[] = [
+            "# Browser bridge",
+            "",
+            `**Paired browsers:** ${s.paired.length}`,
+            `**Allowed origins:** ${s.allowed_origins.length}`,
+          ];
+          if (s.port) lines.push(`**Port:** ${s.port}`);
+          if (s.paired.length > 0) {
+            lines.push("", "## Paired browsers");
+            for (const d of s.paired) {
+              const seen = d.last_seen ? `, last seen ${d.last_seen}` : "";
+              const hint = d.token_hint ? ` (${d.token_hint})` : "";
+              lines.push(`- ${d.name}${hint} — paired ${d.paired_at}${seen}`);
+            }
+          } else {
+            lines.push("", "_No browser paired yet._");
+          }
+          lines.push("", "## Allowed origins");
+          if (s.allowed_origins.length > 0) {
+            for (const h of s.allowed_origins) lines.push(`- ${h}`);
+          } else {
+            lines.push("- (none)");
+          }
+          if (s.pairing_code) {
+            lines.push(
+              "",
+              "## Pairing code",
+              "",
+              `\`${s.pairing_code}\``,
+              "",
+              "Open the bridge extension popup, enter this code, and press Pair. It rotates every 10 minutes and works once.",
+            );
+          } else if (s.paired.length === 0) {
+            lines.push(
+              "",
+              'Need to pair? Call `tomoshi_extract` again with `action: "bridge", op: "status", code: true` to show the 6-digit code.',
+            );
+          }
+          return {
+            content: [{ type: "text" as const, text: lines.join("\n") }],
+          };
+        }
+
+        if (op === "allow" || op === "deny") {
+          if (!hosts || hosts.length === 0) {
+            return toolError(
+              `op="${op}" needs \`hosts\`, e.g. {"action":"bridge","op":"allow","hosts":["example.com"]}`,
+            );
+          }
+          const r =
+            op === "allow"
+              ? await client.bridgeAllow(hosts)
+              : await client.bridgeDeny(hosts);
+          const lines: string[] = [`# Bridge ${op}`, ""];
+          if (r.added?.length) lines.push(`**Added:** ${r.added.join(", ")}`);
+          if (r.already?.length)
+            lines.push(`**Already allowed:** ${r.already.join(", ")}`);
+          if (r.removed?.length)
+            lines.push(`**Removed:** ${r.removed.join(", ")}`);
+          if (r.invalid?.length)
+            lines.push(`**Invalid (ignored):** ${r.invalid.join(", ")}`);
+          lines.push("", "## Allowed origins");
+          if (r.allowed_origins?.length) {
+            for (const h of r.allowed_origins) lines.push(`- ${h}`);
+          } else {
+            lines.push("- (none)");
+          }
+          return {
+            content: [{ type: "text" as const, text: lines.join("\n") }],
+          };
+        }
+
+        // unpair
+        const r = await client.bridgeUnpair(name);
+        const paired = r.paired ?? [];
+        const lines: string[] = [
+          "# Bridge unpair",
+          "",
+          `**Revoked:** ${r.removed ?? 0} browser(s)`,
+          "",
+          `**Still paired:** ${paired.length}`,
+        ];
+        for (const d of paired) lines.push(`- ${d.name}`);
+        return {
+          content: [{ type: "text" as const, text: lines.join("\n") }],
+        };
       }
 
       // batch_status
